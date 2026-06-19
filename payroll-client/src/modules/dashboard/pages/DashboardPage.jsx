@@ -52,6 +52,7 @@ import logoImage from '../../../assets/Images/Logo.png';
 import faviconImage from '../../../assets/Images/Favicon.png';
 import styles from './DashboardPage.module.css';
 import MasterPage from '../../master/pages/MasterPage';
+import SetupPage from '../../setup/pages/SetupPage';
 import AttendancePage from '../../attendance/pages/AttendancePage';
 
 
@@ -713,6 +714,8 @@ const DashboardPage = () => {
             </div>
           ) : activeMenu === 'Master' ? (
             <MasterPage activeSubMenu={activeSubMenu} />
+          ) : activeMenu === 'Setup' ? (
+            <SetupPage activeSubMenu={activeSubMenu} />
           ) : activeMenu === 'Attendance' ? (
             <AttendancePage activeSubMenu={activeSubMenu} />
           ) : (
