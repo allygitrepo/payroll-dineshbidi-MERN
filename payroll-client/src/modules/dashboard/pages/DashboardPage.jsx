@@ -54,6 +54,7 @@ import styles from './DashboardPage.module.css';
 import MasterPage from '../../master/pages/MasterPage';
 import SetupPage from '../../setup/pages/SetupPage';
 import AttendancePage from '../../attendance/pages/AttendancePage';
+import EntryPage from '../../entry/pages/EntryPage';
 
 
 
@@ -718,6 +719,8 @@ const DashboardPage = () => {
             <SetupPage activeSubMenu={activeSubMenu} />
           ) : activeMenu === 'Attendance' ? (
             <AttendancePage activeSubMenu={activeSubMenu} />
+          ) : activeMenu === 'Entry' ? (
+            <EntryPage activeSubMenu={activeSubMenu} />
           ) : (
             <div className={styles.placeholderPage}>
               <div className={styles.placeholderIcon}>
