@@ -55,6 +55,9 @@ import MasterPage from '../../master/pages/MasterPage';
 import SetupPage from '../../setup/pages/SetupPage';
 import AttendancePage from '../../attendance/pages/AttendancePage';
 import EntryPage from '../../entry/pages/EntryPage';
+import UtilityPage from '../../utility/pages/UtilityPage';
+import TodoListPage from '../../todo-list/pages/TodoListPage';
+import ConvertExcelToTextPage from '../../convert-excel-to-text/pages/ConvertExcelToTextPage';
 
 
 
@@ -721,6 +724,12 @@ const DashboardPage = () => {
             <AttendancePage activeSubMenu={activeSubMenu} />
           ) : activeMenu === 'Entry' ? (
             <EntryPage activeSubMenu={activeSubMenu} />
+          ) : activeMenu === 'Utility' ? (
+            <UtilityPage activeSubMenu={activeSubMenu} />
+          ) : activeMenu === 'Todo List' ? (
+            <TodoListPage activeSubMenu={activeSubMenu} />
+          ) : activeMenu === 'Convert Excel To Text' ? (
+            <ConvertExcelToTextPage activeSubMenu={activeSubMenu} />
           ) : (
             <div className={styles.placeholderPage}>
               <div className={styles.placeholderIcon}>
