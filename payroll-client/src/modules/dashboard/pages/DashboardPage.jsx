@@ -1,60 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Database,
-  Settings,
-  FileEdit,
-  FileText,
-  Wrench,
-  ListTodo,
-  FileCheck,
-  Menu,
-  Mail,
-  LogOut,
   Search,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
-  UserCheck,
-  User,
-  PlusCircle,
-  Building2,
-  Users,
-  Fingerprint,
-  Briefcase,
-  MapPin,
-  Package,
-  Coins,
-  Percent,
-  Wallet,
-  Sliders,
-  Calendar,
-  CalendarCheck,
-  UserMinus,
-  UserCog,
-  FileUp,
-  FileDown,
-  Printer,
-  AlertCircle,
-  Trash2,
-  Save,
-  RefreshCw,
-  Link,
-  UserX,
-  Notebook,
-  FileSpreadsheet,
-  Folder,
-  ClipboardList,
-  Calculator
+  UserCheck
 } from 'lucide-react';
-import logoImage from '../../../assets/Images/Logo.png';
-import faviconImage from '../../../assets/Images/Favicon.png';
 import styles from './DashboardPage.module.css';
+import { Header, Footer, Sidebar } from '../../../shared/components';
 import MasterPage from '../../master/pages/MasterPage';
 import SetupPage from '../../setup/pages/SetupPage';
 import AttendancePage from '../../attendance/pages/AttendancePage';
 import EntryPage from '../../entry/pages/EntryPage';
+import ReportPage from '../../report/pages/ReportPage';
 import UtilityPage from '../../utility/pages/UtilityPage';
 import TodoListPage from '../../todo-list/pages/TodoListPage';
 import ConvertExcelToTextPage from '../../convert-excel-to-text/pages/ConvertExcelToTextPage';
@@ -66,8 +24,6 @@ const DashboardPage = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeMenu, setActiveMenu] = useState('Dashboard');
   const [activeSubMenu, setActiveSubMenu] = useState('');
-  const [expandedMenus, setExpandedMenus] = useState({ Master: true, Report: true, Attendance: true });
-  const [expandedSubMenus, setExpandedSubMenus] = useState({ Forms: true, 'Salary Sheet': true });
 
 
 
@@ -120,122 +76,7 @@ const DashboardPage = () => {
     { name: 'RAMESH PAL', acNo: '0007320', uan: '100116789012', dob: '19/02/1969', contractor: 'DAS LOGISTICS' }
   ];
 
-  const menuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard },
-    {
-      name: 'Master',
-      icon: User,
-      subItems: [
-        { name: 'Comapany', icon: Building2 },
-        { name: 'Employee', icon: Users },
-        { name: 'KYC Update', icon: Fingerprint },
-        { name: 'Contractor', icon: Briefcase },
-        { name: 'Address', icon: MapPin }
-      ]
-    },
-    {
-      name: 'Setup',
-      icon: Settings,
-      subItems: [
-        { name: 'Packing Wages', icon: Package },
-        { name: 'Bidi Roller Wages', icon: Coins },
-        { name: 'Professional Tax', icon: Percent },
-        { name: 'Office Staff Salary', icon: Wallet },
-        { name: 'Challan Setup', icon: Sliders }
-      ]
-    },
-    {
-      name: 'Attendance',
-      icon: CalendarCheck,
-      subItems: [
-        { name: 'Office Attendance', icon: Users },
-        { name: 'Packing Attendance', icon: Package },
-        { name: 'Bidi Roller Attendance', icon: User }
-      ]
-    },
-    {
-      name: 'Entry',
-      icon: FileEdit,
-      subItems: [
-        { name: 'Office Staff', icon: Users },
-        { name: 'Packers', icon: Package },
-        { name: 'Bidi Roller', icon: User },
-        { name: 'EPF Challan Date', icon: Calendar },
-        { name: 'Resignation', icon: UserMinus }
-      ]
-    },
-    {
-      name: 'Report',
-      icon: Sliders,
-      subItems: [
-        {
-          name: 'Salary Sheet',
-          icon: Folder,
-          nestedItems: [
-            { name: 'Office Salary', icon: Wallet },
-            { name: 'Packing Salary', icon: Package },
-            { name: 'Contractor Salary', icon: Briefcase }
-          ]
-        },
-        {
-          name: 'Forms',
-          icon: Folder,
-          nestedItems: [
-            { name: 'Form 2', icon: FileText },
-            { name: 'Form 3A', icon: FileSpreadsheet },
-            { name: 'Form 5', icon: ClipboardList },
-            { name: 'Form 10', icon: Notebook },
-            { name: 'Form 11', icon: FileCheck },
-            { name: 'PF Claim Form', icon: FileEdit }
-          ]
-        },
-        { name: 'ECR Report', icon: PlusCircle },
-        { name: 'ESIC Report', icon: PlusCircle },
-        { name: 'PMRPY Report', icon: PlusCircle },
-        { name: 'PF Challan Yearly', icon: PlusCircle },
-        { name: 'ESIC Challan Yearly', icon: PlusCircle },
-        { name: 'EPF Challan', icon: PlusCircle },
-        { name: 'PF Summary', icon: PlusCircle },
-        { name: 'Payment Advice', icon: PlusCircle },
-        { name: 'Bonus Sheet', icon: PlusCircle },
-        { name: 'Gratuity Calculation', icon: PlusCircle },
-        { name: 'Professional Tax', icon: PlusCircle }
-      ]
-    },
-    {
-      name: 'Utility',
-      icon: Wrench,
-      subItems: [
-        { name: 'Calender', icon: Calendar },
-        { name: 'User Management', icon: UserCog },
-        { name: 'Employee Data Import', icon: FileUp },
-        { name: 'Employee Data Export', icon: FileDown },
-        { name: 'KYC Export', icon: Fingerprint },
-        { name: 'Attandance Printing', icon: Printer },
-        { name: 'Missing Information', icon: AlertCircle },
-        { name: 'Delete Month Entry', icon: Trash2 },
-        { name: 'Backup', icon: Save },
-        { name: 'Restore', icon: RefreshCw },
-        { name: 'UAN to IP Mapping', icon: Link }
-      ]
-    },
-    {
-      name: 'Todo List',
-      icon: ListTodo,
-      subItems: [
-        { name: '3 Month Absent List', icon: UserX },
-        { name: '58 Years of age', icon: UserCheck },
-        { name: 'Notes', icon: Notebook }
-      ]
-    },
-    {
-      name: 'Convert Excel To Text',
-      icon: FileCheck,
-      subItems: [
-        { name: 'Excel To Text', icon: FileSpreadsheet }
-      ]
-    },
-  ];
+
 
   // Filtering & Pagination Calculations for Absent List
   const filteredAbsent = absentList.filter(emp =>
@@ -272,150 +113,22 @@ const DashboardPage = () => {
     <div className={styles.appContainer}>
 
       {/* Top Navbar */}
-      <header className={styles.navbar}>
-        <div className={styles.navLeft}>
-          <div className={`${styles.logoArea} ${sidebarCollapsed ? styles.collapsedLogoArea : ''}`}>
-            <img
-              src={sidebarCollapsed ? faviconImage : logoImage}
-              alt="Logo"
-              className={`${styles.logoImg} ${sidebarCollapsed ? styles.collapsedLogoImg : ''}`}
-            />
-          </div>
-          <button
-            className={styles.iconBtn}
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            title="Toggle Sidebar"
-          >
-            <Menu size={20} />
-          </button>
-        </div>
-        <div className={styles.navRight}>
-          <button className={styles.emailBtn}>
-            <Mail size={16} />
-            <span>Email</span>
-          </button>
-          <button className={styles.logoutBtn} onClick={() => navigate('/')}>
-            <LogOut size={16} />
-            <span>Logout</span>
-          </button>
-        </div>
-      </header>
+      <Header
+        sidebarCollapsed={sidebarCollapsed}
+        setSidebarCollapsed={setSidebarCollapsed}
+      />
 
       {/* Main Body */}
       <div className={styles.mainBody}>
 
         {/* Sidebar */}
-        <aside className={`${styles.sidebar} ${sidebarCollapsed ? styles.collapsed : ''}`}>
-          <div className={styles.sidebarSectionTitle}>Main Navigation</div>
-          <nav className={styles.sidebarNav}>
-            {menuItems.map(item => {
-              const IconComp = item.icon;
-              const hasSubItems = !!item.subItems;
-              const isExpanded = expandedMenus[item.name];
-              const isActive = activeMenu === item.name;
-
-              return (
-                <div key={item.name} className={styles.menuItemWrapper}>
-                  <button
-                    className={`${styles.sidebarItem} ${isActive ? styles.activeItem : ''}`}
-                    onClick={() => {
-                      if (hasSubItems && !sidebarCollapsed) {
-                        setExpandedMenus(prev => ({
-                          ...prev,
-                          [item.name]: !prev[item.name]
-                        }));
-                      } else {
-                        setActiveMenu(item.name);
-                        setActiveSubMenu('');
-                      }
-                    }}
-                  >
-                    <IconComp size={18} className={styles.sidebarIcon} />
-                    <span className={styles.sidebarText}>{item.name}</span>
-                    {hasSubItems && !sidebarCollapsed && (
-                      <ChevronRight
-                        size={16}
-                        className={`${styles.chevron} ${isExpanded ? styles.chevronExpanded : ''}`}
-                      />
-                    )}
-                  </button>
-
-                  {hasSubItems && isExpanded && !sidebarCollapsed && (
-                    <div className={styles.subMenuContainer}>
-                      {item.subItems.map(sub => {
-                        const isSubActive = activeSubMenu === sub.name;
-                        const SubIcon = sub.icon;
-                        const hasNestedItems = !!sub.nestedItems;
-                        const isSubExpanded = expandedSubMenus[sub.name];
-
-                        return (
-                          <div key={sub.name} className={styles.subItemWrapper}>
-                            <button
-                              className={`${styles.subItem} ${isSubActive ? styles.activeSubItem : ''} ${hasNestedItems ? styles.formParentSubItem : ''}`}
-                              onClick={() => {
-                                if (hasNestedItems) {
-                                  setExpandedSubMenus(prev => ({
-                                    ...prev,
-                                    [sub.name]: !prev[sub.name]
-                                  }));
-                                } else {
-                                  setActiveMenu(item.name);
-                                  setActiveSubMenu(sub.name);
-                                }
-                              }}
-                            >
-                              {hasNestedItems ? (
-                                <>
-                                  <ChevronRight
-                                    size={14}
-                                    className={`${styles.leftChevron} ${isSubExpanded ? styles.leftChevronExpanded : ''}`}
-                                  />
-                                  <span>{sub.name}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <SubIcon size={16} className={styles.subIcon} />
-                                  <span>{sub.name}</span>
-                                  {hasNestedItems && (
-                                    <span className={styles.chevron}>
-                                      {isSubExpanded ? '▼' : '▶'}
-                                    </span>
-                                  )}
-                                </>
-                              )}
-                            </button>
-
-                            {hasNestedItems && isSubExpanded && (
-                              <div className={styles.nestedMenuContainer}>
-                                {sub.nestedItems.map(nested => {
-                                  const isNestedActive = activeSubMenu === nested.name;
-                                  const NestedIcon = nested.icon;
-                                  return (
-                                    <button
-                                      key={nested.name}
-                                      className={`${styles.nestedItem} ${isNestedActive ? styles.activeNestedItem : ''} ${hasNestedItems ? styles.formNestedItem : ''}`}
-                                      onClick={() => {
-                                        setActiveMenu(item.name);
-                                        setActiveSubMenu(nested.name);
-                                      }}
-                                    >
-                                      <NestedIcon size={14} className={styles.nestedIcon} />
-                                      <span>{nested.name}</span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-        </aside>
+        <Sidebar
+          sidebarCollapsed={sidebarCollapsed}
+          activeMenu={activeMenu}
+          setActiveMenu={setActiveMenu}
+          activeSubMenu={activeSubMenu}
+          setActiveSubMenu={setActiveSubMenu}
+        />
 
         {/* Content Pane */}
         <main className={styles.contentPane}>
@@ -724,6 +437,8 @@ const DashboardPage = () => {
             <AttendancePage activeSubMenu={activeSubMenu} />
           ) : activeMenu === 'Entry' ? (
             <EntryPage activeSubMenu={activeSubMenu} />
+          ) : activeMenu === 'Report' ? (
+            <ReportPage activeSubMenu={activeSubMenu} />
           ) : activeMenu === 'Utility' ? (
             <UtilityPage activeSubMenu={activeSubMenu} />
           ) : activeMenu === 'Todo List' ? (
@@ -749,9 +464,7 @@ const DashboardPage = () => {
           )}
 
           {/* Footer */}
-          <footer className={styles.footer}>
-            <span>© {new Date().getFullYear()} - Payroll Services</span>
-          </footer>
+          <Footer />
         </main>
 
       </div>
