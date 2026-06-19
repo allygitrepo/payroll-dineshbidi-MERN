@@ -167,7 +167,7 @@
   width: 100%;
   padding: 12px;
   border-radius: 8px;
-  color: var(--text-secondary);
+  color: #000000;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -178,16 +178,17 @@
 
 .sidebarItem:hover {
   background-color: var(--bg-secondary);
-  color: var(--text-primary);
+  color: var(--primary-hover);
 }
 
 .activeItem {
   background-color: var(--primary-light) !important;
   color: var(--primary-hover) !important;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .sidebarIcon {
+  color: var(--primary);
   flex-shrink: 0;
 }
 
@@ -586,6 +587,313 @@
   color: var(--text-muted);
 }
 
+.menuItemWrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.chevron {
+  margin-left: auto;
+  color: var(--text-muted);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chevronExpanded {
+  transform: rotate(90deg);
+}
+
+.subMenuContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 28px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.subItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #000000;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.subItem:hover {
+  background-color: var(--bg-secondary);
+  color: var(--primary-hover);
+}
+
+.activeSubItem {
+  color: var(--primary) !important;
+  font-weight: 500;
+}
+
+.subIcon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.formParentSubItem {
+}
+
+.formParentSubItem:hover {
+  background-color: var(--bg-secondary) !important;
+  color: var(--primary-hover) !important;
+}
+
+.formNestedItem {
+}
+
+.formNestedItem:hover {
+  background-color: var(--bg-secondary) !important;
+  color: var(--primary-hover) !important;
+}
+
+.formNestedItem .nestedIcon {
+  color: var(--primary) !important;
+}
+
+.subItemWrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.nestedMenuContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 24px;
+  margin-top: 4px;
+  margin-bottom: 6px;
+  width: 100%;
+}
+
+.nestedItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  width: 100%;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: #000000;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.nestedItem:hover {
+  background-color: var(--bg-secondary);
+  color: var(--primary-hover);
+}
+
+.activeNestedItem {
+  color: var(--primary) !important;
+  font-weight: 500;
+}
+
+.nestedIcon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* Company Master Styles */
+.addCompanyBtn {
+  background-color: var(--primary);
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(39, 214, 138, 0.15);
+}
+
+.addCompanyBtn:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(39, 214, 138, 0.25);
+}
+
+.controlsRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.exportBtnGroup {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--card-bg);
+}
+
+.exportBtn {
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border);
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.exportBtn:last-child {
+  border-right: none;
+}
+
+.exportBtn:hover {
+  background-color: var(--bg-secondary);
+  color: var(--primary-hover);
+}
+
+.companyTableWrapper {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.01);
+}
+
+/* Form Styling */
+.formCard {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+}
+
+.formHeader {
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+
+.formHeader h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.formHeader p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fullWidth {
+  grid-column: span 2;
+}
+
+.formGroup label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.formGroup input, .formGroup select, .formGroup textarea {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.formGroup input:focus, .formGroup select:focus, .formGroup textarea:focus {
+  background-color: var(--card-bg);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.1);
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.cancelBtn {
+  background: none;
+  border: 1px solid var(--border);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancelBtn:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.saveBtn {
+  background-color: var(--primary);
+  color: #ffffff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(39, 214, 138, 0.15);
+}
+
+.saveBtn:hover {
+  background-color: var(--primary-hover);
+  box-shadow: 0 6px 16px rgba(39, 214, 138, 0.25);
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .dashboardGrid {
@@ -618,4 +926,17 @@
   .contentPane {
     padding: 20px;
   }
+}
+
+
+
+.leftChevron {
+  color: var(--primary);
+  margin-right: 8px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.leftChevronExpanded {
+  transform: rotate(90deg);
 }

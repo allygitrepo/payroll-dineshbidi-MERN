@@ -1,36 +1,77 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Database, 
-  Settings, 
-  FileEdit, 
-  FileText, 
-  Wrench, 
-  ListTodo, 
-  FileCheck, 
-  Menu, 
-  Mail, 
-  LogOut, 
-  Search, 
-  ChevronLeft, 
+import {
+  LayoutDashboard,
+  Database,
+  Settings,
+  FileEdit,
+  FileText,
+  Wrench,
+  ListTodo,
+  FileCheck,
+  Menu,
+  Mail,
+  LogOut,
+  Search,
+  ChevronLeft,
   ChevronRight,
-  UserCheck
+  ChevronDown,
+  UserCheck,
+  User,
+  PlusCircle,
+  Building2,
+  Users,
+  Fingerprint,
+  Briefcase,
+  MapPin,
+  Package,
+  Coins,
+  Percent,
+  Wallet,
+  Sliders,
+  Calendar,
+  CalendarCheck,
+  UserMinus,
+  UserCog,
+  FileUp,
+  FileDown,
+  Printer,
+  AlertCircle,
+  Trash2,
+  Save,
+  RefreshCw,
+  Link,
+  UserX,
+  Notebook,
+  FileSpreadsheet,
+  Folder,
+  ClipboardList,
+  Calculator
 } from 'lucide-react';
 import logoImage from '../../../assets/Images/Logo.png';
 import faviconImage from '../../../assets/Images/Favicon.png';
 import styles from './DashboardPage.module.css';
+import MasterPage from '../../master/pages/MasterPage';
+import AttendancePage from '../../attendance/pages/AttendancePage';
+
+
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeMenu, setActiveMenu] = useState('Dashboard');
-  
+  const [activeSubMenu, setActiveSubMenu] = useState('');
+  const [expandedMenus, setExpandedMenus] = useState({ Master: true, Report: true, Attendance: true });
+  const [expandedSubMenus, setExpandedSubMenus] = useState({ Forms: true, 'Salary Sheet': true });
+
+
+
+
   // Search and Pagination states
   const [absentSearch, setAbsentSearch] = useState('');
   const [absentRowsPerPage, setAbsentRowsPerPage] = useState(5);
   const [absentPage, setAbsentPage] = useState(1);
-  
+
   const [retireSearch, setRetireSearch] = useState('');
   const [retireRowsPerPage, setRetireRowsPerPage] = useState(5);
   const [retirePage, setRetirePage] = useState(1);
@@ -76,13 +117,119 @@ const DashboardPage = () => {
 
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard },
-    { name: 'Master', icon: Database },
-    { name: 'Setup', icon: Settings },
-    { name: 'Entry', icon: FileEdit },
-    { name: 'Report', icon: FileText },
-    { name: 'Utility', icon: Wrench },
-    { name: 'Todo List', icon: ListTodo },
-    { name: 'Convert Excel To Text', icon: FileCheck }
+    {
+      name: 'Master',
+      icon: User,
+      subItems: [
+        { name: 'Comapany', icon: Building2 },
+        { name: 'Employee', icon: Users },
+        { name: 'KYC Update', icon: Fingerprint },
+        { name: 'Contractor', icon: Briefcase },
+        { name: 'Address', icon: MapPin }
+      ]
+    },
+    {
+      name: 'Setup',
+      icon: Settings,
+      subItems: [
+        { name: 'Packing Wages', icon: Package },
+        { name: 'Bidi Roller Wages', icon: Coins },
+        { name: 'Professional Tax', icon: Percent },
+        { name: 'Office Staff Salary', icon: Wallet },
+        { name: 'Challan Setup', icon: Sliders }
+      ]
+    },
+    {
+      name: 'Attendance',
+      icon: CalendarCheck,
+      subItems: [
+        { name: 'Office Attendance', icon: Users },
+        { name: 'Packing Attendance', icon: Package },
+        { name: 'Bidi Roller Attendance', icon: User }
+      ]
+    },
+    {
+      name: 'Entry',
+      icon: FileEdit,
+      subItems: [
+        { name: 'Office Staff', icon: Users },
+        { name: 'Packers', icon: Package },
+        { name: 'Bidi Roller', icon: User },
+        { name: 'EPF Challan Date', icon: Calendar },
+        { name: 'Resignation', icon: UserMinus }
+      ]
+    },
+    {
+      name: 'Report',
+      icon: Sliders,
+      subItems: [
+        {
+          name: 'Salary Sheet',
+          icon: Folder,
+          nestedItems: [
+            { name: 'Office Salary', icon: Wallet },
+            { name: 'Packing Salary', icon: Package },
+            { name: 'Contractor Salary', icon: Briefcase }
+          ]
+        },
+        {
+          name: 'Forms',
+          icon: Folder,
+          nestedItems: [
+            { name: 'Form 2', icon: FileText },
+            { name: 'Form 3A', icon: FileSpreadsheet },
+            { name: 'Form 5', icon: ClipboardList },
+            { name: 'Form 10', icon: Notebook },
+            { name: 'Form 11', icon: FileCheck },
+            { name: 'PF Claim Form', icon: FileEdit }
+          ]
+        },
+        { name: 'ECR Report', icon: PlusCircle },
+        { name: 'ESIC Report', icon: PlusCircle },
+        { name: 'PMRPY Report', icon: PlusCircle },
+        { name: 'PF Challan Yearly', icon: PlusCircle },
+        { name: 'ESIC Challan Yearly', icon: PlusCircle },
+        { name: 'EPF Challan', icon: PlusCircle },
+        { name: 'PF Summary', icon: PlusCircle },
+        { name: 'Payment Advice', icon: PlusCircle },
+        { name: 'Bonus Sheet', icon: PlusCircle },
+        { name: 'Gratuity Calculation', icon: PlusCircle },
+        { name: 'Professional Tax', icon: PlusCircle }
+      ]
+    },
+    {
+      name: 'Utility',
+      icon: Wrench,
+      subItems: [
+        { name: 'Calender', icon: Calendar },
+        { name: 'User Management', icon: UserCog },
+        { name: 'Employee Data Import', icon: FileUp },
+        { name: 'Employee Data Export', icon: FileDown },
+        { name: 'KYC Export', icon: Fingerprint },
+        { name: 'Attandance Printing', icon: Printer },
+        { name: 'Missing Information', icon: AlertCircle },
+        { name: 'Delete Month Entry', icon: Trash2 },
+        { name: 'Backup', icon: Save },
+        { name: 'Restore', icon: RefreshCw },
+        { name: 'UAN to IP Mapping', icon: Link }
+      ]
+    },
+    {
+      name: 'Todo List',
+      icon: ListTodo,
+      subItems: [
+        { name: '3 Month Absent List', icon: UserX },
+        { name: '58 Years of age', icon: UserCheck },
+        { name: 'Notes', icon: Notebook }
+      ]
+    },
+    {
+      name: 'Convert Excel To Text',
+      icon: FileCheck,
+      subItems: [
+        { name: 'Excel To Text', icon: FileSpreadsheet }
+      ]
+    },
   ];
 
   // Filtering & Pagination Calculations for Absent List
@@ -92,7 +239,7 @@ const DashboardPage = () => {
     emp.uan.includes(absentSearch) ||
     emp.contractor.toLowerCase().includes(absentSearch.toLowerCase())
   );
-  
+
   const totalAbsentPages = Math.ceil(filteredAbsent.length / absentRowsPerPage);
   const paginatedAbsent = filteredAbsent.slice(
     (absentPage - 1) * absentRowsPerPage,
@@ -114,21 +261,23 @@ const DashboardPage = () => {
     retirePage * retireRowsPerPage
   );
 
+
+
   return (
     <div className={styles.appContainer}>
-      
+
       {/* Top Navbar */}
       <header className={styles.navbar}>
         <div className={styles.navLeft}>
           <div className={`${styles.logoArea} ${sidebarCollapsed ? styles.collapsedLogoArea : ''}`}>
-            <img 
-              src={sidebarCollapsed ? faviconImage : logoImage} 
-              alt="Logo" 
-              className={`${styles.logoImg} ${sidebarCollapsed ? styles.collapsedLogoImg : ''}`} 
+            <img
+              src={sidebarCollapsed ? faviconImage : logoImage}
+              alt="Logo"
+              className={`${styles.logoImg} ${sidebarCollapsed ? styles.collapsedLogoImg : ''}`}
             />
           </div>
-          <button 
-            className={styles.iconBtn} 
+          <button
+            className={styles.iconBtn}
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             title="Toggle Sidebar"
           >
@@ -149,23 +298,115 @@ const DashboardPage = () => {
 
       {/* Main Body */}
       <div className={styles.mainBody}>
-        
+
         {/* Sidebar */}
         <aside className={`${styles.sidebar} ${sidebarCollapsed ? styles.collapsed : ''}`}>
           <div className={styles.sidebarSectionTitle}>Main Navigation</div>
           <nav className={styles.sidebarNav}>
             {menuItems.map(item => {
               const IconComp = item.icon;
+              const hasSubItems = !!item.subItems;
+              const isExpanded = expandedMenus[item.name];
               const isActive = activeMenu === item.name;
+
               return (
-                <button
-                  key={item.name}
-                  className={`${styles.sidebarItem} ${isActive ? styles.activeItem : ''}`}
-                  onClick={() => setActiveMenu(item.name)}
-                >
-                  <IconComp size={18} className={styles.sidebarIcon} />
-                  <span className={styles.sidebarText}>{item.name}</span>
-                </button>
+                <div key={item.name} className={styles.menuItemWrapper}>
+                  <button
+                    className={`${styles.sidebarItem} ${isActive ? styles.activeItem : ''}`}
+                    onClick={() => {
+                      if (hasSubItems && !sidebarCollapsed) {
+                        setExpandedMenus(prev => ({
+                          ...prev,
+                          [item.name]: !prev[item.name]
+                        }));
+                      } else {
+                        setActiveMenu(item.name);
+                        setActiveSubMenu('');
+                      }
+                    }}
+                  >
+                    <IconComp size={18} className={styles.sidebarIcon} />
+                    <span className={styles.sidebarText}>{item.name}</span>
+                    {hasSubItems && !sidebarCollapsed && (
+                      <ChevronRight
+                        size={16}
+                        className={`${styles.chevron} ${isExpanded ? styles.chevronExpanded : ''}`}
+                      />
+                    )}
+                  </button>
+
+                  {hasSubItems && isExpanded && !sidebarCollapsed && (
+                    <div className={styles.subMenuContainer}>
+                      {item.subItems.map(sub => {
+                        const isSubActive = activeSubMenu === sub.name;
+                        const SubIcon = sub.icon;
+                        const hasNestedItems = !!sub.nestedItems;
+                        const isSubExpanded = expandedSubMenus[sub.name];
+
+                        return (
+                          <div key={sub.name} className={styles.subItemWrapper}>
+                            <button
+                              className={`${styles.subItem} ${isSubActive ? styles.activeSubItem : ''} ${hasNestedItems ? styles.formParentSubItem : ''}`}
+                              onClick={() => {
+                                if (hasNestedItems) {
+                                  setExpandedSubMenus(prev => ({
+                                    ...prev,
+                                    [sub.name]: !prev[sub.name]
+                                  }));
+                                } else {
+                                  setActiveMenu(item.name);
+                                  setActiveSubMenu(sub.name);
+                                }
+                              }}
+                            >
+                              {hasNestedItems ? (
+                                <>
+                                  <ChevronRight
+                                    size={14}
+                                    className={`${styles.leftChevron} ${isSubExpanded ? styles.leftChevronExpanded : ''}`}
+                                  />
+                                  <span>{sub.name}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <SubIcon size={16} className={styles.subIcon} />
+                                  <span>{sub.name}</span>
+                                  {hasNestedItems && (
+                                    <span className={styles.chevron}>
+                                      {isSubExpanded ? '▼' : '▶'}
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </button>
+
+                            {hasNestedItems && isSubExpanded && (
+                              <div className={styles.nestedMenuContainer}>
+                                {sub.nestedItems.map(nested => {
+                                  const isNestedActive = activeSubMenu === nested.name;
+                                  const NestedIcon = nested.icon;
+                                  return (
+                                    <button
+                                      key={nested.name}
+                                      className={`${styles.nestedItem} ${isNestedActive ? styles.activeNestedItem : ''} ${hasNestedItems ? styles.formNestedItem : ''}`}
+                                      onClick={() => {
+                                        setActiveMenu(item.name);
+                                        setActiveSubMenu(nested.name);
+                                      }}
+                                    >
+                                      <NestedIcon size={14} className={styles.nestedIcon} />
+                                      <span>{nested.name}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>
@@ -179,7 +420,7 @@ const DashboardPage = () => {
 
           {activeMenu === 'Dashboard' ? (
             <div className={styles.dashboardGrid}>
-              
+
               {/* Card 1: Last Month Data Entered */}
               <div className={`${styles.card} ${styles.greenCard}`}>
                 <div className={styles.cardHeader}>
@@ -254,13 +495,13 @@ const DashboardPage = () => {
                   <h3>3 Month Absent List</h3>
                 </div>
                 <div className={styles.cardContent}>
-                  
+
                   {/* Table Controls */}
                   <div className={styles.tableControls}>
                     <div className={styles.rowsSelect}>
                       <span className={styles.controlLabel}>Show</span>
-                      <select 
-                        value={absentRowsPerPage} 
+                      <select
+                        value={absentRowsPerPage}
                         onChange={(e) => {
                           setAbsentRowsPerPage(Number(e.target.value));
                           setAbsentPage(1);
@@ -274,9 +515,9 @@ const DashboardPage = () => {
                     </div>
                     <div className={styles.searchWrapper}>
                       <Search size={14} className={styles.searchIcon} />
-                      <input 
-                        type="text" 
-                        placeholder="Search table..." 
+                      <input
+                        type="text"
+                        placeholder="Search table..."
                         value={absentSearch}
                         onChange={(e) => {
                           setAbsentSearch(e.target.value);
@@ -322,23 +563,23 @@ const DashboardPage = () => {
                       {Math.min(absentPage * absentRowsPerPage, filteredAbsent.length)} of {filteredAbsent.length} entries
                     </div>
                     <div className={styles.pagination}>
-                      <button 
-                        onClick={() => setAbsentPage(Math.max(1, absentPage - 1))} 
+                      <button
+                        onClick={() => setAbsentPage(Math.max(1, absentPage - 1))}
                         disabled={absentPage === 1}
                       >
                         <ChevronLeft size={16} />
                       </button>
                       {Array.from({ length: totalAbsentPages }, (_, i) => i + 1).map(p => (
-                        <button 
-                          key={p} 
+                        <button
+                          key={p}
                           className={absentPage === p ? styles.activePage : ''}
                           onClick={() => setAbsentPage(p)}
                         >
                           {p}
                         </button>
                       ))}
-                      <button 
-                        onClick={() => setAbsentPage(Math.min(totalAbsentPages, absentPage + 1))} 
+                      <button
+                        onClick={() => setAbsentPage(Math.min(totalAbsentPages, absentPage + 1))}
                         disabled={absentPage === totalAbsentPages || totalAbsentPages === 0}
                       >
                         <ChevronRight size={16} />
@@ -356,13 +597,13 @@ const DashboardPage = () => {
                   <h3>Employee Complete 58 Year of Age</h3>
                 </div>
                 <div className={styles.cardContent}>
-                  
+
                   {/* Table Controls */}
                   <div className={styles.tableControls}>
                     <div className={styles.rowsSelect}>
                       <span className={styles.controlLabel}>Show</span>
-                      <select 
-                        value={retireRowsPerPage} 
+                      <select
+                        value={retireRowsPerPage}
                         onChange={(e) => {
                           setRetireRowsPerPage(Number(e.target.value));
                           setRetirePage(1);
@@ -376,9 +617,9 @@ const DashboardPage = () => {
                     </div>
                     <div className={styles.searchWrapper}>
                       <Search size={14} className={styles.searchIcon} />
-                      <input 
-                        type="text" 
-                        placeholder="Search table..." 
+                      <input
+                        type="text"
+                        placeholder="Search table..."
                         value={retireSearch}
                         onChange={(e) => {
                           setRetireSearch(e.target.value);
@@ -426,23 +667,23 @@ const DashboardPage = () => {
                       {Math.min(retirePage * retireRowsPerPage, filteredRetire.length)} of {filteredRetire.length} entries
                     </div>
                     <div className={styles.pagination}>
-                      <button 
-                        onClick={() => setRetirePage(Math.max(1, retirePage - 1))} 
+                      <button
+                        onClick={() => setRetirePage(Math.max(1, retirePage - 1))}
                         disabled={retirePage === 1}
                       >
                         <ChevronLeft size={16} />
                       </button>
                       {Array.from({ length: totalRetirePages }, (_, i) => i + 1).map(p => (
-                        <button 
-                          key={p} 
+                        <button
+                          key={p}
                           className={retirePage === p ? styles.activePage : ''}
                           onClick={() => setRetirePage(p)}
                         >
                           {p}
                         </button>
                       ))}
-                      <button 
-                        onClick={() => setRetirePage(Math.min(totalRetirePages, retirePage + 1))} 
+                      <button
+                        onClick={() => setRetirePage(Math.min(totalRetirePages, retirePage + 1))}
                         disabled={retirePage === totalRetirePages || totalRetirePages === 0}
                       >
                         <ChevronRight size={16} />
@@ -470,13 +711,25 @@ const DashboardPage = () => {
               </div>
 
             </div>
+          ) : activeMenu === 'Master' ? (
+            <MasterPage activeSubMenu={activeSubMenu} />
+          ) : activeMenu === 'Attendance' ? (
+            <AttendancePage activeSubMenu={activeSubMenu} />
           ) : (
             <div className={styles.placeholderPage}>
               <div className={styles.placeholderIcon}>
                 <UserCheck size={48} />
               </div>
-              <h2>{activeMenu} Management</h2>
-              <p>This module is currently active. Use the sidebar to navigate back to the Main Dashboard or configure settings.</p>
+              <h2>
+                {activeMenu}
+                {activeSubMenu ? ` - ${activeSubMenu}` : ' Management'}
+              </h2>
+              <p>
+                {activeSubMenu
+                  ? `Configure and manage the ${activeSubMenu.toLowerCase()} data tables here. This section is integrated with the payroll master system.`
+                  : `This module is currently active. Use the sidebar to navigate back to the Main Dashboard or configure settings.`
+                }
+              </p>
             </div>
           )}
 
