@@ -1,0 +1,55 @@
+.wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.select {
+  width: 100%;
+  padding: 12px 48px 12px 14px; /* Increased right padding to prevent text overlapping icons */
+  font-size: 0.95rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.1);
+}
+
+.iconWrapper {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--icon-default);
+  pointer-events: none;
+  opacity: 0.85;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.select:focus ~ .iconWrapper {
+  color: var(--primary);
+  opacity: 1;
+}
+
+.chevronIcon {
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.select:focus ~ .iconWrapper .chevronIcon {
+  opacity: 0.8;
+}

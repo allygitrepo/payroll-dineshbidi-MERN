@@ -1,0 +1,232 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--bg-main) 0%, var(--primary-light) 50%, var(--accent-light) 100%);
+  padding: 20px;
+  font-family: var(--font-sans);
+}
+
+.card {
+  width: 940px;
+  height: 560px;
+  background-color: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 50px rgba(39, 214, 138, 0.08), 0 5px 15px rgba(0, 0, 0, 0.02);
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Left welcome panel styling */
+.welcomePanel {
+  flex: 1.1;
+  background-color: var(--primary);
+  color: var(--card-bg);
+  padding: 50px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Creating the smooth organic S-curve divider using a white overlay shape */
+.welcomePanel::after {
+  content: '';
+  position: absolute;
+  top: -70px;
+  right: -130px;
+  width: 260px;
+  height: 720px;
+  background-color: var(--card-bg);
+  border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+  transform: rotate(-14deg);
+  z-index: 10;
+}
+
+/* Vertical Welcome Text */
+.welcomeText {
+  font-size: 3.8rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 2px;
+  text-transform: capitalize;
+  writing-mode: vertical-lr;
+  position: absolute;
+  left: 36px;
+  top: 130px;
+  user-select: none;
+}
+
+/* Absolute Overlapping Image Container */
+.graphicContainer {
+  position: absolute;
+  top: 52%;
+  left: 32%;
+  /* Bridges S-curve boundary exactly half-and-half */
+  transform: translate(-50%, -50%);
+  z-index: 15;
+  pointer-events: none;
+  /* Allows user to click on inputs under the overlapping image parts */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mockupImage {
+  max-width: 580px;
+  /* Enlarge custom mobile image */
+  max-height: 520px;
+  object-fit: contain;
+  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.15));
+}
+
+.tagline {
+  position: absolute;
+  bottom: 50px;
+  left: 45px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.85);
+  z-index: 2;
+  line-height: 1.5;
+  max-width: 220px;
+}
+
+/* Right Form Panel styling */
+.formPanel {
+  flex: 1;
+  padding: 60px 50px;
+  /* Clean form paddings */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 35px;
+  z-index: 20;
+}
+
+.formHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.formTitle {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 1px;
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.formSubTitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 0;
+  font-weight: 500;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.loginBtn {
+  margin-top: 10px;
+}
+
+.formFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  font-size: 0.85rem;
+  margin-top: 10px;
+}
+
+.link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.leftLogoContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 12;
+  margin-top: 5px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 6px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  align-self: flex-start;
+}
+
+.leftLogo {
+  max-height: 36px;
+  max-width: 130px;
+  object-fit: contain;
+}
+
+/* Responsive adjust */
+@media (max-width: 768px) {
+  .card {
+    width: 340px;
+    height: auto;
+    flex-direction: column;
+  }
+
+  .welcomePanel {
+    padding: 30px;
+    height: 200px;
+    border-radius: 0;
+  }
+
+  .welcomePanel::after {
+    display: none;
+  }
+
+  .welcomeText {
+    writing-mode: horizontal-tb;
+    position: static;
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+
+  .graphicContainer {
+    display: none;
+  }
+
+  .tagline {
+    position: static;
+    margin-left: 0;
+    max-width: 100%;
+  }
+
+  .formPanel {
+    padding: 30px 24px;
+  }
+}
