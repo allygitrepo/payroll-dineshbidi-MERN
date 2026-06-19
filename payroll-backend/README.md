@@ -29,20 +29,11 @@
 
 ## Logging
 
-* Winston
+* Morgon
 
 ## Scheduler
 
 * Node Cron
-
-## Database IDs
-
-* UUID
-
-## File Storage
-
-* uploads/ (Phase 1)
-* AWS S3 (Future)
 
 ## Report Generation
 
@@ -55,55 +46,80 @@
 
 ```text
 src/
-
-config/
-database/
-middlewares/
-utils/
-
-modules/
-
-auth/
-
-company/
-employee/
-kyc/
-contractor/
-address/
-
-packing-wages/
-bidi-roller-wages/
-professional-tax/
-office-salary/
-challan-setup/
-
-office-entry/
-packer-entry/
-bidi-entry/
-challan-entry/
-resignation/
-
-salary-sheet/
-ecr-report/
-esic-report/
-pf-report/
-bonus/
-gratuity/
-
-calendar/
-user-management/
-import-export/
-backup/
-restore/
-
-audit/
-notifications/
-
-uploads/
-logs/
-
-app.js
-server.js
+│
+├── config/
+│   ├── database/
+│   └── environment/
+│
+├── middlewares/
+│   ├── auth/
+│   ├── permissions/
+│   ├── validation/
+│   ├── audit/
+│   └── error-handler/
+│
+├── utils/
+│   ├── logger/
+│   ├── jwt/
+│   ├── response/
+│   ├── encryption/
+│   └── helpers/
+│
+├── services/
+│   ├── payroll-engine/
+│   │   ├── pf/
+│   │   ├── esic/
+│   │   ├── professional-tax/
+│   │   ├── bonus/
+│   │   ├── gratuity/
+│   │   └── salary/
+│   │
+│   └── report-engine/
+│
+├── modules/
+│
+│   ├── auth/
+│   ├── users/
+│   ├── roles/
+│   ├── permissions/
+│
+│   ├── company/
+│   ├── employee/
+│   ├── kyc/
+│   ├── contractor/
+│   └── address/
+│
+│   ├── packing-wages/
+│   ├── bidi-roller-wages/
+│   ├── professional-tax/
+│   ├── office-salary/
+│   └── challan-setup/
+│
+│   ├── office-entry/
+│   ├── packer-entry/
+│   ├── bidi-entry/
+│   ├── challan-entry/
+│   └── resignation/
+│
+│   ├── salary-sheet/
+│   ├── ecr-report/
+│   ├── esic-report/
+│   ├── pf-report/
+│   ├── gratuity/
+│   ├── bonus/
+│   └── payment-advice/
+│
+│   ├── calendar/
+│   ├── import-export/
+│   ├── backup-restore/
+│   ├── notifications/
+│   └── dashboard/
+│
+├── uploads/
+├── logs/
+│
+├── app.js
+└── server.js
 ```
 
 ---
