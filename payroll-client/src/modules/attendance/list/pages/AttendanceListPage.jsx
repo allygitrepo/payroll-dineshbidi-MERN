@@ -5,6 +5,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   CheckCircle2,
   AlertCircle,
   MapPin,
@@ -694,8 +696,16 @@ const AttendanceListPage = () => {
         </div>
         <div className={styles.pagination}>
           <button
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage === 1}
+            title="First Page"
+          >
+            <ChevronsLeft size={16} />
+          </button>
+          <button
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
+            title="Previous Page"
           >
             <ChevronLeft size={16} />
           </button>
@@ -711,8 +721,16 @@ const AttendanceListPage = () => {
           <button
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages || totalPages === 0}
+            title="Next Page"
           >
             <ChevronRight size={16} />
+          </button>
+          <button
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage === totalPages || totalPages === 0}
+            title="Last Page"
+          >
+            <ChevronsRight size={16} />
           </button>
         </div>
       </div>
@@ -743,16 +761,6 @@ const AttendanceListPage = () => {
                   <div className={styles.telemetryItem}>
                     <span className={styles.telemetryLabel}>Timestamp</span>
                     <span className={styles.telemetryVal}>{formatDateFriendly(selectedRecord.date)} - {selectedRecord.time}</span>
-                  </div>
-                  <div className={styles.telemetryItem}>
-                    <span className={styles.telemetryLabel}>GPS Accuracy</span>
-                    <span className={styles.telemetryVal} style={{ color: 'var(--primary-hover)', fontWeight: 600 }}>
-                      {selectedRecord.location?.accuracy || '± 3.0 meters'}
-                    </span>
-                  </div>
-                  <div className={styles.telemetryItem}>
-                    <span className={styles.telemetryLabel}>Device Status</span>
-                    <span className={styles.telemetryVal} style={{ color: 'var(--primary-hover)' }}>ONLINE / SECURED</span>
                   </div>
                 </div>
               </div>

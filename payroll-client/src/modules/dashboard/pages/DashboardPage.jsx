@@ -56,14 +56,9 @@ const DashboardPage = () => {
   ];
 
   const absentList = [
-    { name: 'BIPADTARAN GOSWAMI', acNo: '0015067', uan: '100115419794', contractor: 'MAITY CONTRACTOR' },
-    { name: 'KANJAN KUMAR', acNo: '17291', uan: '100188654022', contractor: 'KUMAR ENTERPRISES' },
-    { name: 'KIRTAN KUMAR', acNo: '0017225', uan: '100194181241', contractor: 'DAS LOGISTICS' },
-    { name: 'NABIN MAHATO', acNo: '0005870', uan: '100247084817', contractor: 'SEN & CO' },
-    { name: 'RAJ KHATIK', acNo: '0017450', uan: '101513506630', contractor: 'MAITY CONTRACTOR' },
-    { name: 'DINESH PATEL', acNo: '0018020', uan: '101526789123', contractor: 'PATEL INFRA' },
-    { name: 'SANJAY PRASAD', acNo: '0019280', uan: '101534567890', contractor: 'KUMAR ENTERPRISES' },
-    { name: 'GOPAL SHARMA', acNo: '0020115', uan: '101545678901', contractor: 'DAS LOGISTICS' }
+    { empCode: 'EMP007', name: 'Karan Mehra', category: 'Bidi Roller', contact: '9345678901', status: 'Absent' },
+    { empCode: 'EMP011', name: 'Sanjay Prasad', category: 'Bidi Roller', contact: '9789012345', status: 'Absent' },
+    { empCode: 'EMP012', name: 'Gopal Sharma', category: 'Packing Staff', contact: '9890123456', status: 'Absent' }
   ];
 
   const retireList = [
@@ -81,9 +76,9 @@ const DashboardPage = () => {
   // Filtering & Pagination Calculations for Absent List
   const filteredAbsent = absentList.filter(emp =>
     emp.name.toLowerCase().includes(absentSearch.toLowerCase()) ||
-    emp.acNo.includes(absentSearch) ||
-    emp.uan.includes(absentSearch) ||
-    emp.contractor.toLowerCase().includes(absentSearch.toLowerCase())
+    emp.empCode.toLowerCase().includes(absentSearch.toLowerCase()) ||
+    emp.category.toLowerCase().includes(absentSearch.toLowerCase()) ||
+    emp.contact.includes(absentSearch)
   );
 
   const totalAbsentPages = Math.ceil(filteredAbsent.length / absentRowsPerPage);
@@ -210,7 +205,7 @@ const DashboardPage = () => {
               <div className={`${styles.card} ${styles.redCard} ${styles.span2}`}>
                 <div className={styles.cardHeader}>
                   <div className={styles.headerDot}></div>
-                  <h3>3 Month Absent List</h3>
+                  <h3>Today's Absent Employees</h3>
                 </div>
                 <div className={styles.cardContent}>
 
@@ -249,25 +244,40 @@ const DashboardPage = () => {
                     <table className={styles.dataTable}>
                       <thead>
                         <tr>
+                          <th>Emp Code</th>
                           <th>Name</th>
-                          <th>A/C No.</th>
-                          <th>UAN</th>
-                          <th>Contractor Name</th>
+                          <th>Category</th>
+                          <th>Contact No.</th>
+                          <th style={{ textAlign: 'center' }}>Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {paginatedAbsent.length > 0 ? (
                           paginatedAbsent.map((row, idx) => (
                             <tr key={idx}>
+                              <td className={styles.monospace}>{row.empCode}</td>
                               <td className={styles.boldCell}>{row.name}</td>
-                              <td>{row.acNo}</td>
-                              <td className={styles.monospace}>{row.uan}</td>
-                              <td>{row.contractor}</td>
+                              <td>{row.category}</td>
+                              <td>{row.contact}</td>
+                              <td style={{ textAlign: 'center' }}>
+                                <span style={{
+                                  backgroundColor: '#FEE2E2',
+                                  color: '#EF4444',
+                                  padding: '4px 10px',
+                                  borderRadius: '6px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center'
+                                }}>
+                                  Absent
+                                </span>
+                              </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="4" className={styles.emptyTable}>No matching records found</td>
+                            <td colSpan="5" className={styles.emptyTable}>No matching records found</td>
                           </tr>
                         )}
                       </tbody>
