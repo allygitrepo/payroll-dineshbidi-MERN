@@ -7,9 +7,11 @@
 
 .select {
   width: 100%;
-  padding: 12px 48px 12px 14px; /* Increased right padding to prevent text overlapping icons */
-  font-size: 0.95rem;
-  border-radius: var(--radius);
+  padding: 10px 40px 10px 14px;
+  font-size: 0.9rem;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  border-radius: 8px;
   border: 1px solid var(--border);
   background-color: var(--card-bg);
   color: var(--text-primary);
@@ -19,6 +21,7 @@
   -webkit-appearance: none;
   -moz-appearance: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  vertical-align: middle;
 }
 
 .select:focus {
@@ -26,30 +29,28 @@
   box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.1);
 }
 
+.select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .iconWrapper {
   position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 12px;
+  top: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  color: var(--icon-default);
+  color: var(--text-muted);
   pointer-events: none;
-  opacity: 0.85;
-  transition: color 0.2s ease, opacity 0.2s ease;
 }
 
 .select:focus ~ .iconWrapper {
   color: var(--primary);
-  opacity: 1;
 }
 
 .chevronIcon {
-  opacity: 0.6;
-  transition: opacity 0.2s ease;
-}
-
-.select:focus ~ .iconWrapper .chevronIcon {
-  opacity: 0.8;
+  flex-shrink: 0;
 }
