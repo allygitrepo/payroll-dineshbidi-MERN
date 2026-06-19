@@ -144,6 +144,7 @@ const DashboardPage = () => {
       name: 'Attendance',
       icon: CalendarCheck,
       subItems: [
+        { name: 'Attendence List', icon: ClipboardList },
         { name: 'Office Attendance', icon: Users },
         { name: 'Packing Attendance', icon: Package },
         { name: 'Bidi Roller Attendance', icon: User }

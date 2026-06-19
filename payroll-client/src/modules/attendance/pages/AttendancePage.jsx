@@ -2,9 +2,12 @@ import React from 'react';
 import OfficeAttendancePage from '../office/pages/OfficeAttendancePage';
 import PackingAttendancePage from '../packing/pages/PackingAttendancePage';
 import BidiRollerAttendancePage from '../bidi-roller/pages/BidiRollerAttendancePage';
+import AttendanceListPage from '../list/pages/AttendanceListPage';
 
 const AttendancePage = ({ activeSubMenu }) => {
   switch (activeSubMenu) {
+    case 'Attendence List':
+      return <AttendanceListPage />;
     case 'Office Attendance':
       return <OfficeAttendancePage />;
     case 'Packing Attendance':
