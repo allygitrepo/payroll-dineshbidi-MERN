@@ -4,6 +4,10 @@ const RefreshToken = require("../../modules/RefreshTokens/refreshTokens.model");
 const Company = require("../../modules/Company/company.model");
 const Address = require("../../modules/Address/address.model");
 const Contractor = require("../../modules/Contractor/contractor.model");
+const Employee = require("../../modules/Employee/employee.model");
+const EmployeeKycDetail = require("../../modules/Employee/employeeKycDetail.model");
+const EmployeeNomineeDetail = require("../../modules/Employee/employeeNomineeDetail.model");
+const EmployeeFamilyMember = require("../../modules/Employee/employeeFamilyMember.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -17,6 +21,10 @@ db.RefreshToken = RefreshToken;
 db.Company = Company;
 db.Address = Address;
 db.Contractor = Contractor;
+db.Employee = Employee;
+db.EmployeeKycDetail = EmployeeKycDetail;
+db.EmployeeNomineeDetail = EmployeeNomineeDetail;
+db.EmployeeFamilyMember = EmployeeFamilyMember;
 
 // Model associations
 db.User.hasMany(db.RefreshToken, {
@@ -66,6 +74,74 @@ db.Address.hasMany(db.Contractor, {
 db.Contractor.belongsTo(db.Address, {
     foreignKey: "address_id",
     as: "address",
+});
+
+// Employee relationships
+db.Company.hasMany(db.Employee, {
+    foreignKey: "company_id",
+    as: "employees",
+    onDelete: "CASCADE",
+});
+db.Employee.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+db.Address.hasMany(db.Employee, {
+    foreignKey: "address_id",
+    as: "employees",
+});
+db.Employee.belongsTo(db.Address, {
+    foreignKey: "address_id",
+    as: "address",
+});
+
+db.Contractor.hasMany(db.Employee, {
+    foreignKey: "contractor_id",
+    as: "employees",
+});
+db.Employee.belongsTo(db.Contractor, {
+    foreignKey: "contractor_id",
+    as: "contractor",
+});
+
+db.Employee.hasOne(db.EmployeeKycDetail, {
+    foreignKey: "employee_id",
+    as: "kycDetail",
+    onDelete: "CASCADE",
+});
+db.EmployeeKycDetail.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
+db.Employee.hasMany(db.EmployeeNomineeDetail, {
+    foreignKey: "employee_id",
+    as: "nomineeDetails",
+    onDelete: "CASCADE",
+});
+db.EmployeeNomineeDetail.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
+db.Address.hasMany(db.EmployeeNomineeDetail, {
+    foreignKey: "address_id",
+    as: "nomineeDetails",
+});
+db.EmployeeNomineeDetail.belongsTo(db.Address, {
+    foreignKey: "address_id",
+    as: "address",
+});
+
+db.Employee.hasMany(db.EmployeeFamilyMember, {
+    foreignKey: "employee_id",
+    as: "familyMembers",
+    onDelete: "CASCADE",
+});
+db.EmployeeFamilyMember.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
 });
 
 module.exports = db;

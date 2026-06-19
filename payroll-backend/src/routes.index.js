@@ -4,6 +4,7 @@ const usersRoutes = require("./modules/Users/users.routes");
 const companyRoutes = require("./modules/Company/company.routes");
 const addressRoutes = require("./modules/Address/address.routes");
 const contractorRoutes = require("./modules/Contractor/contractor.routes");
+const employeeRoutes = require("./modules/Employee/employee.routes");
 
 router.get("/v1/test", (req, res) => {
     res.json({
@@ -19,5 +20,6 @@ router.use("/v1/users", usersRoutes);
 router.use("/v1/companies", companyRoutes);
 router.use("/v1/addresses", addressRoutes);
 router.use("/v1/contractors", contractorRoutes);
+router.use("/v1/employees", employeeRoutes);
 
 module.exports = router;
