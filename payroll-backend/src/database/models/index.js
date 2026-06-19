@@ -3,6 +3,7 @@ const User = require("../../modules/Users/users.model");
 const RefreshToken = require("../../modules/RefreshTokens/refreshTokens.model");
 const Company = require("../../modules/Company/company.model");
 const Address = require("../../modules/Address/address.model");
+const Contractor = require("../../modules/Contractor/contractor.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -15,6 +16,7 @@ db.User = User;
 db.RefreshToken = RefreshToken;
 db.Company = Company;
 db.Address = Address;
+db.Contractor = Contractor;
 
 // Model associations
 db.User.hasMany(db.RefreshToken, {
@@ -45,6 +47,25 @@ db.Company.hasMany(db.Address, {
 db.Address.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
+});
+
+db.Company.hasMany(db.Contractor, {
+    foreignKey: "company_id",
+    as: "contractors",
+    onDelete: "CASCADE",
+});
+db.Contractor.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+db.Address.hasMany(db.Contractor, {
+    foreignKey: "address_id",
+    as: "contractors",
+});
+db.Contractor.belongsTo(db.Address, {
+    foreignKey: "address_id",
+    as: "address",
 });
 
 module.exports = db;
