@@ -1,4 +1,6 @@
-const sequelize = require("../config/database");
+const sequelize = require("../../config/database");
+const User = require("../../modules/Users/users.model");
+const RefreshToken = require("../../modules/RefreshTokens/refreshTokens.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -6,7 +8,19 @@ const db = {};
 // Attach the configured Sequelize client instance
 db.sequelize = sequelize;
 
-// Note: As additional models (e.g., User, Company) are created, they will be imported 
-// and registered here to facilitate consolidated exports and manage model associations.
+// Register models
+db.User = User;
+db.RefreshToken = RefreshToken;
+
+// Model associations
+db.User.hasMany(db.RefreshToken, {
+    foreignKey: "user_id",
+    as: "refreshTokens",
+    onDelete: "CASCADE",
+});
+db.RefreshToken.belongsTo(db.User, {
+    foreignKey: "user_id",
+    as: "user",
+});
 
 module.exports = db;
