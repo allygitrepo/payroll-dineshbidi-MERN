@@ -8,6 +8,7 @@ const employeeRoutes = require("./modules/Masters/Employee/employee.routes");
 const challanSetupRoutes = require("./modules/Setup/ChallanSetup/challanSetup.routes");
 const professionalTaxRoutes = require("./modules/Setup/ProfessionalTax/professionalTax.routes");
 const bidiRollerWageRoutes = require("./modules/Setup/BidiRollerWage/bidiRollerWage.routes");
+const packingWageRoutes = require("./modules/Setup/PackingWage/packingWage.routes");
 
 router.get("/v1/test", (req, res) => {
     res.json({
@@ -27,5 +28,6 @@ router.use("/v1/employees", employeeRoutes);
 router.use("/v1/challan-setups", challanSetupRoutes);
 router.use("/v1/professional-taxes", professionalTaxRoutes);
 router.use("/v1/bidi-roller-wages", bidiRollerWageRoutes);
+router.use("/v1/packing-wages", packingWageRoutes);
 
 module.exports = router;
