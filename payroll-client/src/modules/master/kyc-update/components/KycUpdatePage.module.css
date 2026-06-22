@@ -86,7 +86,7 @@
 
 .buttonGroupCentered {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 16px;
   margin-top: 16px;
 }
@@ -226,7 +226,7 @@
 }
 
 .cancelBtn {
-  background-color: var(--primary);
+  background-color: var(--text-muted);
   color: white;
   border: none;
   padding: 10px 28px;
@@ -237,7 +237,7 @@
 }
 
 .cancelBtn:hover {
-  background-color: var(--primary-hover);
+  background-color: var(--text-secondary);
 }
 
 @media (max-width: 900px) {

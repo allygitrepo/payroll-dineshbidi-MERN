@@ -388,11 +388,11 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
 
         {/* Centered Actions */}
         <div className={styles.buttonGroupCentered}>
-          <button type="submit" className={styles.saveBtn}>
-            Save
-          </button>
           <button type="button" onClick={onCancel} className={styles.cancelBtn}>
             Cancel
+          </button>
+          <button type="submit" className={styles.saveBtn}>
+            Save
           </button>
         </div>
       </form>

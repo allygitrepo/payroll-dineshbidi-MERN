@@ -31,7 +31,6 @@ const KycUpdatePage = () => {
     if (emp) {
       setActiveEmployee(emp);
       setLocalKycDetails(emp.kycDetails || []);
-      addToast({ type: 'success', message: `Loaded KYC details for ${emp.memberName}` });
     }
   };
 
@@ -39,7 +38,6 @@ const KycUpdatePage = () => {
     setSelectedEmployeeId('');
     setActiveEmployee(null);
     setLocalKycDetails([]);
-    addToast({ type: 'info', message: 'Search reset' });
   };
 
   const handleAddKyc = (newDoc) => {
@@ -52,12 +50,10 @@ const KycUpdatePage = () => {
       id: 'k_local_' + Date.now()
     };
     setLocalKycDetails(prev => [...prev, docWithId]);
-    addToast({ type: 'info', message: 'Document added to queue' });
   };
 
   const handleRemoveKyc = (id) => {
     setLocalKycDetails(prev => prev.filter(item => (item.id || item.documentNumber) !== id));
-    addToast({ type: 'info', message: 'Document removed from queue' });
   };
 
   const handleSave = () => {
@@ -80,7 +76,6 @@ const KycUpdatePage = () => {
   const handleCancel = () => {
     if (activeEmployee) {
       setLocalKycDetails(activeEmployee.kycDetails || []);
-      addToast({ type: 'info', message: 'Changes reverted to last saved state' });
     } else {
       handleReset();
     }

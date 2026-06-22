@@ -46,13 +46,11 @@ const EmployeePage = () => {
   const handleAddNew = () => {
     setEditingEmployee(null);
     setIsFormOpen(true);
-    addToast({ type: 'info', message: 'Opening Employee registration form' });
   };
 
   const handleEdit = (employee) => {
     setEditingEmployee(employee);
     setIsFormOpen(true);
-    addToast({ type: 'info', message: `Editing details for: ${employee.memberName}` });
   };
 
   const handleDeleteClick = (id) => {
@@ -89,7 +87,6 @@ const EmployeePage = () => {
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingEmployee(null);
-    addToast({ type: 'info', message: 'Action cancelled' });
   };
 
   // Filtered employees listing

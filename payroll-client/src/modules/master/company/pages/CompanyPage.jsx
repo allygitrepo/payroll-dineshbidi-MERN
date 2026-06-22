@@ -51,7 +51,6 @@ const CompanyPage = () => {
   const handleEdit = (company) => {
     setEditingCompany(company);
     setIsFormOpen(true);
-    addToast({ type: 'info', message: `Editing company: ${company.estbName}` });
   };
 
   const handleDeleteClick = (id) => {
@@ -88,7 +87,6 @@ const CompanyPage = () => {
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingCompany(null);
-    addToast({ type: 'info', message: 'Action cancelled' });
   };
 
   // Filtered data based on search term

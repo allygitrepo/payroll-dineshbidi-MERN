@@ -178,11 +178,11 @@ const KycForm = ({ kycDetails, onAddKyc, onRemoveKyc, onSave, onCancel }) => {
 
       {/* Centered Actions */}
       <div className={styles.buttonGroupCentered}>
-        <button type="button" onClick={onSave} className={styles.saveBtn}>
-          Save
-        </button>
         <button type="button" onClick={onCancel} className={styles.cancelBtn}>
           Cancel
+        </button>
+        <button type="button" onClick={onSave} className={styles.saveBtn}>
+          Save
         </button>
       </div>
     </div>

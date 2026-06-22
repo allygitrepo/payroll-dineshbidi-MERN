@@ -47,13 +47,11 @@ const ContractorPage = () => {
   const handleAddNew = () => {
     setEditingContractor(null);
     setIsFormOpen(true);
-    addToast({ type: 'info', message: 'Opening Contractor registration form' });
   };
 
   const handleEdit = (contractor) => {
     setEditingContractor(contractor);
     setIsFormOpen(true);
-    addToast({ type: 'info', message: `Editing details for: ${contractor.name}` });
   };
 
   const handleDeleteClick = (id) => {
@@ -90,7 +88,6 @@ const ContractorPage = () => {
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingContractor(null);
-    addToast({ type: 'info', message: 'Action cancelled' });
   };
 
   // Filtered listing based on Search and Status Filter
