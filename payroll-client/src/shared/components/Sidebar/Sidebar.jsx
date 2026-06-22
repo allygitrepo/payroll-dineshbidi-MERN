@@ -47,7 +47,7 @@ const menuItems = [
     name: 'Master',
     icon: User,
     subItems: [
-      { name: 'Comapany', icon: Building2 },
+      { name: 'Company', icon: Building2 },
       { name: 'Employee', icon: Users },
       { name: 'KYC Update', icon: Fingerprint },
       { name: 'Contractor', icon: Briefcase },
