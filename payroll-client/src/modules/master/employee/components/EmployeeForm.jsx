@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styles from './EmployeePage.module.css';
 import { useToast } from '../../../../shared/components';
 import { Plus, Trash2 } from 'lucide-react';
+import FaceEnroll from './FaceEnroll';
 
 const GENDERS = ['MALE', 'FEMALE', 'OTHER'];
 const RELATIONS = ['FATHER', 'MOTHER', 'HUSBAND', 'WIFE', 'SON', 'DAUGHTER', 'BROTHER', 'SISTER', 'OTHER'];
@@ -46,7 +47,9 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
     employeeImage: '',
     kycDetails: [],
     nomineeDetails: [],
-    familyDetails: []
+    familyDetails: [],
+    faceDescriptorPath: null,
+    tempFaceDescriptors: null
   });
 
   // Local Inputs State for nested records addition
@@ -87,7 +90,9 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
         ...employee,
         kycDetails: employee.kycDetails || [],
         nomineeDetails: employee.nomineeDetails || [],
-        familyDetails: employee.familyDetails || []
+        familyDetails: employee.familyDetails || [],
+        faceDescriptorPath: employee.faceDescriptorPath || null,
+        tempFaceDescriptors: null
       });
     } else {
       setFormData({
@@ -120,7 +125,9 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
         employeeImage: '',
         kycDetails: [],
         nomineeDetails: [],
-        familyDetails: []
+        familyDetails: [],
+        faceDescriptorPath: null,
+        tempFaceDescriptors: null
       });
     }
   }, [employee]);
@@ -468,7 +475,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
     <div className={styles.formCard}>
       {/* Tabs Menu */}
       <div className={styles.tabsList}>
-        {['Personal Info', 'KYC Detail', 'Nominee Details', 'Family Members Details'].map((tab) => (
+        {['Personal Info', 'KYC Detail', 'Nominee Details', 'Family Members Details', 'Face Registration'].map((tab) => (
           <button
             key={tab}
             type="button"
@@ -1310,6 +1317,22 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
               </table>
             </div>
           </div>
+        )}
+
+        {/* TAB 5: Face Registration */}
+        {activeTab === 'Face Registration' && (
+          <FaceEnroll
+            employeeId={formData.id}
+            name={formData.memberName}
+            faceDescriptorPath={formData.faceDescriptorPath}
+            onDescriptorsCaptured={(descriptors) => {
+              setFormData((prev) => ({
+                ...prev,
+                tempFaceDescriptors: descriptors
+              }));
+              addToast({ type: 'success', message: 'Face descriptors captured in form state. Click Save to complete enrollment.' });
+            }}
+          />
         )}
 
         {/* Buttons right-aligned */}

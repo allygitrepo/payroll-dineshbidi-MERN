@@ -13,7 +13,7 @@ router.delete("/:id", authenticateJWT, EmployeeController.delete);
 
 // Face biometrics routes
 router.post("/face/enroll", authenticateJWT, FaceController.enroll);
-router.post("/face/recognize", authenticateJWT, FaceController.recognize);
+router.post("/face/recognize", FaceController.recognize);
 router.get("/face/list", authenticateJWT, FaceController.list);
 
 module.exports = router;

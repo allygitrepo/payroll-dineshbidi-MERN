@@ -59,13 +59,14 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =
               <th>DateOfJoining</th>
               <th>Gender</th>
               <th>Father/Husband Name</th>
+              <th style={{ width: '130px', textAlign: 'center' }}>Face Status</th>
               <th style={{ width: '100px', textAlign: 'center' }}>Action (Edit/Delete)</th>
             </tr>
           </thead>
           <tbody>
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={10} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                <td colSpan={11} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                   No matching records found.
                 </td>
               </tr>
@@ -91,6 +92,33 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =
                   <td>{formatDate(employee.dateOfJoining)}</td>
                   <td>{employee.gender}</td>
                   <td>{employee.fatherHusbandName || '-'}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    {employee.faceDescriptorPath ? (
+                      <span style={{
+                        backgroundColor: 'rgba(39, 214, 138, 0.1)',
+                        color: 'var(--primary)',
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        display: 'inline-block'
+                      }}>
+                        Enrolled
+                      </span>
+                    ) : (
+                      <span style={{
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        color: '#ef4444',
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        display: 'inline-block'
+                      }}>
+                        Not Enrolled
+                      </span>
+                    )}
+                  </td>
                   <td>
                     <div className={styles.actionCell}>
                       <button

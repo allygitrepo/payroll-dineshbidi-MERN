@@ -3,6 +3,37 @@ const sequelize = require("../../config/database");
 const Attendance = require("./attendance.model");
 const Employee = require("../Masters/Employee/employee.model");
 const Company = require("../Masters/Company/company.model");
+const fs = require("fs");
+const path = require("path");
+
+/**
+ * Saves a base64 image string to a specified server subfolder.
+ * Returns the relative database storage path, or null if invalid.
+ */
+function saveBase64Image(base64Str, subfolder, filename) {
+    if (!base64Str || typeof base64Str !== "string" || !base64Str.startsWith("data:image")) {
+        return null;
+    }
+    try {
+        const uploadsDir = path.join(__dirname, "..", "..", "..", "uploads");
+        const destDir = path.join(uploadsDir, "attendance", subfolder);
+        if (!fs.existsSync(destDir)) {
+            fs.mkdirSync(destDir, { recursive: true });
+        }
+
+        // Strip data URI prefix
+        const base64Data = base64Str.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, "base64");
+
+        const filePath = path.join(destDir, filename);
+        fs.writeFileSync(filePath, buffer);
+
+        return `uploads/attendance/${subfolder}/${filename}`;
+    } catch (e) {
+        console.error(`Failed to save base64 image to ${subfolder}:`, e.message);
+        return null;
+    }
+}
 
 /**
  * Helper to verify company exists and belongs to the user.
@@ -54,13 +85,14 @@ class AttendanceService {
         const workEnd = new Date(`${todayStr}T18:00:00`);
 
         if (!record) {
+            const photoPath = photo ? saveBase64Image(photo, "sign_in", `${employeeId}_${todayStr}.jpg`) : null;
             const createPayload = {
                 employee_id: employeeId,
                 date: todayStr,
                 sign_in_time: now,
                 status: true,
                 sign_in_location: loc,
-                sign_in_photo: photo || null,
+                sign_in_photo: photoPath,
             };
 
             if (!isNaN(workEnd) && now >= workEnd) {
@@ -82,7 +114,10 @@ class AttendanceService {
 
         const updatePayload = { sign_in_time: now, status: true };
         if (loc) updatePayload.sign_in_location = loc;
-        if (photo) updatePayload.sign_in_photo = photo;
+        if (photo) {
+            const photoPath = saveBase64Image(photo, "sign_in", `${employeeId}_${todayStr}.jpg`);
+            if (photoPath) updatePayload.sign_in_photo = photoPath;
+        }
 
         await record.update(updatePayload);
 
@@ -124,7 +159,10 @@ class AttendanceService {
         const updatePayload = { sign_out_time: signOutAt };
         const loc = sign_out_location || location || null;
         if (loc) updatePayload.sign_out_location = loc;
-        if (photo) updatePayload.sign_out_photo = photo;
+        if (photo) {
+            const photoPath = saveBase64Image(photo, "sign_out", `${employeeId}_${todayStr}.jpg`);
+            if (photoPath) updatePayload.sign_out_photo = photoPath;
+        }
 
         await record.update(updatePayload);
         return await Attendance.findByPk(record.id);
@@ -263,6 +301,62 @@ class AttendanceService {
 
         await record.destroy();
         return true;
+    }
+
+    /**
+     * Toggles clock in/out for an employee based on daily scans.
+     */
+    static async clockToggle(employeeId, { location, photo }) {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        // Verify employee exists and is active
+        const emp = await Employee.findOne({ where: { id: employeeId, status: true } });
+        if (!emp) {
+            const error = new Error("Employee not found or inactive.");
+            error.statusCode = 404;
+            error.errorCode = "EMPLOYEE_NOT_FOUND";
+            error.messageToShow = "Employee not found.";
+            throw error;
+        }
+
+        // Check if record exists for today
+        let record = await Attendance.findOne({ where: { employee_id: employeeId, date: todayStr } });
+
+        if (!record) {
+            // No record yet -> Check In
+            const photoPath = photo ? saveBase64Image(photo, "sign_in", `${employeeId}_${todayStr}.jpg`) : null;
+            record = await Attendance.create({
+                employee_id: employeeId,
+                date: todayStr,
+                sign_in_time: now,
+                sign_in_location: location || null,
+                sign_in_photo: photoPath,
+                status: true,
+            });
+            return record;
+        }
+
+        if (!record.sign_out_time) {
+            // Record exists but not checked out -> Check Out
+            const photoPath = photo ? saveBase64Image(photo, "sign_out", `${employeeId}_${todayStr}.jpg`) : null;
+            await record.update({
+                sign_out_time: now,
+                sign_out_location: location || null,
+                sign_out_photo: photoPath,
+            });
+            return await Attendance.findByPk(record.id);
+        }
+
+        // Already signed in and signed out
+        const error = new Error("Already clocked out for today.");
+        error.statusCode = 400;
+        error.errorCode = "ALREADY_CLOCKED_OUT";
+        error.messageToShow = "You have already completed sign-in and sign-out for today.";
+        throw error;
     }
 }
 

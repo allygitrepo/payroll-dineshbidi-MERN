@@ -1,10 +1,37 @@
-/* Attendance List Container */
-.container {
+/* Attendance Page Container and Layout */
+.pageContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.headerSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 16px;
+}
+
+.pageTitle {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0;
+}
+
+.tableCard {
   padding: 30px;
   background-color: var(--card-bg);
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.03);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -433,53 +460,76 @@
 /* Table Footer & Pagination */
 .tableFooter {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
   gap: 16px;
+  margin-top: 10px;
+}
+
+.footerLeft {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.limitControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.limitSelect {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  background-color: var(--card-bg);
+  color: var(--text-primary);
 }
 
 .infoText {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
 .pagination {
   display: flex;
-  align-items: center;
   gap: 4px;
 }
 
-.pagination button {
-  background: none;
-  border: 1px solid var(--border);
+.pageBtn {
   padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
   color: var(--text-secondary);
+  border-radius: 6px;
+  font-size: 0.85rem;
   cursor: pointer;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
 }
 
-.pagination button:hover:not(:disabled) {
+.pageBtn:hover:not(:disabled) {
   background-color: var(--bg-secondary);
   color: var(--text-primary);
-  border-color: var(--text-muted);
 }
 
-.pagination button:disabled {
+.activePageBtn {
+  background-color: var(--primary) !important;
+  color: white !important;
+  border-color: var(--primary) !important;
+}
+
+.pageBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.activePage {
-  background-color: var(--primary) !important;
-  color: #FFFFFF !important;
-  border-color: var(--primary) !important;
 }
 
 /* Modals Overlay & Containers */
@@ -531,9 +581,9 @@
 }
 
 .modalTitle {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--primary);
   margin: 0;
 }
 
@@ -589,6 +639,22 @@
 .btnSecondary:hover {
   background-color: var(--bg-secondary);
   color: var(--text-primary);
+}
+
+.btnClose {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btnClose:hover {
+  background-color: var(--primary-hover);
 }
 
 /* GPS Map styles */
@@ -669,7 +735,7 @@
 .telemetryLabel {
   font-size: 0.7rem;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-weight: 600;
   letter-spacing: 0.03em;
 }

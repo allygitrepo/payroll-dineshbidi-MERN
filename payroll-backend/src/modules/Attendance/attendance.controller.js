@@ -292,6 +292,46 @@ class AttendanceController {
             );
         }
     }
+
+    /**
+     * Kiosk Endpoint: Scan face to automatically toggle Clock In / Clock Out.
+     */
+    static async clockToggle(req, res) {
+        try {
+            const { employee_id, location, photo } = req.body || {};
+            if (!employee_id) {
+                return res.status(400).json(
+                    errorResponse(
+                        "VALIDATION_ERROR",
+                        "employee_id is required.",
+                        "Employee identity is required."
+                    )
+                );
+            }
+
+            const record = await AttendanceService.clockToggle(employee_id, { location, photo });
+            const isSignOut = !!record.sign_out_time;
+
+            return res.status(200).json(
+                successResponse(
+                    isSignOut ? "ATTENDANCE_SIGNED_OUT" : "ATTENDANCE_SIGNED_IN",
+                    isSignOut ? "Sign-out recorded successfully." : "Sign-in recorded successfully.",
+                    isSignOut ? "Checked out successfully." : "Checked in successfully.",
+                    { record, action: isSignOut ? "out" : "in" }
+                )
+            );
+        } catch (err) {
+            const statusCode = err.statusCode || 500;
+            const errorCode = err.errorCode || "INTERNAL_SERVER_ERROR";
+            return res.status(statusCode).json(
+                errorResponse(
+                    errorCode,
+                    err.message,
+                    err.messageToShow || "Failed to toggle attendance."
+                )
+            );
+        }
+    }
 }
 
 module.exports = AttendanceController;

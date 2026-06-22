@@ -70,6 +70,7 @@ const menuItems = [
     icon: CalendarCheck,
     subItems: [
       { name: 'Attendence List', icon: ClipboardList },
+      { name: 'Face Attendance (Self)', icon: Fingerprint },
       { name: 'Office Attendance', icon: Users },
       { name: 'Packing Attendance', icon: Package },
       { name: 'Bidi Roller Attendance', icon: User }

@@ -6,8 +6,9 @@ const authenticateJWT = require("../../middlewares/auth.middleware");
 // Employee-scoped endpoints
 router.get("/my", authenticateJWT, AttendanceController.getMyAttendance);
 router.get("/my/today", authenticateJWT, AttendanceController.getMyToday);
-router.post("/sign-in", authenticateJWT, AttendanceController.signInToday);
-router.post("/sign-out", authenticateJWT, AttendanceController.signOutToday);
+router.post("/sign-in", AttendanceController.signInToday);
+router.post("/sign-out", AttendanceController.signOutToday);
+router.post("/clock", AttendanceController.clockToggle);
 
 // Admin-scoped endpoints
 router.post("/", authenticateJWT, AttendanceController.createManual);
