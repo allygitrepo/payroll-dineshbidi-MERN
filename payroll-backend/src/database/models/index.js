@@ -8,6 +8,7 @@ const Employee = require("../../modules/Masters/Employee/employee.model");
 const EmployeeKycDetail = require("../../modules/Masters/Employee/employeeKycDetail.model");
 const EmployeeNomineeDetail = require("../../modules/Masters/Employee/employeeNomineeDetail.model");
 const EmployeeFamilyMember = require("../../modules/Masters/Employee/employeeFamilyMember.model");
+const ChallanSetup = require("../../modules/Setup/ChallanSetup/challanSetup.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -25,6 +26,7 @@ db.Employee = Employee;
 db.EmployeeKycDetail = EmployeeKycDetail;
 db.EmployeeNomineeDetail = EmployeeNomineeDetail;
 db.EmployeeFamilyMember = EmployeeFamilyMember;
+db.ChallanSetup = ChallanSetup;
 
 // Model associations
 db.User.hasMany(db.RefreshToken, {
@@ -74,6 +76,17 @@ db.Address.hasMany(db.Contractor, {
 db.Contractor.belongsTo(db.Address, {
     foreignKey: "address_id",
     as: "address",
+});
+
+// ChallanSetup relationships
+db.Company.hasMany(db.ChallanSetup, {
+    foreignKey: "company_id",
+    as: "challanSetups",
+    onDelete: "CASCADE",
+});
+db.ChallanSetup.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
 });
 
 // Employee relationships
