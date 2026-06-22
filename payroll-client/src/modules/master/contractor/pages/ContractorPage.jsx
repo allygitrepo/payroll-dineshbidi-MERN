@@ -6,6 +6,7 @@ import ContractorTable from '../components/ContractorTable';
 import { getContractors, saveContractor, deleteContractor } from '../services/contractorService';
 import { getAddresses } from '../../address/services/addressService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
 
 const ContractorPage = () => {
   const addToast = useToast();
@@ -152,10 +153,17 @@ const ContractorPage = () => {
     });
   }, [contractors, searchTerm, statusFilter]);
 
-  // Export actions
-  const handleExportClick = (type) => {
-    addToast({ type: 'info', message: `${type} export started for ${filteredContractors.length} contractors!` });
+  // Export handlers
+  const handleExportClick = async (type) => {
     setIsDropdownOpen(false);
+    try {
+      addToast({ type: 'info', message: `${type} export started...` });
+      await exportModuleData('contractors', type.toLowerCase());
+      addToast({ type: 'success', message: `${type} export completed successfully!` });
+    } catch (err) {
+      console.error(err);
+      addToast({ type: 'error', message: `Failed to export ${type} file.` });
+    }
   };
 
   const handleCopyClick = () => {

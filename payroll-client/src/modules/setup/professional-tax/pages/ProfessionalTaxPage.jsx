@@ -5,6 +5,7 @@ import ProfessionalTaxForm from '../components/ProfessionalTaxForm';
 import ProfessionalTaxTable from '../components/ProfessionalTaxTable';
 import { getProfessionalTax, saveProfessionalTax, deleteProfessionalTax } from '../services/professionalTaxService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
 
 const formatDateForExport = (dateStr) => {
   if (!dateStr) return '';
@@ -152,17 +153,25 @@ const ProfessionalTaxPage = () => {
   }, [wagesList, searchTerm]);
 
   // Export handlers
-  const handleExport = (type) => {
+  const handleExport = async (type) => {
+    setIsDropdownOpen(false);
     if (type === 'Copy') {
       const text = filteredWages.map((w, index) => 
         `${index + 1}\t${formatDateForExport(w.startDate)}\t${formatDateForExport(w.endDate)}\t${w.from}\t${w.to}\t${w.taxRate}`
       ).join('\n');
       navigator.clipboard.writeText(text);
       addToast({ type: 'success', message: 'Copied filtered records to clipboard!' });
-    } else {
-      addToast({ type: 'info', message: `${type} export started for ${filteredWages.length} records!` });
+      return;
     }
-    setIsDropdownOpen(false);
+    
+    try {
+      addToast({ type: 'info', message: `${type} export started...` });
+      await exportModuleData('professional-taxes', type.toLowerCase());
+      addToast({ type: 'success', message: `${type} export completed successfully!` });
+    } catch (err) {
+      console.error(err);
+      addToast({ type: 'error', message: `Failed to export ${type} file.` });
+    }
   };
 
   return (

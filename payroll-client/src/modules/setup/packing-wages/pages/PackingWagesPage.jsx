@@ -5,6 +5,7 @@ import PackingWagesForm from '../components/PackingWagesForm';
 import PackingWagesTable from '../components/PackingWagesTable';
 import { getPackingWages, savePackingWages, deletePackingWages } from '../services/packingWagesService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
 
 const formatDateForExport = (dateStr) => {
   if (!dateStr) return '';
@@ -154,17 +155,25 @@ const PackingWagesPage = () => {
   }, [wagesList, searchTerm]);
 
   // Export handlers
-  const handleExport = (type) => {
+  const handleExport = async (type) => {
+    setIsDropdownOpen(false);
     if (type === 'Copy') {
       const text = filteredWages.map((w, index) => 
         `${index + 1}\t${formatDateForExport(w.startDate)}\t${formatDateForExport(w.endDate)}\t${w.rate1}\t${w.rate2}\t${w.rate3}\t${w.rate4}\t${w.bonus}`
       ).join('\n');
       navigator.clipboard.writeText(text);
       addToast({ type: 'success', message: 'Copied filtered records to clipboard!' });
-    } else {
-      addToast({ type: 'info', message: `${type} export started for ${filteredWages.length} records!` });
+      return;
     }
-    setIsDropdownOpen(false);
+    
+    try {
+      addToast({ type: 'info', message: `${type} export started...` });
+      await exportModuleData('packing-wages', type.toLowerCase());
+      addToast({ type: 'success', message: `${type} export completed successfully!` });
+    } catch (err) {
+      console.error(err);
+      addToast({ type: 'error', message: `Failed to export ${type} file.` });
+    }
   };
 
   return (

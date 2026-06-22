@@ -7,6 +7,7 @@ import { getEmployees, saveEmployee, deleteEmployee } from '../services/employee
 import { getAddresses } from '../../address/services/addressService';
 import { getContractors } from '../../contractor/services/contractorService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
 
 const EmployeePage = () => {
   const addToast = useToast();
@@ -148,10 +149,17 @@ const EmployeePage = () => {
     });
   }, [employees, searchTerm]);
 
-  // Export alerts
-  const handleExportClick = (type) => {
-    addToast({ type: 'info', message: `${type} export started for ${filteredEmployees.length} employees!` });
+  // Export handlers
+  const handleExportClick = async (type) => {
     setIsDropdownOpen(false);
+    try {
+      addToast({ type: 'info', message: `${type} export started...` });
+      await exportModuleData('employees', type.toLowerCase());
+      addToast({ type: 'success', message: `${type} export completed successfully!` });
+    } catch (err) {
+      console.error(err);
+      addToast({ type: 'error', message: `Failed to export ${type} file.` });
+    }
   };
 
   const handleCopyClick = () => {
