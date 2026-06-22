@@ -1,0 +1,146 @@
+/* ===== Wrapper ===== */
+.pickerWrapper {
+  position: relative;
+  display: inline-block;
+  min-width: 200px;
+}
+
+/* ===== Input trigger box ===== */
+.inputBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--card-bg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  min-width: 200px;
+}
+
+.inputBox:hover {
+  border-color: var(--primary);
+}
+
+.inputBoxOpen {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.15);
+}
+
+.calIcon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.inputValue {
+  flex: 1;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.inputPlaceholder {
+  flex: 1;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.chevronDown {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+  transform: rotate(90deg);
+}
+
+.chevronUp {
+  transform: rotate(-90deg);
+}
+
+/* ===== Popup dropdown ===== */
+.popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px -4px rgba(0,0,0,0.14), 0 6px 12px -2px rgba(0,0,0,0.08);
+  padding: 12px;
+  width: 240px;
+  animation: popupIn 0.18s ease-out;
+}
+
+@keyframes popupIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* ===== Year navigation row ===== */
+.yearRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+
+.yearNavBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.18s ease;
+}
+
+.yearNavBtn:hover {
+  background-color: var(--primary-light, rgba(39,214,138,0.1));
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.yearLabel {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+/* ===== Month grid ===== */
+.monthGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.monthBtn {
+  padding: 9px 4px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.monthBtn:hover {
+  background-color: var(--bg-main);
+  color: var(--primary);
+}
+
+.monthSelected {
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(39, 214, 138, 0.35);
+}
