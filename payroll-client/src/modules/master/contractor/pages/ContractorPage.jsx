@@ -52,6 +52,7 @@ const ContractorPage = () => {
   const handleEdit = (contractor) => {
     setEditingContractor(contractor);
     setIsFormOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteClick = (id) => {

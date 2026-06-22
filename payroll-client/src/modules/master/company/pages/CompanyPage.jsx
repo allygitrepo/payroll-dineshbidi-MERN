@@ -51,6 +51,7 @@ const CompanyPage = () => {
   const handleEdit = (company) => {
     setEditingCompany(company);
     setIsFormOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteClick = (id) => {

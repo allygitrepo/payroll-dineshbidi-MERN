@@ -44,6 +44,7 @@ const AddressPage = () => {
 
   const handleEdit = (addr) => {
     setEditingAddress(addr);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteClick = (id) => {

@@ -51,6 +51,7 @@ const EmployeePage = () => {
   const handleEdit = (employee) => {
     setEditingEmployee(employee);
     setIsFormOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteClick = (id) => {
