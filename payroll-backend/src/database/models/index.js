@@ -12,6 +12,7 @@ const ChallanSetup = require("../../modules/Setup/ChallanSetup/challanSetup.mode
 const ProfessionalTax = require("../../modules/Setup/ProfessionalTax/professionalTax.model");
 const BidiRollerWage = require("../../modules/Setup/BidiRollerWage/bidiRollerWage.model");
 const PackingWage = require("../../modules/Setup/PackingWage/packingWage.model");
+const OfficeStaffSalary = require("../../modules/Setup/OfficeStaffSalary/officeStaffSalary.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -33,6 +34,7 @@ db.ChallanSetup = ChallanSetup;
 db.ProfessionalTax = ProfessionalTax;
 db.BidiRollerWage = BidiRollerWage;
 db.PackingWage = PackingWage;
+db.OfficeStaffSalary = OfficeStaffSalary;
 
 // Model associations
 db.User.hasMany(db.RefreshToken, {
@@ -126,6 +128,26 @@ db.Company.hasMany(db.PackingWage, {
 db.PackingWage.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
+});
+
+// OfficeStaffSalary relationships
+db.Company.hasMany(db.OfficeStaffSalary, {
+    foreignKey: "company_id",
+    as: "officeStaffSalaries",
+    onDelete: "CASCADE",
+});
+db.OfficeStaffSalary.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+db.Employee.hasMany(db.OfficeStaffSalary, {
+    foreignKey: "employee_id",
+    as: "officeStaffSalaries",
+    onDelete: "CASCADE",
+});
+db.OfficeStaffSalary.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
 });
 
 // Employee relationships
