@@ -6,6 +6,8 @@ const OfficeStaffSalaryService = require("../Setup/OfficeStaffSalary/officeStaff
 const EmployeeService = require("../Masters/Employee/employee.service");
 const ContractorService = require("../Masters/Contractor/contractor.service");
 const CompanyService = require("../Masters/Company/company.service");
+const CalenderService = require("../Setup/Calender/calender.service");
+
 
 // Date formatting helper
 const formatDate = (dateStr) => {
@@ -319,6 +321,19 @@ const moduleMappings = {
             row.district || "-",
             row.pincode || "-",
             row.pan || "-"
+        ]
+    },
+    "calenders": {
+        title: "Calender Holiday Report",
+        headers: ["Sr. No.", "Date", "Year", "Type", "Week Day", "Remark"],
+        fetch: (companyId, userId) => CalenderService.getAllCalenders(companyId, userId),
+        map: (row, idx) => [
+            idx + 1,
+            row.holiday_date ? formatDate(row.holiday_date) : "-",
+            row.year || "-",
+            row.holiday_type || "-",
+            row.week_day || "-",
+            row.remark || "-"
         ]
     }
 };
