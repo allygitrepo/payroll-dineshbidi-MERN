@@ -10,6 +10,7 @@ const EmployeeNomineeDetail = require("../../modules/Masters/Employee/employeeNo
 const EmployeeFamilyMember = require("../../modules/Masters/Employee/employeeFamilyMember.model");
 const ChallanSetup = require("../../modules/Setup/ChallanSetup/challanSetup.model");
 const ProfessionalTax = require("../../modules/Setup/ProfessionalTax/professionalTax.model");
+const BidiRollerWage = require("../../modules/Setup/BidiRollerWage/bidiRollerWage.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -29,6 +30,7 @@ db.EmployeeNomineeDetail = EmployeeNomineeDetail;
 db.EmployeeFamilyMember = EmployeeFamilyMember;
 db.ChallanSetup = ChallanSetup;
 db.ProfessionalTax = ProfessionalTax;
+db.BidiRollerWage = BidiRollerWage;
 
 // Model associations
 db.User.hasMany(db.RefreshToken, {
@@ -98,6 +100,17 @@ db.Company.hasMany(db.ProfessionalTax, {
     onDelete: "CASCADE",
 });
 db.ProfessionalTax.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+// BidiRollerWage relationships
+db.Company.hasMany(db.BidiRollerWage, {
+    foreignKey: "company_id",
+    as: "bidiRollerWages",
+    onDelete: "CASCADE",
+});
+db.BidiRollerWage.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
 });
