@@ -1,0 +1,204 @@
+import React, { useState, useMemo } from 'react';
+import { Edit, Trash2, Search } from 'lucide-react';
+import styles from './ContractorPage.module.css';
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+};
+
+const ContractorTable = ({
+  data,
+  searchTerm,
+  onSearchChange,
+  statusFilter,
+  onStatusFilterChange,
+  onEdit,
+  onDelete
+}) => {
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination if filter changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, pageSize, statusFilter]);
+
+  // Pagination calculations
+  const totalEntries = data.length;
+  const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalEntries);
+  const paginatedData = useMemo(() => {
+    return data.slice(startIndex, endIndex);
+  }, [data, startIndex, endIndex]);
+
+  return (
+    <div className={styles.tableCard}>
+      {/* Table Controls containing Status Filter on left, Search on right */}
+      <div className={styles.tableControls}>
+        {/* Top-Level Status Filter */}
+        <div className={styles.statusFilterWrapper}>
+          <label className={styles.label}>Status Filter</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => onStatusFilterChange(e.target.value)}
+            className={styles.select}
+          >
+            <option value="Active">ACTIVE</option>
+            <option value="Inactive">INACTIVE</option>
+            <option value="All">ALL</option>
+          </select>
+        </div>
+
+        {/* Search on right */}
+        <div className={styles.searchWrapper}>
+          <Search size={16} className={styles.searchIcon} />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search..."
+            className={styles.searchInput}
+          />
+        </div>
+      </div>
+
+      {/* Data Table */}
+      <div className={styles.tableContainer}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th style={{ width: '60px', textAlign: 'center' }}>Sr No.</th>
+              <th>Ccode</th>
+              <th>Name</th>
+              <th>Address</th>
+              <th>Postoffice</th>
+              <th>District</th>
+              <th>Pincode</th>
+              <th>Pf Code</th>
+              <th>Date of Joining</th>
+              <th>PAN</th>
+              <th>Adhar</th>
+              <th>GST No.</th>
+              <th>Bank A/c</th>
+              <th>Bank Name</th>
+              <th>IFSC</th>
+              <th>Status</th>
+              <th style={{ width: '100px', textAlign: 'center' }}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedData.length === 0 ? (
+              <tr>
+                <td colSpan={17} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                  No matching records found.
+                </td>
+              </tr>
+            ) : (
+              paginatedData.map((contractor, index) => (
+                <tr key={contractor.id}>
+                  <td style={{ textAlign: 'center', fontWeight: '500' }}>
+                    {startIndex + index + 1}
+                  </td>
+                  <td>{contractor.ccode}</td>
+                  <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                    {contractor.name}
+                  </td>
+                  <td>{contractor.address}</td>
+                  <td>{contractor.postOffice}</td>
+                  <td>{contractor.district}</td>
+                  <td>{contractor.pincode}</td>
+                  <td>{contractor.pfCode}</td>
+                  <td>{formatDate(contractor.dateOfJoining)}</td>
+                  <td>{contractor.pan || '-'}</td>
+                  <td>{contractor.aadhaar || '-'}</td>
+                  <td>{contractor.gstNo || '-'}</td>
+                  <td>{contractor.bankAccount || '-'}</td>
+                  <td>{contractor.bankName || '-'}</td>
+                  <td>{contractor.ifsc || '-'}</td>
+                  <td style={{ fontWeight: '500', color: contractor.status === 'Active' ? 'var(--primary)' : 'var(--danger)' }}>
+                    {contractor.status}
+                  </td>
+                  <td>
+                    <div className={styles.actionCell}>
+                      <button
+                        onClick={() => onEdit(contractor)}
+                        title="Edit Contractor"
+                        className={styles.editBtn}
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={() => onDelete(contractor.id)}
+                        title="Delete Contractor"
+                        className={styles.deleteBtn}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer Controls */}
+      <div className={styles.tableFooter}>
+        <div className={styles.footerLeft}>
+          <div className={styles.limitControl}>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className={styles.limitSelect}
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <span>records per page</span>
+          </div>
+          <div className={styles.infoText}>
+            Showing {totalEntries > 0 ? startIndex + 1 : 0} to {endIndex} of {totalEntries} entries
+          </div>
+        </div>
+        <div className={styles.pagination}>
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className={styles.pageBtn}
+          >
+            Previous
+          </button>
+
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentPage(i + 1)}
+              className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
+            >
+              {i + 1}
+            </button>
+          ))}
+
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className={styles.pageBtn}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ContractorTable;
