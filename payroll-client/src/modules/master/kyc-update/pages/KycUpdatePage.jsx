@@ -91,9 +91,9 @@ const KycUpdatePage = () => {
       {/* Title Header */}
       <div className={styles.headerSection}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ color: 'var(--primary)', backgroundColor: 'var(--primary-light)', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center' }}>
+          {/*<div style={{ color: 'var(--primary)', backgroundColor: 'var(--primary-light)', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center' }}>
             <Fingerprint size={24} />
-          </div>
+          </div>*/}
           <h1 className={styles.title} style={{ fontSize: '1.75rem', fontWeight: 700 }}>KYC Update</h1>
         </div>
       </div>

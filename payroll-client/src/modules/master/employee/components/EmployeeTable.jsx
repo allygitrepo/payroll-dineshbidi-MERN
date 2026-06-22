@@ -50,7 +50,6 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =
         <table className={styles.table}>
           <thead>
             <tr>
-              <th style={{ width: '100px', textAlign: 'center' }}>Action (Edit/Delete)</th>
               <th style={{ width: '140px', textAlign: 'center' }}>ABRY Applicable?</th>
               <th>UAN</th>
               <th>IP Number</th>
@@ -60,6 +59,7 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =
               <th>DateOfJoining</th>
               <th>Gender</th>
               <th>Father/Husband Name</th>
+              <th style={{ width: '100px', textAlign: 'center' }}>Action (Edit/Delete)</th>
             </tr>
           </thead>
           <tbody>
@@ -72,24 +72,6 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =
             ) : (
               paginatedData.map((employee) => (
                 <tr key={employee.id}>
-                  <td>
-                    <div className={styles.actionCell}>
-                      <button
-                        onClick={() => onEdit(employee)}
-                        title="Edit Employee"
-                        className={styles.editBtn}
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => onDelete(employee.id)}
-                        title="Delete Employee"
-                        className={styles.deleteBtn}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
                   <td style={{ textAlign: 'center' }}>
                     <input
                       type="checkbox"
@@ -109,6 +91,24 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =
                   <td>{formatDate(employee.dateOfJoining)}</td>
                   <td>{employee.gender}</td>
                   <td>{employee.fatherHusbandName || '-'}</td>
+                  <td>
+                    <div className={styles.actionCell}>
+                      <button
+                        onClick={() => onEdit(employee)}
+                        title="Edit Employee"
+                        className={styles.editBtn}
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={() => onDelete(employee.id)}
+                        title="Delete Employee"
+                        className={styles.deleteBtn}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
