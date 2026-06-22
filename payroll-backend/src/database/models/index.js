@@ -8,6 +8,7 @@ const Employee = require("../../modules/Masters/Employee/employee.model");
 const EmployeeKycDetail = require("../../modules/Masters/Employee/employeeKycDetail.model");
 const EmployeeNomineeDetail = require("../../modules/Masters/Employee/employeeNomineeDetail.model");
 const EmployeeFamilyMember = require("../../modules/Masters/Employee/employeeFamilyMember.model");
+const Attendance = require("../../modules/Attendance/attendance.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -25,6 +26,7 @@ db.Employee = Employee;
 db.EmployeeKycDetail = EmployeeKycDetail;
 db.EmployeeNomineeDetail = EmployeeNomineeDetail;
 db.EmployeeFamilyMember = EmployeeFamilyMember;
+db.Attendance = Attendance;
 
 // Model associations
 db.User.hasMany(db.RefreshToken, {
@@ -140,6 +142,16 @@ db.Employee.hasMany(db.EmployeeFamilyMember, {
     onDelete: "CASCADE",
 });
 db.EmployeeFamilyMember.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
+db.Employee.hasMany(db.Attendance, {
+    foreignKey: "employee_id",
+    as: "attendances",
+    onDelete: "CASCADE",
+});
+db.Attendance.belongsTo(db.Employee, {
     foreignKey: "employee_id",
     as: "employee",
 });
