@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const ContractorController = require("./contractor.controller");
-const authenticateJWT = require("../../middlewares/auth.middleware");
+const authenticateJWT = require("../../../middlewares/auth.middleware");
 
 // All routes are protected by JWT authentication
 router.post("/", authenticateJWT, ContractorController.create);

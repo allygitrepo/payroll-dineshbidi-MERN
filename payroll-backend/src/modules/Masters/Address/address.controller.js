@@ -1,6 +1,6 @@
-const CompanyService = require("./company.service");
-const { createCompanySchema, updateCompanySchema } = require("./company.validators");
-const { successResponse, errorResponse } = require("../../utils/response");
+const AddressService = require("./address.service");
+const { createAddressSchema, updateAddressSchema } = require("./address.validators");
+const { successResponse, errorResponse } = require("../../../utils/response");
 
 /**
  * Formats Joi validation error messages to be user-friendly by removing double quotes
@@ -9,42 +9,30 @@ const { successResponse, errorResponse } = require("../../utils/response");
 const formatJoiMessage = (message) => {
     if (!message) return "";
     let clean = message.replace(/"/g, "");
-    
+
     const mapping = {
-        user_id: "User ID",
-        establishment_id: "Establishment ID",
-        company_name: "Company Name",
-        company_type: "Company Type",
-        epfo_office: "EPFO Office",
-        lin_number: "LIN Number",
-        esic_id: "ESIC ID",
-        address_line: "Address Line",
+        company_id: "Company ID",
+        address: "Address",
         post_office: "Post Office",
         district: "District",
         pincode: "Pincode",
-        pan: "PAN",
-        tan: "TAN",
-        professional_tax_reg_no: "Professional Tax Reg No",
-        email_id: "Email ID",
-        phone: "Phone",
-        website: "Website",
-        cstatus: "Status"
+        status: "Status"
     };
 
     for (const [key, label] of Object.entries(mapping)) {
         const regex = new RegExp(`\\b${key}\\b`, "gi");
         clean = clean.replace(regex, label);
     }
-    
+
     return clean.charAt(0).toUpperCase() + clean.slice(1);
 };
 
-class CompanyController {
+class AddressController {
     /**
-     * Creates a new company.
+     * Creates a new address.
      */
     static async create(req, res) {
-        const { error, value } = createCompanySchema.validate(req.body);
+        const { error, value } = createAddressSchema.validate(req.body);
         if (error) {
             const friendlyMessage = formatJoiMessage(error.details[0].message);
             return res.status(400).json(
@@ -58,15 +46,14 @@ class CompanyController {
         }
 
         try {
-            value.user_id = req.user.id;
-            const newCompany = await CompanyService.createCompany(value);
+            const newAddress = await AddressService.createAddress(value, req.user.id);
 
             return res.status(201).json(
                 successResponse(
-                    "COMPANY_CREATED",
-                    "Company created successfully.",
-                    "Company created successfully.",
-                    newCompany
+                    "ADDRESS_CREATED",
+                    "Address created successfully.",
+                    "Address created successfully.",
+                    newAddress
                 )
             );
         } catch (err) {
@@ -76,75 +63,88 @@ class CompanyController {
                 errorResponse(
                     errorCode,
                     err.message,
-                    err.messageToShow || "Failed to create company."
+                    err.messageToShow || "Failed to create address."
                 )
             );
         }
     }
 
     /**
-     * Gets all companies.
+     * Gets all active addresses for a specific company.
      */
     static async getAll(req, res) {
+        const { companyId } = req.params;
+        if (!companyId) {
+            return res.status(400).json(
+                errorResponse(
+                    "VALIDATION_ERROR",
+                    "Company ID is required.",
+                    "Company ID is required."
+                )
+            );
+        }
+
         try {
-            const companies = await CompanyService.getAllCompanies(req.user.id);
+            const addresses = await AddressService.getAllAddresses(companyId, req.user.id);
 
             return res.status(200).json(
                 successResponse(
-                    "COMPANIES_RETRIEVED",
-                    "Companies retrieved successfully.",
-                    "Companies retrieved successfully.",
-                    companies
+                    "ADDRESSES_RETRIEVED",
+                    "Addresses retrieved successfully.",
+                    "Addresses retrieved successfully.",
+                    addresses
                 )
             );
         } catch (err) {
-            return res.status(500).json(
+            const statusCode = err.statusCode || 500;
+            const errorCode = err.errorCode || "ADDRESSES_RETRIEVE_FAILED";
+            return res.status(statusCode).json(
                 errorResponse(
-                    "COMPANIES_RETRIEVE_FAILED",
+                    errorCode,
                     err.message,
-                    "Failed to retrieve companies."
+                    err.messageToShow || "Failed to retrieve addresses."
                 )
             );
         }
     }
 
     /**
-     * Gets a single company.
+     * Gets a single address by ID.
      */
     static async getById(req, res) {
         const { id } = req.params;
 
         try {
-            const company = await CompanyService.getCompanyById(id, req.user.id);
+            const address = await AddressService.getAddressById(id, req.user.id);
 
             return res.status(200).json(
                 successResponse(
-                    "COMPANY_RETRIEVED",
-                    "Company retrieved successfully.",
-                    "Company retrieved successfully.",
-                    company
+                    "ADDRESS_RETRIEVED",
+                    "Address retrieved successfully.",
+                    "Address retrieved successfully.",
+                    address
                 )
             );
         } catch (err) {
             const statusCode = err.statusCode || 500;
-            const errorCode = err.errorCode || "COMPANY_RETRIEVE_FAILED";
+            const errorCode = err.errorCode || "ADDRESS_RETRIEVE_FAILED";
             return res.status(statusCode).json(
                 errorResponse(
                     errorCode,
                     err.message,
-                    err.messageToShow || "Failed to retrieve company."
+                    err.messageToShow || "Failed to retrieve address."
                 )
             );
         }
     }
 
     /**
-     * Updates a company.
+     * Updates an address.
      */
     static async update(req, res) {
         const { id } = req.params;
 
-        const { error, value } = updateCompanySchema.validate(req.body);
+        const { error, value } = updateAddressSchema.validate(req.body);
         if (error) {
             const friendlyMessage = formatJoiMessage(error.details[0].message);
             return res.status(400).json(
@@ -158,14 +158,14 @@ class CompanyController {
         }
 
         try {
-            const updatedCompany = await CompanyService.updateCompany(id, req.user.id, value);
+            const updatedAddress = await AddressService.updateAddress(id, req.user.id, value);
 
             return res.status(200).json(
                 successResponse(
-                    "COMPANY_UPDATED",
-                    "Company updated successfully.",
-                    "Company updated successfully.",
-                    updatedCompany
+                    "ADDRESS_UPDATED",
+                    "Address updated successfully.",
+                    "Address updated successfully.",
+                    updatedAddress
                 )
             );
         } catch (err) {
@@ -175,26 +175,26 @@ class CompanyController {
                 errorResponse(
                     errorCode,
                     err.message,
-                    err.messageToShow || "Failed to update company."
+                    err.messageToShow || "Failed to update address."
                 )
             );
         }
     }
 
     /**
-     * Deletes a company.
+     * Deletes an address.
      */
     static async delete(req, res) {
         const { id } = req.params;
 
         try {
-            await CompanyService.deleteCompany(id, req.user.id);
+            await AddressService.deleteAddress(id, req.user.id);
 
             return res.status(200).json(
                 successResponse(
-                    "COMPANY_DELETED",
-                    "Company deleted successfully.",
-                    "Company deleted successfully."
+                    "ADDRESS_DELETED",
+                    "Address deleted successfully.",
+                    "Address deleted successfully."
                 )
             );
         } catch (err) {
@@ -204,11 +204,11 @@ class CompanyController {
                 errorResponse(
                     errorCode,
                     err.message,
-                    err.messageToShow || "Failed to delete company."
+                    err.messageToShow || "Failed to delete address."
                 )
             );
         }
     }
 }
 
-module.exports = CompanyController;
+module.exports = AddressController;

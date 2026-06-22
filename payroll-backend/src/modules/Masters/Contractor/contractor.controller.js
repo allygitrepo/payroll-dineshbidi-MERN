@@ -1,6 +1,6 @@
-const AddressService = require("./address.service");
-const { createAddressSchema, updateAddressSchema } = require("./address.validators");
-const { successResponse, errorResponse } = require("../../utils/response");
+const ContractorService = require("./contractor.service");
+const { createContractorSchema, updateContractorSchema } = require("./contractor.validators");
+const { successResponse, errorResponse } = require("../../../utils/response");
 
 /**
  * Formats Joi validation error messages to be user-friendly by removing double quotes
@@ -9,13 +9,20 @@ const { successResponse, errorResponse } = require("../../utils/response");
 const formatJoiMessage = (message) => {
     if (!message) return "";
     let clean = message.replace(/"/g, "");
-    
+
     const mapping = {
         company_id: "Company ID",
-        address: "Address",
-        post_office: "Post Office",
-        district: "District",
-        pincode: "Pincode",
+        address_id: "Address ID",
+        ccode: "Contractor Code",
+        name: "Contractor Name",
+        pf_code: "PF Code",
+        date_of_joining: "Date of Joining",
+        pan: "PAN",
+        aadhar: "Aadhar",
+        gst_no: "GST Number",
+        bank_ac: "Bank Account",
+        bank_name: "Bank Name",
+        ifsc: "IFSC",
         status: "Status"
     };
 
@@ -23,16 +30,16 @@ const formatJoiMessage = (message) => {
         const regex = new RegExp(`\\b${key}\\b`, "gi");
         clean = clean.replace(regex, label);
     }
-    
+
     return clean.charAt(0).toUpperCase() + clean.slice(1);
 };
 
-class AddressController {
+class ContractorController {
     /**
-     * Creates a new address.
+     * Creates a new contractor.
      */
     static async create(req, res) {
-        const { error, value } = createAddressSchema.validate(req.body);
+        const { error, value } = createContractorSchema.validate(req.body);
         if (error) {
             const friendlyMessage = formatJoiMessage(error.details[0].message);
             return res.status(400).json(
@@ -46,14 +53,14 @@ class AddressController {
         }
 
         try {
-            const newAddress = await AddressService.createAddress(value, req.user.id);
+            const newContractor = await ContractorService.createContractor(value, req.user.id);
 
             return res.status(201).json(
                 successResponse(
-                    "ADDRESS_CREATED",
-                    "Address created successfully.",
-                    "Address created successfully.",
-                    newAddress
+                    "CONTRACTOR_CREATED",
+                    "Contractor created successfully.",
+                    "Contractor created successfully.",
+                    newContractor
                 )
             );
         } catch (err) {
@@ -63,14 +70,14 @@ class AddressController {
                 errorResponse(
                     errorCode,
                     err.message,
-                    err.messageToShow || "Failed to create address."
+                    err.messageToShow || "Failed to create contractor."
                 )
             );
         }
     }
 
     /**
-     * Gets all active addresses for a specific company.
+     * Gets all contractors for a specific company.
      */
     static async getAll(req, res) {
         const { companyId } = req.params;
@@ -85,66 +92,66 @@ class AddressController {
         }
 
         try {
-            const addresses = await AddressService.getAllAddresses(companyId, req.user.id);
+            const contractors = await ContractorService.getAllContractors(companyId, req.user.id);
 
             return res.status(200).json(
                 successResponse(
-                    "ADDRESSES_RETRIEVED",
-                    "Addresses retrieved successfully.",
-                    "Addresses retrieved successfully.",
-                    addresses
+                    "CONTRACTORS_RETRIEVED",
+                    "Contractors retrieved successfully.",
+                    "Contractors retrieved successfully.",
+                    contractors
                 )
             );
         } catch (err) {
             const statusCode = err.statusCode || 500;
-            const errorCode = err.errorCode || "ADDRESSES_RETRIEVE_FAILED";
+            const errorCode = err.errorCode || "CONTRACTORS_RETRIEVE_FAILED";
             return res.status(statusCode).json(
                 errorResponse(
                     errorCode,
                     err.message,
-                    err.messageToShow || "Failed to retrieve addresses."
+                    err.messageToShow || "Failed to retrieve contractors."
                 )
             );
         }
     }
 
     /**
-     * Gets a single address by ID.
+     * Gets a single contractor by ID.
      */
     static async getById(req, res) {
         const { id } = req.params;
 
         try {
-            const address = await AddressService.getAddressById(id, req.user.id);
+            const contractor = await ContractorService.getContractorById(id, req.user.id);
 
             return res.status(200).json(
                 successResponse(
-                    "ADDRESS_RETRIEVED",
-                    "Address retrieved successfully.",
-                    "Address retrieved successfully.",
-                    address
+                    "CONTRACTOR_RETRIEVED",
+                    "Contractor retrieved successfully.",
+                    "Contractor retrieved successfully.",
+                    contractor
                 )
             );
         } catch (err) {
             const statusCode = err.statusCode || 500;
-            const errorCode = err.errorCode || "ADDRESS_RETRIEVE_FAILED";
+            const errorCode = err.errorCode || "CONTRACTOR_RETRIEVE_FAILED";
             return res.status(statusCode).json(
                 errorResponse(
                     errorCode,
                     err.message,
-                    err.messageToShow || "Failed to retrieve address."
+                    err.messageToShow || "Failed to retrieve contractor."
                 )
             );
         }
     }
 
     /**
-     * Updates an address.
+     * Updates a contractor.
      */
     static async update(req, res) {
         const { id } = req.params;
 
-        const { error, value } = updateAddressSchema.validate(req.body);
+        const { error, value } = updateContractorSchema.validate(req.body);
         if (error) {
             const friendlyMessage = formatJoiMessage(error.details[0].message);
             return res.status(400).json(
@@ -158,14 +165,14 @@ class AddressController {
         }
 
         try {
-            const updatedAddress = await AddressService.updateAddress(id, req.user.id, value);
+            const updatedContractor = await ContractorService.updateContractor(id, req.user.id, value);
 
             return res.status(200).json(
                 successResponse(
-                    "ADDRESS_UPDATED",
-                    "Address updated successfully.",
-                    "Address updated successfully.",
-                    updatedAddress
+                    "CONTRACTOR_UPDATED",
+                    "Contractor updated successfully.",
+                    "Contractor updated successfully.",
+                    updatedContractor
                 )
             );
         } catch (err) {
@@ -175,26 +182,26 @@ class AddressController {
                 errorResponse(
                     errorCode,
                     err.message,
-                    err.messageToShow || "Failed to update address."
+                    err.messageToShow || "Failed to update contractor."
                 )
             );
         }
     }
 
     /**
-     * Deletes an address.
+     * Deletes a contractor (Soft delete).
      */
     static async delete(req, res) {
         const { id } = req.params;
 
         try {
-            await AddressService.deleteAddress(id, req.user.id);
+            await ContractorService.deleteContractor(id, req.user.id);
 
             return res.status(200).json(
                 successResponse(
-                    "ADDRESS_DELETED",
-                    "Address deleted successfully.",
-                    "Address deleted successfully."
+                    "CONTRACTOR_DELETED",
+                    "Contractor deleted successfully.",
+                    "Contractor deleted successfully."
                 )
             );
         } catch (err) {
@@ -204,11 +211,11 @@ class AddressController {
                 errorResponse(
                     errorCode,
                     err.message,
-                    err.messageToShow || "Failed to delete address."
+                    err.messageToShow || "Failed to delete contractor."
                 )
             );
         }
     }
 }
 
-module.exports = AddressController;
+module.exports = ContractorController;

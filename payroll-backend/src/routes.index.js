@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const usersRoutes = require("./modules/Users/users.routes");
-const companyRoutes = require("./modules/Company/company.routes");
-const addressRoutes = require("./modules/Address/address.routes");
-const contractorRoutes = require("./modules/Contractor/contractor.routes");
-const employeeRoutes = require("./modules/Employee/employee.routes");
+const usersRoutes = require("./modules/Auth/Users/users.routes");
+const companyRoutes = require("./modules/Masters/Company/company.routes");
+const addressRoutes = require("./modules/Masters/Address/address.routes");
+const contractorRoutes = require("./modules/Masters/Contractor/contractor.routes");
+const employeeRoutes = require("./modules/Masters/Employee/employee.routes");
 
 router.get("/v1/test", (req, res) => {
     res.json({

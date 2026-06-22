@@ -1,48 +1,24 @@
 const { DataTypes } = require("sequelize");
-const sequelize = require("../../config/database");
+const sequelize = require("../../../config/database");
 
-const Contractor = sequelize.define(
-    "Contractor",
+const EmployeeKycDetail = sequelize.define(
+    "EmployeeKycDetail",
     {
         id: {
             type: DataTypes.UUID,
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
+        employee_id: {
+            type: DataTypes.UUID,
+            allowNull: false,
+        },
         company_id: {
             type: DataTypes.UUID,
             allowNull: false,
         },
-        address_id: {
-            type: DataTypes.UUID,
-            allowNull: false,
-        },
-        ccode: {
-            type: DataTypes.STRING(50),
-            allowNull: false,
-        },
-        name: {
-            type: DataTypes.STRING(200),
-            allowNull: false,
-        },
-        pf_code: {
-            type: DataTypes.STRING(50),
-            allowNull: false,
-        },
-        date_of_joining: {
-            type: DataTypes.DATEONLY,
-            allowNull: false,
-        },
         pan: {
             type: DataTypes.STRING(10),
-            allowNull: true,
-        },
-        aadhar: {
-            type: DataTypes.STRING(12),
-            allowNull: true,
-        },
-        gst_no: {
-            type: DataTypes.STRING(15),
             allowNull: true,
         },
         bank_ac: {
@@ -63,10 +39,10 @@ const Contractor = sequelize.define(
         },
     },
     {
-        tableName: "contractors",
+        tableName: "employee_kyc_details",
         timestamps: true,
         underscored: true,
     }
 );
 
-module.exports = Contractor;
+module.exports = EmployeeKycDetail;

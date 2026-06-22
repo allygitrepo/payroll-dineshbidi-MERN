@@ -1,6 +1,6 @@
 const EmployeeService = require("./employee.service");
 const { createEmployeeSchema, updateEmployeeSchema } = require("./employee.validators");
-const { successResponse, errorResponse } = require("../../utils/response");
+const { successResponse, errorResponse } = require("../../../utils/response");
 
 /**
  * Formats Joi validation error messages to be user-friendly by converting snake_case keys to clean Title Case labels.
@@ -8,7 +8,7 @@ const { successResponse, errorResponse } = require("../../utils/response");
 const formatJoiMessage = (message) => {
     if (!message) return "";
     let clean = message.replace(/"/g, "");
-    
+
     const mapping = {
         company_id: "Company ID",
         contractor_id: "Contractor ID",
@@ -42,7 +42,7 @@ const formatJoiMessage = (message) => {
         const regex = new RegExp(`\\b${key}\\b`, "gi");
         clean = clean.replace(regex, label);
     }
-    
+
     return clean.charAt(0).toUpperCase() + clean.slice(1);
 };
 

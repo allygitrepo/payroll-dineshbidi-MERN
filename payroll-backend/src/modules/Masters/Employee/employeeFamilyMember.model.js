@@ -1,8 +1,8 @@
 const { DataTypes } = require("sequelize");
-const sequelize = require("../../config/database");
+const sequelize = require("../../../config/database");
 
-const EmployeeNomineeDetail = sequelize.define(
-    "EmployeeNomineeDetail",
+const EmployeeFamilyMember = sequelize.define(
+    "EmployeeFamilyMember",
     {
         id: {
             type: DataTypes.UUID,
@@ -17,37 +17,21 @@ const EmployeeNomineeDetail = sequelize.define(
             type: DataTypes.UUID,
             allowNull: false,
         },
-        address_id: {
-            type: DataTypes.UUID,
+        relation: {
+            type: DataTypes.STRING(50),
             allowNull: false,
         },
         name: {
             type: DataTypes.STRING(200),
             allowNull: false,
         },
-        aadhar: {
-            type: DataTypes.STRING(12),
-            allowNull: false,
-        },
-        relation: {
-            type: DataTypes.STRING(50),
-            allowNull: false,
-        },
         dob: {
             type: DataTypes.DATEONLY,
             allowNull: false,
         },
-        share_percentage: {
-            type: DataTypes.DECIMAL(5, 2),
+        aadhar: {
+            type: DataTypes.STRING(12),
             allowNull: false,
-        },
-        guardian_name: {
-            type: DataTypes.STRING(200),
-            allowNull: true,
-        },
-        guardian_address: {
-            type: DataTypes.STRING(500),
-            allowNull: true,
         },
         status: {
             type: DataTypes.BOOLEAN,
@@ -55,10 +39,10 @@ const EmployeeNomineeDetail = sequelize.define(
         },
     },
     {
-        tableName: "employee_nominee_details",
+        tableName: "employee_family_members",
         timestamps: true,
         underscored: true,
     }
 );
 
-module.exports = EmployeeNomineeDetail;
+module.exports = EmployeeFamilyMember;

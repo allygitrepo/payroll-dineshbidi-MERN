@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const sequelize = require("../../config/database");
+const sequelize = require("../../../config/database");
 const Employee = require("./employee.model");
 const EmployeeKycDetail = require("./employeeKycDetail.model");
 const EmployeeNomineeDetail = require("./employeeNomineeDetail.model");
