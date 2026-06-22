@@ -1,31 +1,33 @@
 const { DataTypes } = require("sequelize");
-const sequelize = require("../../config/database");
+const sequelize = require("../../../config/database");
 
-const User = sequelize.define(
-    "User",
+const Address = sequelize.define(
+    "Address",
     {
         id: {
             type: DataTypes.UUID,
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
-        user_name: {
-            type: DataTypes.STRING,
+        company_id: {
+            type: DataTypes.UUID,
             allowNull: false,
         },
-        user_id: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            unique: true,
-        },
-        password: {
-            type: DataTypes.STRING,
+        address: {
+            type: DataTypes.STRING(500),
             allowNull: false,
         },
-        role: {
-            type: DataTypes.STRING,
+        post_office: {
+            type: DataTypes.STRING(100),
             allowNull: false,
-            defaultValue: "admin",
+        },
+        district: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+        },
+        pincode: {
+            type: DataTypes.STRING(6),
+            allowNull: false,
         },
         status: {
             type: DataTypes.BOOLEAN,
@@ -33,10 +35,10 @@ const User = sequelize.define(
         },
     },
     {
-        tableName: "Users",
+        tableName: "addresses",
         timestamps: true,
         underscored: true,
     }
 );
 
-module.exports = User;
+module.exports = Address;

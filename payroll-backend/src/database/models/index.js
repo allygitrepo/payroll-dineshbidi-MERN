@@ -1,13 +1,13 @@
 const sequelize = require("../../config/database");
-const User = require("../../modules/Users/users.model");
-const RefreshToken = require("../../modules/RefreshTokens/refreshTokens.model");
-const Company = require("../../modules/Company/company.model");
-const Address = require("../../modules/Address/address.model");
-const Contractor = require("../../modules/Contractor/contractor.model");
-const Employee = require("../../modules/Employee/employee.model");
-const EmployeeKycDetail = require("../../modules/Employee/employeeKycDetail.model");
-const EmployeeNomineeDetail = require("../../modules/Employee/employeeNomineeDetail.model");
-const EmployeeFamilyMember = require("../../modules/Employee/employeeFamilyMember.model");
+const User = require("../../modules/Auth/Users/users.model");
+const RefreshToken = require("../../modules/Auth/RefreshTokens/refreshTokens.model");
+const Company = require("../../modules/Masters/Company/company.model");
+const Address = require("../../modules/Masters/Address/address.model");
+const Contractor = require("../../modules/Masters/Contractor/contractor.model");
+const Employee = require("../../modules/Masters/Employee/employee.model");
+const EmployeeKycDetail = require("../../modules/Masters/Employee/employeeKycDetail.model");
+const EmployeeNomineeDetail = require("../../modules/Masters/Employee/employeeNomineeDetail.model");
+const EmployeeFamilyMember = require("../../modules/Masters/Employee/employeeFamilyMember.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};

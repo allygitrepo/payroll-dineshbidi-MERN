@@ -1,6 +1,6 @@
 const UsersService = require("./users.service");
 const { registerSchema, loginSchema, updateSchema } = require("./users.validators");
-const { successResponse, errorResponse } = require("../../utils/response");
+const { successResponse, errorResponse } = require("../../../utils/response");
 
 /**
  * Controller class for Users Module.
