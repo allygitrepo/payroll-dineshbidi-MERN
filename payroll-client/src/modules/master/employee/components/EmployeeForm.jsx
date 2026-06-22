@@ -38,6 +38,7 @@ const ADDRESS_TEMPLATES = [
 const EmployeeForm = ({ employee, onSave, onCancel }) => {
   const addToast = useToast();
   const [activeTab, setActiveTab] = useState('Personal Info');
+  const [errors, setErrors] = useState({});
 
   // Form Fields State
   const [formData, setFormData] = useState({
@@ -105,6 +106,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
 
   // Sync edit mode
   useEffect(() => {
+    setErrors({});
     if (employee) {
       setFormData({
         ...employee,
@@ -149,11 +151,97 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
   }, [employee]);
 
   // Main handlers
+  const validateField = (name, value) => {
+    if (name === 'uan') {
+      if (!value.trim()) return 'UAN is required!';
+      const uanRegex = /^[0-9]{12}$/;
+      return !uanRegex.test(value) ? 'UAN must be exactly 12 digits!' : '';
+    }
+    if (name === 'ipNumber') {
+      if (!value.trim()) return 'IP Number is required!';
+      const ipRegex = /^[0-9]{10}$/;
+      return !ipRegex.test(value) ? 'IP Number must be exactly 10 digits!' : '';
+    }
+    if (name === 'memberName') {
+      return !value.trim() ? 'Employee Name is required!' : '';
+    }
+    if (name === 'gender') {
+      return !value ? 'Gender is required!' : '';
+    }
+    if (name === 'dateOfJoining') {
+      return !value ? 'Date Of Joining is required!' : '';
+    }
+    if (name === 'address') {
+      return !value ? 'Address is required!' : '';
+    }
+    if (name === 'postOffice') {
+      return !value.trim() ? 'Post Office is required!' : '';
+    }
+    if (name === 'district') {
+      return !value.trim() ? 'District is required!' : '';
+    }
+    if (name === 'pincode') {
+      return !value.trim() ? 'Pincode is required!' : '';
+    }
+    if (name === 'employeeType') {
+      return !value ? 'Type of Employee is required!' : '';
+    }
+    if (name === 'email') {
+      if (value && value.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return !emailRegex.test(value) ? 'Invalid Email Address Format' : '';
+      }
+      return '';
+    }
+    if (name === 'mobile') {
+      if (!value.trim()) return 'Mobile is required!';
+      const mobileRegex = /^[0-9]{10}$/;
+      return !mobileRegex.test(value) ? 'Mobile must be exactly 10 digits' : '';
+    }
+    if (name === 'aadhaarCard') {
+      if (value && value.trim()) {
+        const aadhaarRegex = /^[0-9]{12}$/;
+        return !aadhaarRegex.test(value) ? 'Aadhar Card Number must be exactly 12 digits!' : '';
+      }
+      return '';
+    }
+    return '';
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    let finalValue = type === 'checkbox' ? checked : value;
+
+    if (name === 'uan') {
+      finalValue = value.replace(/\D/g, '').slice(0, 12);
+    } else if (name === 'ipNumber') {
+      finalValue = value.replace(/\D/g, '').slice(0, 10);
+    } else if (name === 'mobile') {
+      finalValue = value.replace(/\D/g, '').slice(0, 10);
+    } else if (name === 'aadhaarCard') {
+      finalValue = value.replace(/\D/g, '').slice(0, 12);
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: finalValue
+    }));
+
+    if (type !== 'checkbox') {
+      const error = validateField(name, finalValue);
+      setErrors((prev) => ({
+        ...prev,
+        [name]: error
+      }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
+    setErrors((prev) => ({
+      ...prev,
+      [name]: error
     }));
   };
 
@@ -174,6 +262,14 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
         address: val
       }));
     }
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.address;
+      delete next.postOffice;
+      delete next.district;
+      delete next.pincode;
+      return next;
+    });
   };
 
   const handleFileChange = (e) => {
@@ -362,48 +458,32 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
     addToast({ type: 'info', message: 'Family member removed' });
   };
 
-  // Final Form Save Submit
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    const tempErrors = {};
+    const keysToValidate = [
+      'uan', 'ipNumber', 'memberName', 'gender', 'dateOfJoining', 
+      'address', 'postOffice', 'district', 'pincode', 'email', 'mobile', 'aadhaarCard'
+    ];
 
-    // Validations
-    if (!formData.uan.trim() || formData.uan.length !== 12) {
-      addToast({ type: 'error', message: 'UAN must be exactly 12 digits!' });
-      return;
-    }
-    if (!formData.ipNumber.trim() || formData.ipNumber.length !== 10) {
-      addToast({ type: 'error', message: 'IP Number must be exactly 10 digits!' });
-      return;
-    }
-    if (!formData.memberName.trim()) {
-      addToast({ type: 'error', message: 'Employee Name is required!' });
-      return;
-    }
-    if (!formData.gender) {
-      addToast({ type: 'error', message: 'Gender is required!' });
-      return;
-    }
-    if (!formData.dateOfJoining) {
-      addToast({ type: 'error', message: 'Date Of Joining is required!' });
-      return;
-    }
-    if (!formData.address) {
-      addToast({ type: 'error', message: 'Address is required!' });
-      return;
-    }
-    if (formData.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email)) {
-        addToast({ type: 'warning', message: 'Invalid Email Address Format' });
-        return;
+    keysToValidate.forEach((key) => {
+      const error = validateField(key, formData[key] || '');
+      if (error) {
+        tempErrors[key] = error;
       }
-    }
-    if (formData.mobile) {
-      const mobileRegex = /^[0-9]{10}$/;
-      if (!mobileRegex.test(formData.mobile)) {
-        addToast({ type: 'warning', message: 'Mobile must be exactly 10 digits' });
-        return;
+    });
+
+    if (Object.keys(tempErrors).length > 0) {
+      setErrors(tempErrors);
+      // Switch to Personal Info tab if there are errors there
+      const personalFields = ['uan', 'ipNumber', 'memberName', 'gender', 'dateOfJoining', 'address', 'postOffice', 'district', 'pincode', 'email', 'mobile', 'aadhaarCard'];
+      const hasPersonalError = Object.keys(tempErrors).some(k => personalFields.includes(k));
+      if (hasPersonalError) {
+        setActiveTab('Personal Info');
       }
+      addToast({ type: 'error', message: 'Please correct the errors in the form.' });
+      return;
     }
 
     onSave(formData);
@@ -425,7 +505,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
         ))}
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         {/* TAB 1: Personal Info */}
         {activeTab === 'Personal Info' && (
           <div className={styles.formGrid}>
@@ -453,11 +533,13 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 name="uan"
                 value={formData.uan}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 placeholder="ENTER UAN NO"
                 maxLength={12}
                 className={styles.input}
                 required
               />
+              {errors.uan && <span className={styles.errorText}>{errors.uan}</span>}
             </div>
 
             <div className={styles.field}>
@@ -469,11 +551,13 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 name="ipNumber"
                 value={formData.ipNumber}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 placeholder="ENTER IP NUMBER"
                 maxLength={10}
                 className={styles.input}
                 required
               />
+              {errors.ipNumber && <span className={styles.errorText}>{errors.ipNumber}</span>}
             </div>
 
             <div className={styles.field}>
@@ -497,10 +581,12 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 name="memberName"
                 value={formData.memberName}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 placeholder="ENTER NAME (AS PER AADHAR)"
                 className={styles.input}
                 required
               />
+              {errors.memberName && <span className={styles.errorText}>{errors.memberName}</span>}
             </div>
 
             <div className={styles.field}>
@@ -521,10 +607,12 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 name="aadhaarCard"
                 value={formData.aadhaarCard || ''}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 placeholder="AADHAR CARD NUMBER"
                 maxLength={12}
                 className={styles.input}
               />
+              {errors.aadhaarCard && <span className={styles.errorText}>{errors.aadhaarCard}</span>}
             </div>
 
             <div className={styles.field}>
@@ -535,6 +623,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 className={styles.select}
                 required
               >
@@ -543,6 +632,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                   <option key={g} value={g}>{g}</option>
                 ))}
               </select>
+              {errors.gender && <span className={styles.errorText}>{errors.gender}</span>}
             </div>
 
             <div className={styles.field}>
@@ -596,11 +686,13 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 name="mobile"
                 value={formData.mobile}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 placeholder="ENTER MOBILE"
                 maxLength={10}
                 className={styles.input}
                 required
               />
+              {errors.mobile && <span className={styles.errorText}>{errors.mobile}</span>}
             </div>
 
             <div className={styles.field}>
@@ -627,9 +719,11 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 name="dateOfJoining"
                 value={formData.dateOfJoining}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 className={styles.input}
                 required
               />
+              {errors.dateOfJoining && <span className={styles.errorText}>{errors.dateOfJoining}</span>}
             </div>
 
             <div className={styles.field}>
@@ -640,6 +734,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 name="employeeType"
                 value={formData.employeeType}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 className={styles.select}
                 required
               >
@@ -648,6 +743,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
+              {errors.employeeType && <span className={styles.errorText}>{errors.employeeType}</span>}
             </div>
 
             <div className={styles.field}>
@@ -673,6 +769,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 name="address"
                 value={formData.address}
                 onChange={handleAddressChange}
+                onBlur={handleBlur}
                 className={styles.select}
                 required
               >
@@ -681,6 +778,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
+              {errors.address && <span className={styles.errorText}>{errors.address}</span>}
             </div>
 
             <div className={styles.field}>
@@ -692,10 +790,12 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 name="postOffice"
                 value={formData.postOffice}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 placeholder="ENTER POST OFFICE"
                 className={styles.input}
                 required
               />
+              {errors.postOffice && <span className={styles.errorText}>{errors.postOffice}</span>}
             </div>
 
             <div className={styles.field}>
@@ -712,6 +812,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 readOnly
                 required
               />
+              {errors.district && <span className={styles.errorText}>{errors.district}</span>}
             </div>
 
             <div className={styles.field}>
@@ -728,6 +829,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 readOnly
                 required
               />
+              {errors.pincode && <span className={styles.errorText}>{errors.pincode}</span>}
             </div>
 
             <div className={styles.field}>
@@ -748,9 +850,11 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 placeholder="ENTER EMAIL"
                 className={styles.input}
               />
+              {errors.email && <span className={styles.errorText}>{errors.email}</span>}
             </div>
 
             <div className={styles.field}>

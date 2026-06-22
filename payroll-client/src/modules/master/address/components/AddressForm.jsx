@@ -13,7 +13,10 @@ const AddressForm = ({ address, onSave, onCancel }) => {
     pincode: ''
   });
 
+  const [errors, setErrors] = useState({});
+
   useEffect(() => {
+    setErrors({});
     if (address) {
       setFormData(address);
     } else {
@@ -27,36 +30,52 @@ const AddressForm = ({ address, onSave, onCancel }) => {
     }
   }, [address]);
 
+  const validateField = (name, value) => {
+    if (name === 'pincode') {
+      if (value && value.trim()) {
+        const pinRegex = /^[0-9]{6}$/;
+        return !pinRegex.test(value) ? 'Pincode must be exactly 6 digits!' : '';
+      }
+    }
+    return '';
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    let finalValue = value;
+
+    if (name === 'pincode') {
+      finalValue = value.replace(/\D/g, '').slice(0, 6);
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: finalValue }));
+
+    const error = validateField(name, finalValue);
+    setErrors((prev) => ({ ...prev, [name]: error }));
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
+    setErrors((prev) => ({ ...prev, [name]: error }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Validations
-    if (!formData.address.trim()) {
-      addToast({ type: 'error', message: 'Address is required!' });
-      return;
-    }
-    if (!formData.postOffice.trim()) {
-      addToast({ type: 'error', message: 'Post Office is required!' });
-      return;
-    }
-    if (!formData.district.trim()) {
-      addToast({ type: 'error', message: 'District is required!' });
-      return;
-    }
-    if (!formData.pincode.trim()) {
-      addToast({ type: 'error', message: 'Pincode is required!' });
-      return;
-    }
+    const tempErrors = {};
+    const keysToValidate = ['pincode'];
 
-    // Pincode regex validation
-    const pinRegex = /^[0-9]{6}$/;
-    if (!pinRegex.test(formData.pincode)) {
-      addToast({ type: 'warning', message: 'Pincode must be exactly 6 digits!' });
+    keysToValidate.forEach((key) => {
+      const error = validateField(key, formData[key] || '');
+      if (error) {
+        tempErrors[key] = error;
+      }
+    });
+
+    if (Object.keys(tempErrors).length > 0) {
+      setErrors(tempErrors);
+      addToast({ type: 'error', message: 'Please correct the errors in the form.' });
       return;
     }
 
@@ -70,12 +89,13 @@ const AddressForm = ({ address, onSave, onCancel }) => {
         district: '',
         pincode: ''
       });
+      setErrors({});
     }
   };
 
   return (
     <div className={styles.formCard} style={{ marginBottom: '24px' }}>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <div className={styles.formGrid}>
           {/* Address (textarea) */}
           <div className={styles.field}>
@@ -84,10 +104,11 @@ const AddressForm = ({ address, onSave, onCancel }) => {
               name="address"
               value={formData.address}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ADDRESS"
               className={styles.textarea}
-              required
             />
+            {errors.address && <span className={styles.errorText}>{errors.address}</span>}
           </div>
 
           {/* Post Office */}
@@ -98,10 +119,11 @@ const AddressForm = ({ address, onSave, onCancel }) => {
               name="postOffice"
               value={formData.postOffice}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="POST OFFICE"
               className={styles.input}
-              required
             />
+            {errors.postOffice && <span className={styles.errorText}>{errors.postOffice}</span>}
           </div>
 
           {/* District */}
@@ -112,10 +134,11 @@ const AddressForm = ({ address, onSave, onCancel }) => {
               name="district"
               value={formData.district}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="DISTRICT"
               className={styles.input}
-              required
             />
+            {errors.district && <span className={styles.errorText}>{errors.district}</span>}
           </div>
 
           {/* Pincode */}
@@ -126,10 +149,11 @@ const AddressForm = ({ address, onSave, onCancel }) => {
               name="pincode"
               value={formData.pincode}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="PINCODE"
               className={styles.input}
-              required
             />
+            {errors.pincode && <span className={styles.errorText}>{errors.pincode}</span>}
           </div>
         </div>
 

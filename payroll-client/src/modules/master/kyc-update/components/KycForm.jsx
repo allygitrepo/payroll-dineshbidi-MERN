@@ -17,9 +17,99 @@ const KycForm = ({ kycDetails, onAddKyc, onRemoveKyc, onSave, onCancel }) => {
     kycImage: ''
   });
 
+  const [errors, setErrors] = useState({});
+
+  const validateField = (name, value, docType = kycInput.documentType) => {
+    if (name === 'documentType') {
+      return !value ? 'Document Type is required!' : '';
+    }
+    if (name === 'documentNumber') {
+      if (!value.trim()) return 'Document Number is required!';
+      if (docType === 'AADHAAR') {
+        const aadhaarRegex = /^[0-9]{12}$/;
+        return !aadhaarRegex.test(value) ? 'Aadhaar Card Number must be exactly 12 digits!' : '';
+      }
+      if (docType === 'UAN') {
+        const uanRegex = /^[0-9]{12}$/;
+        return !uanRegex.test(value) ? 'UAN must be exactly 12 digits!' : '';
+      }
+      if (docType === 'PAN') {
+        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+        return !panRegex.test(value.toUpperCase()) ? 'Invalid PAN Format (e.g., ABCDE1234F)' : '';
+      }
+      if (docType === 'BANK PASSBOOK') {
+        const bankRegex = /^[0-9]{9,18}$/;
+        return !bankRegex.test(value) ? 'Bank Account Number must be between 9 to 18 digits!' : '';
+      }
+      if (docType === 'VOTER ID') {
+        const voterRegex = /^[A-Z0-9]{10,15}$/;
+        return !voterRegex.test(value.toUpperCase()) ? 'Voter ID must be between 10 to 15 alphanumeric characters!' : '';
+      }
+      return '';
+    }
+    if (name === 'nameAsPerDocument') {
+      return !value.trim() ? 'Name as per document is required!' : '';
+    }
+    if (name === 'ifsc') {
+      if (docType === 'BANK PASSBOOK') {
+        if (!value.trim()) return 'IFSC is required for Bank Passbook!';
+        const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+        return !ifscRegex.test(value.toUpperCase()) ? 'Invalid IFSC Format (e.g., SBIN0001234)' : '';
+      }
+      return '';
+    }
+    return '';
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setKycInput((prev) => ({ ...prev, [name]: value }));
+    let finalValue = value;
+    const currentDocType = name === 'documentType' ? value : kycInput.documentType;
+
+    // Apply keystroke constraints
+    if (name === 'documentNumber') {
+      if (currentDocType === 'AADHAAR' || currentDocType === 'UAN' || currentDocType === 'BANK PASSBOOK') {
+        finalValue = value.replace(/\D/g, '');
+        if (currentDocType === 'AADHAAR' || currentDocType === 'UAN') {
+          finalValue = finalValue.slice(0, 12);
+        } else {
+          finalValue = finalValue.slice(0, 18);
+        }
+      } else if (currentDocType === 'PAN') {
+        finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+      } else if (currentDocType === 'VOTER ID') {
+        finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
+      }
+    } else if (name === 'ifsc') {
+      finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+    }
+
+    setKycInput((prev) => {
+      const nextInput = { ...prev, [name]: finalValue };
+      if (name === 'documentType') {
+        nextInput.documentNumber = '';
+        nextInput.ifsc = '';
+        setErrors({});
+      }
+      return nextInput;
+    });
+
+    if (name !== 'documentType') {
+      const error = validateField(name, finalValue, currentDocType);
+      setErrors((prev) => ({
+        ...prev,
+        [name]: error
+      }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value, kycInput.documentType);
+    setErrors((prev) => ({
+      ...prev,
+      [name]: error
+    }));
   };
 
   const handleFileChange = (e) => {
@@ -29,20 +119,22 @@ const KycForm = ({ kycDetails, onAddKyc, onRemoveKyc, onSave, onCancel }) => {
   };
 
   const handleAddClick = () => {
-    if (!kycInput.documentType) {
-      addToast({ type: 'warning', message: 'Select Document Type first!' });
-      return;
+    const tempErrors = {};
+    const keysToValidate = ['documentType', 'documentNumber', 'nameAsPerDocument'];
+    if (kycInput.documentType === 'BANK PASSBOOK') {
+      keysToValidate.push('ifsc');
     }
-    if (!kycInput.documentNumber.trim()) {
-      addToast({ type: 'warning', message: 'Document Number is required!' });
-      return;
-    }
-    if (!kycInput.nameAsPerDocument.trim()) {
-      addToast({ type: 'warning', message: 'Name as per document is required!' });
-      return;
-    }
-    if (kycInput.documentType === 'BANK PASSBOOK' && !kycInput.ifsc.trim()) {
-      addToast({ type: 'warning', message: 'IFSC is required for Bank Passbook!' });
+
+    keysToValidate.forEach((key) => {
+      const error = validateField(key, kycInput[key] || '');
+      if (error) {
+        tempErrors[key] = error;
+      }
+    });
+
+    if (Object.keys(tempErrors).length > 0) {
+      setErrors(tempErrors);
+      addToast({ type: 'warning', message: 'Please correct the errors in the KYC form.' });
       return;
     }
 
@@ -55,6 +147,7 @@ const KycForm = ({ kycDetails, onAddKyc, onRemoveKyc, onSave, onCancel }) => {
       ifsc: '',
       kycImage: ''
     });
+    setErrors({});
   };
 
   return (
@@ -62,11 +155,14 @@ const KycForm = ({ kycDetails, onAddKyc, onRemoveKyc, onSave, onCancel }) => {
       {/* Inline Document Entries Row */}
       <div className={styles.inlineRow}>
         <div className={styles.inlineField}>
-          <label className={styles.label}>Document Type *</label>
+          <label className={styles.label}>
+            Document Type <span className={styles.required}>*</span>
+          </label>
           <select
             name="documentType"
             value={kycInput.documentType}
             onChange={handleInputChange}
+            onBlur={handleBlur}
             className={styles.select}
           >
             <option value="">SELECT</option>
@@ -74,46 +170,60 @@ const KycForm = ({ kycDetails, onAddKyc, onRemoveKyc, onSave, onCancel }) => {
               <option key={opt} value={opt}>{opt}</option>
             ))}
           </select>
+          {errors.documentType && <span className={styles.errorText}>{errors.documentType}</span>}
         </div>
 
         <div className={styles.inlineField}>
-          <label className={styles.label}>Document Number *</label>
+          <label className={styles.label}>
+            Document Number <span className={styles.required}>*</span>
+          </label>
           <input
             type="text"
             name="documentNumber"
             value={kycInput.documentNumber}
             onChange={handleInputChange}
+            onBlur={handleBlur}
             placeholder="ENTER DOCUMENT NUMBER*"
             className={styles.input}
           />
+          {errors.documentNumber && <span className={styles.errorText}>{errors.documentNumber}</span>}
         </div>
 
         <div className={styles.inlineField}>
-          <label className={styles.label}>Name as Per Document *</label>
+          <label className={styles.label}>
+            Name as Per Document <span className={styles.required}>*</span>
+          </label>
           <input
             type="text"
             name="nameAsPerDocument"
             value={kycInput.nameAsPerDocument}
             onChange={handleInputChange}
+            onBlur={handleBlur}
             placeholder="ENTER NAME AS PER DOCUMENT*"
             className={styles.input}
           />
+          {errors.nameAsPerDocument && <span className={styles.errorText}>{errors.nameAsPerDocument}</span>}
         </div>
 
         <div className={styles.inlineField}>
-          <label className={styles.label}>IFSC *</label>
+          <label className={styles.label}>
+            IFSC {kycInput.documentType === 'BANK PASSBOOK' && <span className={styles.required}>*</span>}
+          </label>
           <input
             type="text"
             name="ifsc"
             value={kycInput.ifsc}
             onChange={handleInputChange}
+            onBlur={handleBlur}
             placeholder="ENTER IFSC*"
             className={styles.input}
+            disabled={kycInput.documentType !== 'BANK PASSBOOK'}
           />
+          {errors.ifsc && <span className={styles.errorText}>{errors.ifsc}</span>}
         </div>
       </div>
 
-      <div className={styles.inlineRow} style={{ marginTop: '-12px' }}>
+      <div className={styles.inlineRow} style={{ marginTop: '-12px', alignItems: 'flex-end' }}>
         <div className={styles.inlineField} style={{ maxWidth: '300px' }}>
           <label className={styles.label}>Select KYC Image:</label>
           <input

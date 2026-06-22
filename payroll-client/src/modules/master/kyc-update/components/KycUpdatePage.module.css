@@ -124,7 +124,7 @@
 /* Document entries inline inputs */
 .inlineRow {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 16px;
   margin-bottom: 24px;
   flex-wrap: wrap;
@@ -256,3 +256,12 @@
     margin-top: 10px;
   }
 }
+
+.errorText {
+  color: var(--danger, #ef4444);
+  font-size: 0.75rem;
+  margin-top: 4px;
+  font-weight: 500;
+  display: block;
+}
+

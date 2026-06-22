@@ -48,7 +48,10 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
     isActive: true
   });
 
+  const [errors, setErrors] = useState({});
+
   useEffect(() => {
+    setErrors({});
     if (contractor) {
       setFormData({
         ...contractor,
@@ -76,79 +79,172 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
     }
   }, [contractor]);
 
+  const validateField = (name, value) => {
+    if (name === 'ccode') {
+      return !value.trim() ? 'Contractor Code is required!' : '';
+    }
+    if (name === 'name') {
+      return !value.trim() ? 'Name is required!' : '';
+    }
+    if (name === 'address') {
+      return !value ? 'Address is required!' : '';
+    }
+    if (name === 'postOffice') {
+      return !value.trim() ? 'Post Office is required!' : '';
+    }
+    if (name === 'district') {
+      return !value.trim() ? 'District is required!' : '';
+    }
+    if (name === 'pincode') {
+      return !value.trim() ? 'Pincode is required!' : '';
+    }
+    if (name === 'pfCode') {
+      return !value.trim() ? 'PF Code is required!' : '';
+    }
+    if (name === 'dateOfJoining') {
+      return !value ? 'Date of Joining is required!' : '';
+    }
+    if (name === 'pan') {
+      if (value && value.trim()) {
+        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+        return !panRegex.test(value.toUpperCase()) ? 'Invalid PAN format! (e.g. ABCDE1234F)' : '';
+      }
+      return '';
+    }
+    if (name === 'aadhaar') {
+      if (value && value.trim()) {
+        const aadhaarRegex = /^[0-9]{12}$/;
+        return !aadhaarRegex.test(value) ? 'Aadhaar must be exactly 12 digits!' : '';
+      }
+      return '';
+    }
+    if (name === 'ifsc') {
+      if (value && value.trim()) {
+        const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+        return !ifscRegex.test(value.toUpperCase()) ? 'Invalid IFSC format! (e.g. SBIN0001234)' : '';
+      }
+      return '';
+    }
+    if (name === 'gstNo') {
+      if (value && value.trim()) {
+        const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+        return !gstRegex.test(value.toUpperCase()) ? 'Invalid GST format! (e.g. 22AAAAA0000A1Z5)' : '';
+      }
+      return '';
+    }
+    if (name === 'bankAccount') {
+      if (value && value.trim()) {
+        const accountRegex = /^[0-9]{9,18}$/;
+        return !accountRegex.test(value) ? 'Bank Account must be between 9 to 18 digits!' : '';
+      }
+      return '';
+    }
+    return '';
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    let finalValue = type === 'checkbox' ? checked : value;
+
+    if (type !== 'checkbox') {
+      if (name === 'pan') {
+        finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+      } else if (name === 'aadhaar') {
+        finalValue = value.replace(/\D/g, '').slice(0, 12);
+      } else if (name === 'ifsc') {
+        finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+      } else if (name === 'gstNo') {
+        finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
+      } else if (name === 'bankAccount') {
+        finalValue = value.replace(/\D/g, '').slice(0, 18);
+      } else if (name === 'pfCode') {
+        finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 22);
+      } else if (name === 'ccode') {
+        finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
+      }
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: finalValue
+    }));
+
+    if (type !== 'checkbox') {
+      const error = validateField(name, finalValue);
+      setErrors((prev) => ({
+        ...prev,
+        [name]: error
+      }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
+    setErrors((prev) => ({
+      ...prev,
+      [name]: error
     }));
   };
 
   const handleAddressChange = (e) => {
     const val = e.target.value;
     const template = ADDRESS_TEMPLATES.find((t) => t.value === val);
+    
+    let updatedFormData;
     if (template) {
-      setFormData((prev) => ({
-        ...prev,
+      updatedFormData = {
         address: val,
         postOffice: template.postOffice,
         district: template.district,
         pincode: template.pincode
-      }));
+      };
     } else {
-      setFormData((prev) => ({
-        ...prev,
+      updatedFormData = {
         address: val
-      }));
+      };
     }
+
+    setFormData((prev) => {
+      const nextData = { ...prev, ...updatedFormData };
+      
+      const addressError = validateField('address', val);
+      const poError = validateField('postOffice', nextData.postOffice);
+      const distError = validateField('district', nextData.district);
+      const pinError = validateField('pincode', nextData.pincode);
+
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        address: addressError,
+        postOffice: poError,
+        district: distError,
+        pincode: pinError
+      }));
+
+      return nextData;
+    });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Validations
-    if (!formData.ccode.trim()) {
-      addToast({ type: 'error', message: 'Contractor Code (ccode) is required!' });
-      return;
-    }
-    if (!formData.name.trim()) {
-      addToast({ type: 'error', message: 'Name is required!' });
-      return;
-    }
-    if (!formData.address) {
-      addToast({ type: 'error', message: 'Address is required!' });
-      return;
-    }
-    if (!formData.pfCode.trim()) {
-      addToast({ type: 'error', message: 'PF Code is required!' });
-      return;
-    }
-    if (!formData.dateOfJoining) {
-      addToast({ type: 'error', message: 'Date of Joining is required!' });
-      return;
-    }
+    const tempErrors = {};
+    const keysToValidate = [
+      'ccode', 'name', 'address', 'postOffice', 'district', 'pincode', 'pfCode', 'dateOfJoining',
+      'pan', 'aadhaar', 'ifsc', 'gstNo', 'bankAccount'
+    ];
 
-    // Optional regex validations
-    if (formData.pan) {
-      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-      if (!panRegex.test(formData.pan.toUpperCase())) {
-        addToast({ type: 'warning', message: 'Invalid PAN format!' });
-        return;
+    keysToValidate.forEach((key) => {
+      const error = validateField(key, formData[key] || '');
+      if (error) {
+        tempErrors[key] = error;
       }
-    }
-    if (formData.aadhaar) {
-      const aadhaarRegex = /^[0-9]{12}$/;
-      if (!aadhaarRegex.test(formData.aadhaar)) {
-        addToast({ type: 'warning', message: 'Aadhaar must be exactly 12 digits!' });
-        return;
-      }
-    }
-    if (formData.ifsc) {
-      const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-      if (!ifscRegex.test(formData.ifsc.toUpperCase())) {
-        addToast({ type: 'warning', message: 'Invalid IFSC format!' });
-        return;
-      }
+    });
+
+    if (Object.keys(tempErrors).length > 0) {
+      setErrors(tempErrors);
+      addToast({ type: 'error', message: 'Please correct the errors in the form.' });
+      return;
     }
 
     const payload = {
@@ -162,7 +258,7 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
 
   return (
     <div className={styles.formCard}>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <div className={styles.formGrid}>
           {/* Ccode */}
           <div className={styles.field}>
@@ -174,10 +270,11 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               name="ccode"
               value={formData.ccode}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER CCODE *"
               className={styles.input}
-              required
             />
+            {errors.ccode && <span className={styles.errorText}>{errors.ccode}</span>}
           </div>
 
           {/* Name */}
@@ -190,10 +287,11 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               name="name"
               value={formData.name}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER NAME *"
               className={styles.input}
-              required
             />
+            {errors.name && <span className={styles.errorText}>{errors.name}</span>}
           </div>
 
           {/* Address dropdown */}
@@ -205,14 +303,15 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               name="address"
               value={formData.address}
               onChange={handleAddressChange}
+              onBlur={handleBlur}
               className={styles.select}
-              required
             >
-              <option value="" disabled>SELECT ADDRESS</option>
+              <option value="">SELECT ADDRESS</option>
               {ADDRESS_TEMPLATES.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
+            {errors.address && <span className={styles.errorText}>{errors.address}</span>}
           </div>
 
           {/* Post Office */}
@@ -225,10 +324,11 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               name="postOffice"
               value={formData.postOffice}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER POST OFFICE *"
               className={styles.input}
-              required
             />
+            {errors.postOffice && <span className={styles.errorText}>{errors.postOffice}</span>}
           </div>
 
           {/* Dist */}
@@ -243,8 +343,8 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               readOnly
               placeholder="ENTER DIST *"
               className={`${styles.input} ${styles.disabledInput}`}
-              required
             />
+            {errors.district && <span className={styles.errorText}>{errors.district}</span>}
           </div>
 
           {/* Pincode */}
@@ -259,8 +359,8 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               readOnly
               placeholder="ENTER PIN *"
               className={`${styles.input} ${styles.disabledInput}`}
-              required
             />
+            {errors.pincode && <span className={styles.errorText}>{errors.pincode}</span>}
           </div>
 
           {/* PF Code */}
@@ -273,10 +373,11 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               name="pfCode"
               value={formData.pfCode}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER PF CODE *"
               className={styles.input}
-              required
             />
+            {errors.pfCode && <span className={styles.errorText}>{errors.pfCode}</span>}
           </div>
 
           {/* Date of Joining */}
@@ -289,9 +390,10 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               name="dateOfJoining"
               value={formData.dateOfJoining}
               onChange={handleChange}
+              onBlur={handleBlur}
               className={styles.input}
-              required
             />
+            {errors.dateOfJoining && <span className={styles.errorText}>{errors.dateOfJoining}</span>}
           </div>
 
           {/* PAN */}
@@ -302,9 +404,11 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               name="pan"
               value={formData.pan}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER PAN"
               className={styles.input}
             />
+            {errors.pan && <span className={styles.errorText}>{errors.pan}</span>}
           </div>
 
           {/* Aadhaar */}
@@ -315,10 +419,11 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               name="aadhaar"
               value={formData.aadhaar}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER AADHAR"
-              maxLength={12}
               className={styles.input}
             />
+            {errors.aadhaar && <span className={styles.errorText}>{errors.aadhaar}</span>}
           </div>
 
           {/* GST No. */}
@@ -329,9 +434,11 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               name="gstNo"
               value={formData.gstNo}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER GST NO."
               className={styles.input}
             />
+            {errors.gstNo && <span className={styles.errorText}>{errors.gstNo}</span>}
           </div>
 
           {/* Bank A/c */}
@@ -342,9 +449,11 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               name="bankAccount"
               value={formData.bankAccount}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER BANK A/C"
               className={styles.input}
             />
+            {errors.bankAccount && <span className={styles.errorText}>{errors.bankAccount}</span>}
           </div>
 
           {/* Bank Name */}
@@ -355,6 +464,7 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               name="bankName"
               value={formData.bankName}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER BANK NAME"
               className={styles.input}
             />
@@ -368,9 +478,11 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               name="ifsc"
               value={formData.ifsc}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER IFSC"
               className={styles.input}
             />
+            {errors.ifsc && <span className={styles.errorText}>{errors.ifsc}</span>}
           </div>
 
           {/* Status (Active) */}
