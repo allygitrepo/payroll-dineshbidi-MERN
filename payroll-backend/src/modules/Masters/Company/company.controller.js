@@ -83,6 +83,32 @@ class CompanyController {
     }
 
     /**
+     * Gets all public active companies (unauthenticated).
+     */
+    static async getPublicCompanies(req, res) {
+        try {
+            const companies = await CompanyService.getPublicCompanies();
+
+            return res.status(200).json(
+                successResponse(
+                    "PUBLIC_COMPANIES_RETRIEVED",
+                    "Public companies retrieved successfully.",
+                    "Companies retrieved successfully.",
+                    companies
+                )
+            );
+        } catch (err) {
+            return res.status(500).json(
+                errorResponse(
+                    "COMPANIES_RETRIEVE_FAILED",
+                    err.message,
+                    "Failed to retrieve companies."
+                )
+            );
+        }
+    }
+
+    /**
      * Gets all companies.
      */
     static async getAll(req, res) {
