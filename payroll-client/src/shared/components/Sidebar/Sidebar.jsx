@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import {
   LayoutDashboard,
@@ -158,9 +159,72 @@ const menuItems = [
   }
 ];
 
-const Sidebar = ({ sidebarCollapsed, activeMenu, setActiveMenu, activeSubMenu, setActiveSubMenu }) => {
+const nameToSlug = (name) => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+};
+
+const getActiveMenuAndSubMenu = (pathname) => {
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts.length === 0 || parts[0] === 'dashboard') {
+    return { activeMenu: 'Dashboard', activeSubMenu: '' };
+  }
+
+  const moduleSlug = parts[0];
+  const subMenuSlug = parts[1] || '';
+
+  const matchedMenuItem = menuItems.find(item => nameToSlug(item.name) === moduleSlug);
+  if (!matchedMenuItem) {
+    return { activeMenu: '', activeSubMenu: '' };
+  }
+
+  const activeMenu = matchedMenuItem.name;
+  let activeSubMenu = '';
+
+  if (subMenuSlug && matchedMenuItem.subItems) {
+    for (const sub of matchedMenuItem.subItems) {
+      if (sub.nestedItems) {
+        const matchedNested = sub.nestedItems.find(nested => nameToSlug(nested.name) === subMenuSlug);
+        if (matchedNested) {
+          activeSubMenu = matchedNested.name;
+          break;
+        }
+      } else if (nameToSlug(sub.name) === subMenuSlug) {
+        activeSubMenu = sub.name;
+        break;
+      }
+    }
+  }
+
+  return { activeMenu, activeSubMenu };
+};
+
+const Sidebar = ({ sidebarCollapsed }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { activeMenu, activeSubMenu } = getActiveMenuAndSubMenu(location.pathname);
+
   const [expandedMenus, setExpandedMenus] = useState({});
   const [expandedSubMenus, setExpandedSubMenus] = useState({});
+
+  useEffect(() => {
+    if (activeMenu) {
+      setExpandedMenus(prev => ({ ...prev, [activeMenu]: true }));
+    }
+    if (activeMenu && activeSubMenu) {
+      const matchedMenuItem = menuItems.find(item => item.name === activeMenu);
+      if (matchedMenuItem && matchedMenuItem.subItems) {
+        const parentSub = matchedMenuItem.subItems.find(sub =>
+          sub.nestedItems && sub.nestedItems.some(nested => nested.name === activeSubMenu)
+        );
+        if (parentSub) {
+          setExpandedSubMenus(prev => ({ ...prev, [parentSub.name]: true }));
+        }
+      }
+    }
+  }, [location.pathname, activeMenu, activeSubMenu]);
 
   return (
     <aside className={`${styles.sidebar} ${sidebarCollapsed ? styles.collapsed : ''}`}>
@@ -183,8 +247,7 @@ const Sidebar = ({ sidebarCollapsed, activeMenu, setActiveMenu, activeSubMenu, s
                       [item.name]: !prev[item.name]
                     }));
                   } else {
-                    setActiveMenu(item.name);
-                    setActiveSubMenu('');
+                    navigate(item.name === 'Dashboard' ? '/dashboard' : `/${nameToSlug(item.name)}`);
                   }
                 }}
               >
@@ -217,8 +280,7 @@ const Sidebar = ({ sidebarCollapsed, activeMenu, setActiveMenu, activeSubMenu, s
                                 [sub.name]: !prev[sub.name]
                               }));
                             } else {
-                              setActiveMenu(item.name);
-                              setActiveSubMenu(sub.name);
+                              navigate(`/${nameToSlug(item.name)}/${nameToSlug(sub.name)}`);
                             }
                           }}
                         >
@@ -248,8 +310,7 @@ const Sidebar = ({ sidebarCollapsed, activeMenu, setActiveMenu, activeSubMenu, s
                                   key={nested.name}
                                   className={`${styles.nestedItem} ${isNestedActive ? styles.activeNestedItem : ''} ${styles.formNestedItem}`}
                                   onClick={() => {
-                                    setActiveMenu(item.name);
-                                    setActiveSubMenu(nested.name);
+                                    navigate(`/${nameToSlug(item.name)}/${nameToSlug(nested.name)}`);
                                   }}
                                 >
                                   <NestedIcon size={14} className={styles.nestedIcon} />
