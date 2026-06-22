@@ -12,10 +12,11 @@ const authService = {
   /**
    * Log in user with user ID and password.
    */
-  async login(userId, password) {
+  async login(userId, password, companyId) {
     const response = await apiClient.post('users/login', {
       user_id: userId,
       password: password,
+      company_id: companyId,
     });
     return response.data;
   },

@@ -74,6 +74,7 @@ class UsersController {
             const { user, accessToken, refreshToken } = await UsersService.loginUser({
                 user_id: value.user_id,
                 password: value.password,
+                company_id: value.company_id,
             });
 
             // Set refresh token in HTTP-only cookie

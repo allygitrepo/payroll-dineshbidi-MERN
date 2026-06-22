@@ -21,6 +21,7 @@ const ChallanSetupPage = () => {
   const [editingChallan, setEditingChallan] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -28,10 +29,29 @@ const ChallanSetupPage = () => {
 
   const dropdownRef = useRef(null);
 
+  const fetchChallans = async () => {
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const data = await getChallanSetup(companyId);
+      setChallanList(data);
+    } catch (err) {
+      console.error('Error fetching challan setups:', err);
+      addToast({ type: 'error', message: 'Failed to load challan setups.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load initial data
   useEffect(() => {
-    setChallanList(getChallanSetup());
-  }, []);
+    fetchChallans();
+  }, [addToast]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -64,11 +84,17 @@ const ChallanSetupPage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deleteChallanSetup(deleteTargetId);
-      setChallanList(updated);
-      addToast({ type: 'success', message: 'Challan Setup record deleted successfully!' });
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const updated = await deleteChallanSetup(deleteTargetId, companyId);
+        setChallanList(updated);
+        addToast({ type: 'success', message: 'Challan Setup record deleted successfully!' });
+      } catch (err) {
+        console.error('Error deleting challan setup:', err);
+        addToast({ type: 'error', message: 'Failed to delete challan setup.' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -79,17 +105,26 @@ const ChallanSetupPage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (challanData) => {
-    const updated = saveChallanSetup(challanData);
-    setChallanList(updated);
-    setIsFormOpen(false);
-    setEditingChallan(null);
-    addToast({
-      type: 'success',
-      message: challanData.id
-        ? 'Challan Setup record updated successfully!'
-        : 'Challan Setup record created successfully!'
-    });
+  const handleSave = async (challanData) => {
+    const companyId = localStorage.getItem('selectedCompany');
+    try {
+      const updated = await saveChallanSetup(challanData, companyId);
+      setChallanList(updated);
+      setIsFormOpen(false);
+      setEditingChallan(null);
+      addToast({
+        type: 'success',
+        message: challanData.id
+          ? 'Challan Setup record updated successfully!'
+          : 'Challan Setup record created successfully!'
+      });
+    } catch (err) {
+      console.error('Error saving challan setup:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to save challan setup.'
+      });
+    }
   };
 
   const handleCancel = () => {

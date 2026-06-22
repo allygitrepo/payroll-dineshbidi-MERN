@@ -23,6 +23,7 @@ const OfficeStaffSalaryPage = () => {
   const [editingWages, setEditingWages] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -30,10 +31,29 @@ const OfficeStaffSalaryPage = () => {
 
   const dropdownRef = useRef(null);
 
+  const fetchSalaries = async () => {
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const data = await getOfficeStaffSalaries(companyId);
+      setWagesList(data);
+    } catch (err) {
+      console.error('Error fetching office staff salaries:', err);
+      addToast({ type: 'error', message: 'Failed to load office staff salaries.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load initial data
   useEffect(() => {
-    setWagesList(getOfficeStaffSalaries());
-  }, []);
+    fetchSalaries();
+  }, [addToast]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -67,11 +87,17 @@ const OfficeStaffSalaryPage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deleteOfficeStaffSalary(deleteTargetId);
-      setWagesList(updated);
-      addToast({ type: 'success', message: 'Office Staff Salary record deleted successfully!' });
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const updated = await deleteOfficeStaffSalary(deleteTargetId, companyId);
+        setWagesList(updated);
+        addToast({ type: 'success', message: 'Office Staff Salary record deleted successfully!' });
+      } catch (err) {
+        console.error('Error deleting office staff salary:', err);
+        addToast({ type: 'error', message: 'Failed to delete office staff salary.' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -82,15 +108,24 @@ const OfficeStaffSalaryPage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (wagesData) => {
-    const updated = saveOfficeStaffSalary(wagesData);
-    setWagesList(updated);
-    setIsFormOpen(false);
-    setEditingWages(null);
-    addToast({
-      type: 'success',
-      message: wagesData.id ? 'Office Staff Salary record updated successfully!' : 'Office Staff Salary record created successfully!'
-    });
+  const handleSave = async (wagesData) => {
+    const companyId = localStorage.getItem('selectedCompany');
+    try {
+      const updated = await saveOfficeStaffSalary(wagesData, companyId);
+      setWagesList(updated);
+      setIsFormOpen(false);
+      setEditingWages(null);
+      addToast({
+        type: 'success',
+        message: wagesData.id ? 'Office Staff Salary record updated successfully!' : 'Office Staff Salary record created successfully!'
+      });
+    } catch (err) {
+      console.error('Error saving office staff salary:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to save office staff salary.'
+      });
+    }
   };
 
   const handleCancel = () => {

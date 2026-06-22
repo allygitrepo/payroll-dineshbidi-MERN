@@ -21,7 +21,18 @@ const OfficeStaffSalaryForm = ({ wages, onSave, onCancel }) => {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    setEmployees(getEmployees());
+    const fetchEmps = async () => {
+      const companyId = localStorage.getItem('selectedCompany');
+      if (companyId) {
+        try {
+          const data = await getEmployees(companyId);
+          setEmployees(data);
+        } catch (err) {
+          console.error('Error fetching employees for dropdown:', err);
+        }
+      }
+    };
+    fetchEmps();
   }, []);
 
   useEffect(() => {

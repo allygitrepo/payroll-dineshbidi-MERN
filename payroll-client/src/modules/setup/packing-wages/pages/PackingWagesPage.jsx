@@ -23,6 +23,7 @@ const PackingWagesPage = () => {
   const [editingWages, setEditingWages] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -30,10 +31,29 @@ const PackingWagesPage = () => {
 
   const dropdownRef = useRef(null);
 
+  const fetchWages = async () => {
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const data = await getPackingWages(companyId);
+      setWagesList(data);
+    } catch (err) {
+      console.error('Error fetching packing wages:', err);
+      addToast({ type: 'error', message: 'Failed to load packing wages.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load initial data
   useEffect(() => {
-    setWagesList(getPackingWages());
-  }, []);
+    fetchWages();
+  }, [addToast]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -67,11 +87,17 @@ const PackingWagesPage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deletePackingWages(deleteTargetId);
-      setWagesList(updated);
-      addToast({ type: 'success', message: 'Packing Wages record deleted successfully!' });
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const updated = await deletePackingWages(deleteTargetId, companyId);
+        setWagesList(updated);
+        addToast({ type: 'success', message: 'Packing Wages record deleted successfully!' });
+      } catch (err) {
+        console.error('Error deleting packing wages:', err);
+        addToast({ type: 'error', message: 'Failed to delete packing wages.' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -82,15 +108,24 @@ const PackingWagesPage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (wagesData) => {
-    const updated = savePackingWages(wagesData);
-    setWagesList(updated);
-    setIsFormOpen(false);
-    setEditingWages(null);
-    addToast({
-      type: 'success',
-      message: wagesData.id ? 'Packing Wages record updated successfully!' : 'Packing Wages record created successfully!'
-    });
+  const handleSave = async (wagesData) => {
+    const companyId = localStorage.getItem('selectedCompany');
+    try {
+      const updated = await savePackingWages(wagesData, companyId);
+      setWagesList(updated);
+      setIsFormOpen(false);
+      setEditingWages(null);
+      addToast({
+        type: 'success',
+        message: wagesData.id ? 'Packing Wages record updated successfully!' : 'Packing Wages record created successfully!'
+      });
+    } catch (err) {
+      console.error('Error saving packing wages:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to save packing wages.'
+      });
+    }
   };
 
   const handleCancel = () => {

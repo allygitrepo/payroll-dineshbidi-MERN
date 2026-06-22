@@ -23,6 +23,7 @@ const BidiRollerWagesPage = () => {
   const [editingWages, setEditingWages] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -30,10 +31,29 @@ const BidiRollerWagesPage = () => {
 
   const dropdownRef = useRef(null);
 
+  const fetchWages = async () => {
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const data = await getBidiRollerWages(companyId);
+      setWagesList(data);
+    } catch (err) {
+      console.error('Error fetching bidi wages:', err);
+      addToast({ type: 'error', message: 'Failed to load bidi roller wages.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load initial data
   useEffect(() => {
-    setWagesList(getBidiRollerWages());
-  }, []);
+    fetchWages();
+  }, [addToast]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -67,11 +87,17 @@ const BidiRollerWagesPage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deleteBidiRollerWages(deleteTargetId);
-      setWagesList(updated);
-      addToast({ type: 'success', message: 'Bidi Roller Wages record deleted successfully!' });
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const updated = await deleteBidiRollerWages(deleteTargetId, companyId);
+        setWagesList(updated);
+        addToast({ type: 'success', message: 'Bidi Roller Wages record deleted successfully!' });
+      } catch (err) {
+        console.error('Error deleting bidi wages:', err);
+        addToast({ type: 'error', message: 'Failed to delete bidi roller wages.' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -82,15 +108,24 @@ const BidiRollerWagesPage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (wagesData) => {
-    const updated = saveBidiRollerWages(wagesData);
-    setWagesList(updated);
-    setIsFormOpen(false);
-    setEditingWages(null);
-    addToast({
-      type: 'success',
-      message: wagesData.id ? 'Bidi Roller Wages record updated successfully!' : 'Bidi Roller Wages record created successfully!'
-    });
+  const handleSave = async (wagesData) => {
+    const companyId = localStorage.getItem('selectedCompany');
+    try {
+      const updated = await saveBidiRollerWages(wagesData, companyId);
+      setWagesList(updated);
+      setIsFormOpen(false);
+      setEditingWages(null);
+      addToast({
+        type: 'success',
+        message: wagesData.id ? 'Bidi Roller Wages record updated successfully!' : 'Bidi Roller Wages record created successfully!'
+      });
+    } catch (err) {
+      console.error('Error saving bidi wages:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to save bidi roller wages.'
+      });
+    }
   };
 
   const handleCancel = () => {
