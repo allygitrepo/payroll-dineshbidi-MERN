@@ -2,31 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styles from './ContractorPage.module.css';
 import { useToast } from '../../../../shared/components';
 
-const ADDRESS_TEMPLATES = [
-  {
-    value: 'BANDHA GHAT',
-    label: 'BANDHA GHAT',
-    postOffice: 'JHALDA',
-    district: 'PURULIA',
-    pincode: '723202'
-  },
-  {
-    value: 'DURGAPUR INDUSTRIAL AREA',
-    label: 'DURGAPUR INDUSTRIAL AREA',
-    postOffice: 'DURGAPUR HQ',
-    district: 'PASCHIM BARDHAMAN',
-    pincode: '713216'
-  },
-  {
-    value: 'SALT LAKE SECTOR V',
-    label: 'SALT LAKE SECTOR V',
-    postOffice: 'BIDHANNAGAR',
-    district: 'NORTH 24 PARGANAS',
-    pincode: '700091'
-  }
-];
-
-const ContractorForm = ({ contractor, onSave, onCancel }) => {
+const ContractorForm = ({ contractor, addresses = [], onSave, onCancel }) => {
   const addToast = useToast();
 
   const [formData, setFormData] = useState({
@@ -189,7 +165,7 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
 
   const handleAddressChange = (e) => {
     const val = e.target.value;
-    const template = ADDRESS_TEMPLATES.find((t) => t.value === val);
+    const template = addresses.find((t) => t.address === val);
     
     let updatedFormData;
     if (template) {
@@ -307,8 +283,8 @@ const ContractorForm = ({ contractor, onSave, onCancel }) => {
               className={styles.select}
             >
               <option value="">SELECT ADDRESS</option>
-              {ADDRESS_TEMPLATES.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              {addresses.map((opt) => (
+                <option key={opt.id} value={opt.address}>{opt.address}</option>
               ))}
             </select>
             {errors.address && <span className={styles.errorText}>{errors.address}</span>}

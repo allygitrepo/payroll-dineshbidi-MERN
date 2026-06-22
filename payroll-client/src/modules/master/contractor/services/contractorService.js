@@ -1,90 +1,69 @@
-const STORAGE_KEY = 'payroll_contractors';
+import apiClient from '../../../../shared/services/apiClient';
 
-const defaultContractors = [
-  {
-    id: '1',
-    ccode: '4',
-    name: 'BISHNU PADA MAJHI',
-    address: 'BANDHA GHAT',
-    postOffice: 'JHALDA',
-    district: 'PURULIA',
-    pincode: '723202',
-    pfCode: '176',
-    dateOfJoining: '2017-04-01',
-    pan: 'DJSPM3836A',
-    aadhaar: '123456789012',
-    gstNo: '19DJSPM3836A1Z4',
-    bankAccount: '1000987654321',
-    bankName: 'SBI',
-    ifsc: 'SBIN0001234',
-    status: 'Active'
-  },
-  {
-    id: '2',
-    ccode: '5',
-    name: 'BABLU KUMAR',
-    address: 'BANDHA GHAT',
-    postOffice: 'JHALDA',
-    district: 'PURULIA',
-    pincode: '723202',
-    pfCode: '139',
-    dateOfJoining: '2017-04-01',
-    pan: 'BCDPK3306D',
-    aadhaar: '987654321098',
-    gstNo: '19BCDPK3306D1Z2',
-    bankAccount: '4405101000955',
-    bankName: 'UCO BANK',
-    ifsc: 'UCBA0004405',
-    status: 'Active'
-  },
-  {
-    id: '3',
-    ccode: '60',
-    name: 'BHARAT KUMAR',
-    address: 'BANDHA GHAT',
-    postOffice: 'JHALDA',
-    district: 'PURULIA',
-    pincode: '723202',
-    pfCode: '165',
-    dateOfJoining: '2017-04-01',
-    pan: 'AIYPK3417H',
-    aadhaar: '676179607185',
-    gstNo: 'NA',
-    bankAccount: '4405101000952',
-    bankName: 'CANARA BANK',
-    ifsc: 'CNRB0004405',
-    status: 'Active'
-  }
-];
+const mapToFrontend = (c) => ({
+  id: c.id,
+  ccode: c.ccode,
+  name: c.name,
+  address: c.address?.address || '',
+  postOffice: c.address?.post_office || '',
+  district: c.address?.district || '',
+  pincode: c.address?.pincode || '',
+  pfCode: c.pf_code,
+  dateOfJoining: c.date_of_joining,
+  pan: c.pan || '',
+  aadhaar: c.aadhar || '',
+  gstNo: c.gst_no || '',
+  bankAccount: c.bank_ac || '',
+  bankName: c.bank_name || '',
+  ifsc: c.ifsc || '',
+  status: c.status ? 'Active' : 'Inactive',
+  address_id: c.address_id
+});
 
-export const getContractors = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultContractors));
-    return defaultContractors;
-  }
-  return JSON.parse(data);
+const mapToBackend = (c, companyId, addresses = []) => {
+  // Try to find matching address from database address list
+  const matchingAddress = addresses.find(a => a.address === c.address);
+  const addressId = matchingAddress?.id || c.address_id || c.address;
+
+  return {
+    company_id: companyId,
+    address_id: addressId,
+    ccode: c.ccode,
+    name: c.name,
+    pf_code: c.pfCode,
+    date_of_joining: c.dateOfJoining,
+    pan: c.pan || null,
+    aadhar: c.aadhaar || null,
+    gst_no: c.gstNo || null,
+    bank_ac: c.bankAccount || null,
+    bank_name: c.bankName || null,
+    ifsc: c.ifsc || null,
+    status: c.status === 'Active'
+  };
 };
 
-export const saveContractor = (contractor) => {
-  const contractors = getContractors();
+export const getContractors = async (companyId) => {
+  if (!companyId) return [];
+  const response = await apiClient.get(`contractors/company/${companyId}`);
+  if ((response.data?.status || response.data?.success) && response.data?.data) {
+    return response.data.data.map(mapToFrontend);
+  }
+  return [];
+};
+
+export const saveContractor = async (contractor, companyId, addresses = []) => {
+  const payload = mapToBackend(contractor, companyId, addresses);
   if (contractor.id) {
-    const index = contractors.findIndex(c => c.id === contractor.id);
-    if (index !== -1) {
-      contractors[index] = contractor;
-    }
+    // Update
+    await apiClient.put(`contractors/${contractor.id}`, payload);
   } else {
-    const nextId = String(contractors.length > 0 ? Math.max(...contractors.map(c => parseInt(c.id))) + 1 : 1);
-    const newContractor = { ...contractor, id: nextId };
-    contractors.push(newContractor);
+    // Create
+    await apiClient.post('contractors', payload);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(contractors));
-  return contractors;
+  return await getContractors(companyId);
 };
 
-export const deleteContractor = (id) => {
-  const contractors = getContractors();
-  const filtered = contractors.filter(c => c.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  return filtered;
+export const deleteContractor = async (id, companyId) => {
+  await apiClient.delete(`contractors/${id}`);
+  return await getContractors(companyId);
 };

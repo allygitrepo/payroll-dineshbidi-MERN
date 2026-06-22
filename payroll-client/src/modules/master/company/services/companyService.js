@@ -1,57 +1,77 @@
-const STORAGE_KEY = 'payroll_companies';
+import apiClient from '../../../../shared/services/apiClient';
 
-const defaultCompanies = [
-  {
-    id: '1',
-    estbId: 'WBDGP0034083000',
-    estbName: 'BRIJBASHI TRADERS',
-    estbType: 'PROPRIETORSHIP',
-    epfoOffice: 'DURGAPUR',
-    linNo: '1312299607',
-    esicId: '',
-    address: 'BANDHA GHAT',
-    postOffice: 'JHALDA',
-    district: 'PURULIA',
-    pincode: '723202',
-    pan: 'ACTPA5069Q',
-    tan: 'CALB01234F',
-    ptax: 'WB0987654',
-    email: 'info@brijbashitraders.com',
-    phone: '9876543210',
-    website: 'www.brijbashitraders.com'
-  }
-];
-
-export const getCompanies = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultCompanies));
-    return defaultCompanies;
-  }
-  return JSON.parse(data);
+const formatCompanyTypeToBackend = (type) => {
+  if (!type) return 'Proprietorship';
+  const lower = type.toLowerCase();
+  if (lower === 'proprietorship') return 'Proprietorship';
+  if (lower === 'partnership') return 'Partnership';
+  if (lower === 'private limited' || lower === 'private_limited' || lower === 'private') return 'Private Limited';
+  if (lower === 'public') return 'Public';
+  return 'Proprietorship';
 };
 
-export const saveCompany = (company) => {
-  const companies = getCompanies();
+const mapToFrontend = (c) => ({
+  id: c.id,
+  estbId: c.establishment_id,
+  estbName: c.company_name,
+  estbType: c.company_type ? c.company_type.toUpperCase() : '',
+  epfoOffice: c.epfo_office,
+  linNo: c.lin_number || '',
+  esicId: c.esic_id || '',
+  address: c.address_line,
+  postOffice: c.post_office,
+  district: c.district,
+  pincode: c.pincode,
+  pan: c.pan,
+  tan: c.tan,
+  ptax: c.professional_tax_reg_no || '',
+  email: c.email_id,
+  phone: c.phone,
+  website: c.website || ''
+});
+
+const mapToBackend = (c) => ({
+  establishment_id: c.estbId,
+  company_name: c.estbName,
+  company_type: formatCompanyTypeToBackend(c.estbType),
+  epfo_office: c.epfoOffice,
+  lin_number: c.linNo || null,
+  esic_id: c.esicId || null,
+  address_line: c.address,
+  post_office: c.postOffice,
+  district: c.district,
+  pincode: c.pincode,
+  pan: c.pan,
+  tan: c.tan,
+  professional_tax_reg_no: c.ptax || null,
+  email_id: c.email,
+  phone: c.phone,
+  website: c.website || null
+});
+
+export const getCompanies = async () => {
+  const response = await apiClient.get('companies');
+  if ((response.data?.status || response.data?.success) && response.data?.data) {
+    return response.data.data.map(mapToFrontend);
+  }
+  return [];
+};
+
+export const saveCompany = async (company) => {
+  const payload = mapToBackend(company);
+  let response;
   if (company.id) {
     // Update
-    const index = companies.findIndex(c => c.id === company.id);
-    if (index !== -1) {
-      companies[index] = company;
-    }
+    response = await apiClient.put(`companies/${company.id}`, payload);
   } else {
-    // Create new
-    const nextId = String(companies.length > 0 ? Math.max(...companies.map(c => parseInt(c.id))) + 1 : 1);
-    const newCompany = { ...company, id: nextId };
-    companies.push(newCompany);
+    // Create
+    response = await apiClient.post('companies', payload);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(companies));
-  return companies;
+  // Retrieve updated companies list
+  return await getCompanies();
 };
 
-export const deleteCompany = (id) => {
-  const companies = getCompanies();
-  const filtered = companies.filter(c => c.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  return filtered;
+export const deleteCompany = async (id) => {
+  await apiClient.delete(`companies/${id}`);
+  return await getCompanies();
 };

@@ -23,8 +23,22 @@ const AddressPage = () => {
 
   // Load initial address records
   useEffect(() => {
-    setAddresses(getAddresses());
-  }, []);
+    const fetchAddresses = async () => {
+      const companyId = localStorage.getItem('selectedCompany');
+      if (!companyId) {
+        addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+        return;
+      }
+      try {
+        const data = await getAddresses(companyId);
+        setAddresses(data);
+      } catch (err) {
+        console.error('Error fetching addresses:', err);
+        addToast({ type: 'error', message: 'Failed to load addresses.' });
+      }
+    };
+    fetchAddresses();
+  }, [addToast]);
 
   // Close download dropdown if clicked outside
   useEffect(() => {
@@ -52,11 +66,17 @@ const AddressPage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deleteAddress(deleteTargetId);
-      setAddresses(updated);
-      addToast({ type: 'success', message: 'Address deleted successfully!' });
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const updated = await deleteAddress(deleteTargetId, companyId);
+        setAddresses(updated);
+        addToast({ type: 'success', message: 'Address deleted successfully!' });
+      } catch (err) {
+        console.error('Error deleting address:', err);
+        addToast({ type: 'error', message: 'Failed to delete address.' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -67,14 +87,23 @@ const AddressPage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (addressData) => {
-    const updated = saveAddress(addressData);
-    setAddresses(updated);
-    setEditingAddress(null);
-    addToast({
-      type: 'success',
-      message: addressData.id ? 'Address updated successfully!' : 'Address created successfully!'
-    });
+  const handleSave = async (addressData) => {
+    const companyId = localStorage.getItem('selectedCompany');
+    try {
+      const updated = await saveAddress(addressData, companyId);
+      setAddresses(updated);
+      setEditingAddress(null);
+      addToast({
+        type: 'success',
+        message: addressData.id ? 'Address updated successfully!' : 'Address created successfully!'
+      });
+    } catch (err) {
+      console.error('Error saving address:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to save address.'
+      });
+    }
   };
 
   const handleCancelEdit = () => {

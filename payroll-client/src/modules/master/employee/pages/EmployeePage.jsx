@@ -4,11 +4,15 @@ import styles from '../components/EmployeePage.module.css';
 import EmployeeForm from '../components/EmployeeForm';
 import EmployeeTable from '../components/EmployeeTable';
 import { getEmployees, saveEmployee, deleteEmployee } from '../services/employeeService';
+import { getAddresses } from '../../address/services/addressService';
+import { getContractors } from '../../contractor/services/contractorService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
 
 const EmployeePage = () => {
   const addToast = useToast();
   const [employees, setEmployees] = useState([]);
+  const [addresses, setAddresses] = useState([]);
+  const [contractors, setContractors] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
 
@@ -22,10 +26,30 @@ const EmployeePage = () => {
 
   const dropdownRef = useRef(null);
 
-  // Load initial employees
+  // Load initial employees, addresses and contractors
   useEffect(() => {
-    setEmployees(getEmployees());
-  }, []);
+    const fetchInitialData = async () => {
+      const companyId = localStorage.getItem('selectedCompany');
+      if (!companyId) {
+        addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+        return;
+      }
+      try {
+        const [loadedEmployees, loadedAddresses, loadedContractors] = await Promise.all([
+          getEmployees(companyId),
+          getAddresses(companyId),
+          getContractors(companyId)
+        ]);
+        setEmployees(loadedEmployees);
+        setAddresses(loadedAddresses);
+        setContractors(loadedContractors);
+      } catch (err) {
+        console.error('Error fetching employee initial data:', err);
+        addToast({ type: 'error', message: 'Failed to load employee data.' });
+      }
+    };
+    fetchInitialData();
+  }, [addToast]);
 
   // Close download dropdown if clicked outside
   useEffect(() => {
@@ -59,11 +83,17 @@ const EmployeePage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deleteEmployee(deleteTargetId);
-      setEmployees(updated);
-      addToast({ type: 'success', message: 'Employee deleted successfully!' });
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const updated = await deleteEmployee(deleteTargetId, companyId);
+        setEmployees(updated);
+        addToast({ type: 'success', message: 'Employee deleted successfully!' });
+      } catch (err) {
+        console.error('Error deleting employee:', err);
+        addToast({ type: 'error', message: 'Failed to delete employee.' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -74,15 +104,24 @@ const EmployeePage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (employeeData) => {
-    const updated = saveEmployee(employeeData);
-    setEmployees(updated);
-    setIsFormOpen(false);
-    setEditingEmployee(null);
-    addToast({
-      type: 'success',
-      message: employeeData.id ? 'Employee updated successfully!' : 'Employee created successfully!'
-    });
+  const handleSave = async (employeeData) => {
+    const companyId = localStorage.getItem('selectedCompany');
+    try {
+      const updated = await saveEmployee(employeeData, companyId, addresses, contractors);
+      setEmployees(updated);
+      setIsFormOpen(false);
+      setEditingEmployee(null);
+      addToast({
+        type: 'success',
+        message: employeeData.id ? 'Employee updated successfully!' : 'Employee created successfully!'
+      });
+    } catch (err) {
+      console.error('Error saving employee:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to save employee.'
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -172,6 +211,8 @@ const EmployeePage = () => {
       {isFormOpen && (
         <EmployeeForm
           employee={editingEmployee}
+          addresses={addresses}
+          contractors={contractors}
           onSave={handleSave}
           onCancel={handleCancel}
         />

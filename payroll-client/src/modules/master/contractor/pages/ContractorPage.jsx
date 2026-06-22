@@ -4,11 +4,13 @@ import styles from '../components/ContractorPage.module.css';
 import ContractorForm from '../components/ContractorForm';
 import ContractorTable from '../components/ContractorTable';
 import { getContractors, saveContractor, deleteContractor } from '../services/contractorService';
+import { getAddresses } from '../../address/services/addressService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
 
 const ContractorPage = () => {
   const addToast = useToast();
   const [contractors, setContractors] = useState([]);
+  const [addresses, setAddresses] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingContractor, setEditingContractor] = useState(null);
 
@@ -23,10 +25,28 @@ const ContractorPage = () => {
 
   const dropdownRef = useRef(null);
 
-  // Load initial contractors
+  // Load initial contractors and addresses
   useEffect(() => {
-    setContractors(getContractors());
-  }, []);
+    const fetchInitialData = async () => {
+      const companyId = localStorage.getItem('selectedCompany');
+      if (!companyId) {
+        addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+        return;
+      }
+      try {
+        const [loadedContractors, loadedAddresses] = await Promise.all([
+          getContractors(companyId),
+          getAddresses(companyId)
+        ]);
+        setContractors(loadedContractors);
+        setAddresses(loadedAddresses);
+      } catch (err) {
+        console.error('Error loading contractor initial data:', err);
+        addToast({ type: 'error', message: 'Failed to load contractor data.' });
+      }
+    };
+    fetchInitialData();
+  }, [addToast]);
 
   // Close download dropdown if clicked outside
   useEffect(() => {
@@ -60,11 +80,17 @@ const ContractorPage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deleteContractor(deleteTargetId);
-      setContractors(updated);
-      addToast({ type: 'success', message: 'Contractor deleted successfully!' });
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const updated = await deleteContractor(deleteTargetId, companyId);
+        setContractors(updated);
+        addToast({ type: 'success', message: 'Contractor deleted successfully!' });
+      } catch (err) {
+        console.error('Error deleting contractor:', err);
+        addToast({ type: 'error', message: 'Failed to delete contractor.' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -75,15 +101,24 @@ const ContractorPage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (contractorData) => {
-    const updated = saveContractor(contractorData);
-    setContractors(updated);
-    setIsFormOpen(false);
-    setEditingContractor(null);
-    addToast({
-      type: 'success',
-      message: contractorData.id ? 'Contractor updated successfully!' : 'Contractor created successfully!'
-    });
+  const handleSave = async (contractorData) => {
+    const companyId = localStorage.getItem('selectedCompany');
+    try {
+      const updated = await saveContractor(contractorData, companyId, addresses);
+      setContractors(updated);
+      setIsFormOpen(false);
+      setEditingContractor(null);
+      addToast({
+        type: 'success',
+        message: contractorData.id ? 'Contractor updated successfully!' : 'Contractor created successfully!'
+      });
+    } catch (err) {
+      console.error('Error saving contractor:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to save contractor.'
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -185,6 +220,7 @@ const ContractorPage = () => {
       {isFormOpen && (
         <ContractorForm
           contractor={editingContractor}
+          addresses={addresses}
           onSave={handleSave}
           onCancel={handleCancel}
         />

@@ -8,34 +8,9 @@ const RELATIONS = ['FATHER', 'MOTHER', 'HUSBAND', 'WIFE', 'SON', 'DAUGHTER', 'BR
 const MARITAL_STATUSES = ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED'];
 const QUALIFICATIONS = ['UNDER MATRIC', 'MATRIC', 'INTERMEDIATE', 'GRADUATE', 'POST GRADUATE', 'DIPLOMA'];
 const EMPLOYEE_TYPES = ['OFFICE STAFF', 'PACKING STAFF', 'BIDI ROLLER'];
-const CONTRACTORS = ['SELF', 'CONTRACTOR A', 'CONTRACTOR B', 'CONTRACTOR C'];
 const DOC_TYPES = ['AADHAAR', 'PAN', 'UAN', 'BANK PASSBOOK', 'VOTER ID'];
 
-const ADDRESS_TEMPLATES = [
-  {
-    value: 'BANDHA GHAT',
-    label: 'BANDHA GHAT',
-    postOffice: 'JHALDA',
-    district: 'PURULIA',
-    pincode: '723202'
-  },
-  {
-    value: 'DURGAPUR INDUSTRIAL AREA',
-    label: 'DURGAPUR INDUSTRIAL AREA',
-    postOffice: 'DURGAPUR HQ',
-    district: 'PASCHIM BARDHAMAN',
-    pincode: '713216'
-  },
-  {
-    value: 'SALT LAKE SECTOR V',
-    label: 'SALT LAKE SECTOR V',
-    postOffice: 'BIDHANNAGAR',
-    district: 'NORTH 24 PARGANAS',
-    pincode: '700091'
-  }
-];
-
-const EmployeeForm = ({ employee, onSave, onCancel }) => {
+const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCancel }) => {
   const addToast = useToast();
   const [activeTab, setActiveTab] = useState('Personal Info');
   const [errors, setErrors] = useState({});
@@ -247,7 +222,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
 
   const handleAddressChange = (e) => {
     const val = e.target.value;
-    const template = ADDRESS_TEMPLATES.find((t) => t.value === val);
+    const template = addresses.find((t) => t.address === val);
     if (template) {
       setFormData((prev) => ({
         ...prev,
@@ -345,7 +320,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
 
   const handleNomineeAddressChange = (e) => {
     const val = e.target.value;
-    const template = ADDRESS_TEMPLATES.find((t) => t.value === val);
+    const template = addresses.find((t) => t.address === val);
     if (template) {
       setNomineeInput((prev) => ({
         ...prev,
@@ -754,9 +729,9 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 onChange={handleChange}
                 className={styles.select}
               >
-                <option value="">SELECT CONTRACTOR</option>
-                {CONTRACTORS.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                <option value="SELF">SELF</option>
+                {contractors.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>
             </div>
@@ -774,8 +749,8 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 required
               >
                 <option value="" disabled>SELECT ADDRESS</option>
-                {ADDRESS_TEMPLATES.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                {addresses.map((opt) => (
+                  <option key={opt.id} value={opt.address}>{opt.address}</option>
                 ))}
               </select>
               {errors.address && <span className={styles.errorText}>{errors.address}</span>}
@@ -1042,8 +1017,8 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                   className={styles.select}
                 >
                   <option value="">SELECT ADDRESS</option>
-                  {ADDRESS_TEMPLATES.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  {addresses.map((opt) => (
+                    <option key={opt.id} value={opt.address}>{opt.address}</option>
                   ))}
                 </select>
               </div>

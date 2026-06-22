@@ -1,130 +1,212 @@
-const STORAGE_KEY = 'payroll_employees';
+import apiClient from '../../../../shared/services/apiClient';
 
-const defaultEmployees = [
-  {
-    id: '1',
-    abryApplicable: false,
-    uan: '100188684022',
-    ipNumber: '7431081694',
-    memberId: '17291',
-    memberName: 'KANDAN KUMAR',
-    dob: '1977-01-29',
-    dateOfJoining: '2025-06-01',
-    aadhaarCard: '123456789012',
-    gender: 'MALE',
-    fatherHusbandName: 'BIBHUTI KUMAR',
-    relation: 'FATHER',
-    maritalStatus: 'MARRIED',
-    mobile: '9876543210',
-    qualification: 'MATRIC',
-    employeeType: 'OFFICE STAFF',
-    contractor: 'SELF',
-    address: 'BANDHA GHAT',
-    postOffice: 'JHALDA',
-    district: 'PURULIA',
-    pincode: '723202',
-    nationality: 'INDIAN',
-    email: 'kandan@example.com',
-    isInternationalWorker: 'NO',
-    physicalHandicap: 'NO',
-    pmrpy: 'NO',
-    kycDetails: [
-      {
-        id: 'k1',
-        documentType: 'AADHAAR',
-        documentNumber: '123456789012',
-        nameAsPerDocument: 'KANDAN KUMAR',
-        ifsc: 'SBIN0001234',
-        kycImage: 'aadhaar_kandan.jpg'
-      }
-    ],
-    nomineeDetails: [
-      {
-        id: 'n1',
-        name: 'SITA KUMARI',
-        address: 'BANDHA GHAT',
-        postOffice: 'JHALDA',
-        district: 'PURULIA',
-        pincode: '723202',
-        aadhaarNumber: '987654321098',
-        relation: 'WIFE',
-        dob: '1982-05-15',
-        sharePercentage: '100',
-        guardianName: '',
-        guardianAddress: ''
-      }
-    ],
-    familyDetails: [
-      {
-        id: 'f1',
-        relation: 'SON',
-        name: 'RAHUL KUMAR',
-        dob: '2005-08-20',
-        aadhaarNumber: '112233445566'
-      }
-    ]
-  },
-  {
-    id: '2',
-    abryApplicable: false,
-    uan: '102008788327',
-    ipNumber: '7431095828',
-    memberId: '16764',
-    memberName: 'SADHANA MAHATO',
-    dob: '1992-04-14',
-    dateOfJoining: '2023-10-01',
-    aadhaarCard: '987654321012',
-    gender: 'FEMALE',
-    fatherHusbandName: 'AMRIT MAHATO',
-    relation: 'FATHER',
-    maritalStatus: 'MARRIED',
-    mobile: '9876543211',
-    qualification: 'GRADUATE',
-    employeeType: 'PACKING STAFF',
-    contractor: 'SELF',
-    address: 'DURGAPUR INDUSTRIAL AREA',
-    postOffice: 'DURGAPUR HQ',
-    district: 'PASCHIM BARDHAMAN',
-    pincode: '713216',
-    nationality: 'INDIAN',
-    email: 'sadhana@example.com',
-    isInternationalWorker: 'NO',
-    physicalHandicap: 'NO',
-    pmrpy: 'NO',
-    kycDetails: [],
-    nomineeDetails: [],
-    familyDetails: []
-  }
-];
+const mapToFrontend = (e) => {
+  const panDoc = e.kycDetail?.pan || '';
+  const bankAcDoc = e.kycDetail?.bank_ac || '';
+  const bankNameDoc = e.kycDetail?.bank_name || '';
+  const ifscDoc = e.kycDetail?.ifsc || '';
 
-export const getEmployees = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultEmployees));
-    return defaultEmployees;
+  const kycDetails = [];
+  if (panDoc) {
+    kycDetails.push({
+      id: 'k_pan_' + e.id,
+      documentType: 'PAN',
+      documentNumber: panDoc,
+      nameAsPerDocument: e.name,
+      ifsc: '',
+      kycImage: ''
+    });
   }
-  return JSON.parse(data);
+  if (bankAcDoc) {
+    kycDetails.push({
+      id: 'k_bank_' + e.id,
+      documentType: 'BANK PASSBOOK',
+      documentNumber: bankAcDoc,
+      nameAsPerDocument: e.name,
+      ifsc: ifscDoc,
+      kycImage: ''
+    });
+  }
+  if (e.uan) {
+    kycDetails.push({
+      id: 'k_uan_' + e.id,
+      documentType: 'UAN',
+      documentNumber: e.uan,
+      nameAsPerDocument: e.name,
+      ifsc: '',
+      kycImage: ''
+    });
+  }
+  if (e.aadhar) {
+    kycDetails.push({
+      id: 'k_aadhaar_' + e.id,
+      documentType: 'AADHAAR',
+      documentNumber: e.aadhar,
+      nameAsPerDocument: e.name,
+      ifsc: '',
+      kycImage: ''
+    });
+  }
+
+  return {
+    id: e.id,
+    abryApplicable: false,
+    uan: e.uan,
+    ipNumber: e.ip_number,
+    memberId: e.member_id || '',
+    memberName: e.name,
+    dob: e.dob,
+    dateOfJoining: e.date_of_joining,
+    aadhaarCard: e.aadhar,
+    gender: e.gender ? e.gender.toUpperCase() : 'MALE',
+    fatherHusbandName: e.father_or_husband_name || '',
+    relation: e.relation || '',
+    maritalStatus: e.marital_status || '',
+    mobile: e.mobile,
+    qualification: e.qualification || '',
+    employeeType: e.employee_type,
+    contractor: e.contractor ? e.contractor.name : 'SELF',
+    contractor_id: e.contractor_id,
+    address: e.address?.address || '',
+    postOffice: e.address?.post_office || '',
+    district: e.address?.district || '',
+    pincode: e.address?.pincode || '',
+    address_id: e.address_id,
+    nationality: e.nationality || 'INDIAN',
+    email: e.email || '',
+    isInternationalWorker: e.is_international_worker ? 'YES' : 'NO',
+    physicalHandicap: e.physical_handicap ? 'YES' : 'NO',
+    pmrpy: e.pmrpy ? 'YES' : 'NO',
+    employeeImage: e.image_path || '',
+    kycDetails: kycDetails,
+    nomineeDetails: (e.nomineeDetails || []).map(n => ({
+      id: n.id,
+      name: n.name,
+      address: n.address?.address || '',
+      postOffice: n.address?.post_office || '',
+      district: n.address?.district || '',
+      pincode: n.address?.pincode || '',
+      address_id: n.address_id,
+      aadhaarNumber: n.aadhar,
+      relation: n.relation,
+      dob: n.dob,
+      sharePercentage: String(n.share_percentage),
+      guardianName: n.guardian_name || '',
+      guardianAddress: n.guardian_address || ''
+    })),
+    familyDetails: (e.familyMembers || []).map(f => ({
+      id: f.id,
+      relation: f.relation,
+      name: f.name,
+      dob: f.dob,
+      aadhaarNumber: f.aadhar
+    }))
+  };
 };
 
-export const saveEmployee = (employee) => {
-  const employees = getEmployees();
+const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
+  const matchingAddress = addresses.find(a => a.address === e.address);
+  const addressId = matchingAddress?.id || e.address_id || e.address;
+
+  let contractorId = null;
+  if (e.contractor && e.contractor !== 'SELF') {
+    const matchingContractor = contractors.find(c => c.name === e.contractor);
+    contractorId = matchingContractor?.id || e.contractor_id || e.contractor;
+  }
+
+  const panDoc = e.kycDetails?.find(k => k.documentType === 'PAN')?.documentNumber || null;
+  const bankPassbook = e.kycDetails?.find(k => k.documentType === 'BANK PASSBOOK');
+  const bankAc = bankPassbook?.documentNumber || null;
+  const ifsc = bankPassbook?.ifsc || null;
+  const bankName = bankPassbook?.bankName || null;
+
+  const kycDetailsPayload = {
+    pan: panDoc,
+    bank_ac: bankAc,
+    bank_name: bankName,
+    ifsc: ifsc
+  };
+
+  const nomineesPayload = (e.nomineeDetails || []).map(n => {
+    const nAddress = addresses.find(a => a.address === n.address);
+    const nAddressId = nAddress?.id || n.address_id || n.address;
+    return {
+      address_id: nAddressId,
+      name: n.name,
+      aadhar: n.aadhaarNumber,
+      relation: n.relation,
+      dob: n.dob || '2000-01-01',
+      share_percentage: parseFloat(n.sharePercentage) || 100,
+      guardian_name: n.guardianName || null,
+      guardian_address: n.guardianAddress || null
+    };
+  });
+
+  const familyMembersPayload = (e.familyDetails || []).map(f => ({
+    relation: f.relation,
+    name: f.name,
+    dob: f.dob || '2000-01-01',
+    aadhar: f.aadhaarNumber
+  }));
+
+  const formatGender = (g) => {
+    if (!g) return 'Male';
+    const lower = g.toLowerCase();
+    if (lower === 'male') return 'Male';
+    if (lower === 'female') return 'Female';
+    return 'Other';
+  };
+
+  return {
+    company_id: companyId,
+    address_id: addressId,
+    contractor_id: contractorId,
+    image_path: e.employeeImage || null,
+    uan: e.uan,
+    ip_number: e.ipNumber,
+    member_id: e.memberId || null,
+    name: e.memberName,
+    dob: e.dob,
+    aadhar: e.aadhaarCard,
+    gender: formatGender(e.gender),
+    father_or_husband_name: e.fatherHusbandName || null,
+    relation: e.relation || null,
+    marital_status: e.maritalStatus || null,
+    mobile: e.mobile,
+    qualification: e.qualification || null,
+    date_of_joining: e.dateOfJoining,
+    employee_type: e.employeeType,
+    nationality: e.nationality || 'INDIAN',
+    email: e.email || null,
+    is_international_worker: e.isInternationalWorker === 'YES',
+    physical_handicap: e.physicalHandicap === 'YES',
+    pmrpy: e.pmrpy === 'YES',
+    kyc_details: kycDetailsPayload,
+    nominees: nomineesPayload,
+    family_members: familyMembersPayload
+  };
+};
+
+export const getEmployees = async (companyId) => {
+  if (!companyId) return [];
+  const response = await apiClient.get(`employees/company/${companyId}`);
+  if ((response.data?.status || response.data?.success) && response.data?.data) {
+    return response.data.data.map(mapToFrontend);
+  }
+  return [];
+};
+
+export const saveEmployee = async (employee, companyId, addresses = [], contractors = []) => {
+  const payload = mapToBackend(employee, companyId, addresses, contractors);
   if (employee.id) {
-    const index = employees.findIndex(e => e.id === employee.id);
-    if (index !== -1) {
-      employees[index] = employee;
-    }
+    await apiClient.put(`employees/${employee.id}`, payload);
   } else {
-    const nextId = String(employees.length > 0 ? Math.max(...employees.map(e => parseInt(e.id))) + 1 : 1);
-    const newEmployee = { ...employee, id: nextId };
-    employees.push(newEmployee);
+    await apiClient.post('employees', payload);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(employees));
-  return employees;
+  return await getEmployees(companyId);
 };
 
-export const deleteEmployee = (id) => {
-  const employees = getEmployees();
-  const filtered = employees.filter(e => e.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  return filtered;
+export const deleteEmployee = async (id, companyId) => {
+  await apiClient.delete(`employees/${id}`);
+  return await getEmployees(companyId);
 };
