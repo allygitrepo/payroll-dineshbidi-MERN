@@ -1,0 +1,267 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.headerSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 16px;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0;
+}
+
+.card {
+  background-color: var(--card-bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 24px;
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.03);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.required {
+  color: var(--danger);
+  margin-left: 3px;
+}
+
+.input, .select {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.input:focus, .select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.15);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.disabledInput {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+.buttonGroupCentered {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.searchBtn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 9px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.searchBtn:hover {
+  background-color: var(--primary-hover);
+}
+
+.resetBtn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 9px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.resetBtn:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Document entries inline inputs */
+.inlineRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.inlineField {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.addButton {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-weight: bold;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.addButton:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Compact Sub-grids for arrays */
+.subTableContainer {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+
+.subTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.subTable th {
+  padding: 12px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background-color: var(--bg-main);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.subTable td {
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+}
+
+.subTable tr:last-child td {
+  border-bottom: none;
+}
+
+.removeBtn {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.removeBtn:hover {
+  opacity: 0.8;
+}
+
+.saveBtn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px 28px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.saveBtn:hover {
+  background-color: var(--primary-hover);
+}
+
+.cancelBtn {
+  background-color: var(--text-muted);
+  color: white;
+  border: none;
+  padding: 10px 28px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancelBtn:hover {
+  background-color: var(--text-secondary);
+}
+
+@media (max-width: 900px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  .inlineRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .inlineField {
+    width: 100%;
+  }
+  .addButton {
+    width: 100%;
+    margin-top: 10px;
+  }
+}
+
+.errorText {
+  color: var(--danger, #ef4444);
+  font-size: 0.75rem;
+  margin-top: 4px;
+  font-weight: 500;
+  display: block;
+}
+

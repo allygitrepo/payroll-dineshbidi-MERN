@@ -132,9 +132,11 @@ const DashboardPage = () => {
 
         {/* Content Pane */}
         <main className={styles.contentPane}>
-          <div className={styles.contentHeader}>
-            <h1 className={styles.pageTitle}>{activeMenu}</h1>
-          </div>
+          {activeMenu === 'Dashboard' && (
+            <div className={styles.contentHeader}>
+              <h1 className={styles.pageTitle}>{activeMenu}</h1>
+            </div>
+          )}
 
           {activeMenu === 'Dashboard' ? (
             <div className={styles.dashboardGrid}>

@@ -7,7 +7,7 @@ import AddressPage from '../address/pages/AddressPage';
 
 const MasterPage = ({ activeSubMenu }) => {
   switch (activeSubMenu) {
-    case 'Comapany':
+    case 'Company':
       return <CompanyPage />;
     case 'Employee':
       return <EmployeePage />;
