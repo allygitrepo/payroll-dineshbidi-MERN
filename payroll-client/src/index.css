@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Background */
+  --bg-main: #F4F5FB;
+  --bg-secondary: #EEF0F7;
+
+  /* Cards */
+  --card-bg: #FFFFFF;
+
+  /* Primary Green */
+  --primary: #27D68A;
+  --primary-hover: #1FC678;
+  --primary-light: #DDF8EC;
+
+  /* Accent Orange */
+  --accent: #F8B26A;
+  --accent-light: #FFE5C7;
+
+  /* Text */
+  --text-primary: #1E1E2D;
+  --text-secondary: #6C7280;
+  --text-muted: #A5ACB8;
+
+  /* Border */
+  --border: #E7EAF3;
+
+  /* Sidebar Icons */
+  --icon-default: #8B93A7;
+  --icon-active: #27D68A;
+
+  /* Status */
+  --success: #27D68A;
+  --warning: #F8B26A;
+  --danger: #EF4444;
+  --info: #4F8CFF;
+
+  /* Charts */
+  --chart-green: #27D68A;
+  --chart-orange: #F8B26A;
+  --chart-bg: #DDF8EC;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+}
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C1C5D0;
+  border-radius: 10px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A0A5B5;
+}
+
+/* Firefox scrollbar support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #C1C5D0 transparent;
+}
