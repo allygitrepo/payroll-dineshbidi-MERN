@@ -1,17 +1,42 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './KycUpdatePage.module.css';
 
 const KycSearch = ({ employees, selectedEmployeeId, onSelectEmployee, onSearch, onReset }) => {
+  const [error, setError] = useState('');
+
+  // Reset local error when selectedEmployeeId becomes empty (e.g. on global reset)
+  useEffect(() => {
+    if (!selectedEmployeeId) {
+      setError('');
+    }
+  }, [selectedEmployeeId]);
+
   // Find current selected employee details
   const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
 
   const handleSelectChange = (e) => {
-    onSelectEmployee(e.target.value);
+    const val = e.target.value;
+    onSelectEmployee(val);
+    if (val) {
+      setError('');
+    } else {
+      setError('Please select an employee first!');
+    }
   };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
+    if (!selectedEmployeeId) {
+      setError('Please select an employee first!');
+      return;
+    }
+    setError('');
     onSearch();
+  };
+
+  const handleResetClick = () => {
+    setError('');
+    onReset();
   };
 
   return (
@@ -26,8 +51,12 @@ const KycSearch = ({ employees, selectedEmployeeId, onSelectEmployee, onSearch, 
             <select
               value={selectedEmployeeId}
               onChange={handleSelectChange}
+              onBlur={() => {
+                if (!selectedEmployeeId) {
+                  setError('Please select an employee first!');
+                }
+              }}
               className={styles.select}
-              required
             >
               <option value="">SELECT EMPLOYEE</option>
               {employees.map(emp => (
@@ -36,6 +65,7 @@ const KycSearch = ({ employees, selectedEmployeeId, onSelectEmployee, onSearch, 
                 </option>
               ))}
             </select>
+            {error && <span className={styles.errorText}>{error}</span>}
           </div>
 
           {/* UAN input */}
@@ -68,7 +98,7 @@ const KycSearch = ({ employees, selectedEmployeeId, onSelectEmployee, onSearch, 
           <button type="submit" className={styles.searchBtn}>
             Search
           </button>
-          <button type="button" onClick={onReset} className={styles.resetBtn}>
+          <button type="button" onClick={handleResetClick} className={styles.resetBtn}>
             Reset
           </button>
         </div>
@@ -78,3 +108,4 @@ const KycSearch = ({ employees, selectedEmployeeId, onSelectEmployee, onSearch, 
 };
 
 export default KycSearch;
+

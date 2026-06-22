@@ -56,7 +56,10 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
     website: ''
   });
 
+  const [errors, setErrors] = useState({});
+
   useEffect(() => {
+    setErrors({});
     if (company) {
       setFormData(company);
     } else {
@@ -82,11 +85,106 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
     }
   }, [company]);
 
+  const validateField = (name, value) => {
+    if (name === 'estbId') {
+      return !value.trim() ? 'Estb ID is required!' : '';
+    }
+    if (name === 'estbName') {
+      return !value.trim() ? 'Establishment Name is required!' : '';
+    }
+    if (name === 'estbType') {
+      return !value ? 'Establishment Type is required!' : '';
+    }
+    if (name === 'epfoOffice') {
+      return !value.trim() ? 'Under EPFO Office is required!' : '';
+    }
+    if (name === 'linNo') {
+      if (!value.trim()) return 'LIN No. is required!';
+      const linRegex = /^[0-9]{10}$/;
+      return !linRegex.test(value) ? 'LIN No. must be exactly 10 digits!' : '';
+    }
+    if (name === 'esicId') {
+      if (!value.trim()) return 'ESIC ID is required!';
+      const esicRegex = /^[0-9]{17}$/;
+      return !esicRegex.test(value) ? 'ESIC ID must be exactly 17 digits!' : '';
+    }
+    if (name === 'address') {
+      return !value ? 'Address is required!' : '';
+    }
+    if (name === 'postOffice') {
+      return !value.trim() ? 'Post Office is required!' : '';
+    }
+    if (name === 'district') {
+      return !value.trim() ? 'District is required!' : '';
+    }
+    if (name === 'pincode') {
+      return !value.trim() ? 'Pincode is required!' : '';
+    }
+    if (name === 'pan') {
+      if (!value.trim()) return 'PAN is required!';
+      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+      return !panRegex.test(value.toUpperCase()) ? 'Invalid PAN Format (e.g., ABCDE1234F)' : '';
+    }
+    if (name === 'tan') {
+      if (!value.trim()) return 'TAN is required!';
+      const tanRegex = /^[A-Z]{4}[0-9]{5}[A-Z]{1}$/;
+      return !tanRegex.test(value.toUpperCase()) ? 'Invalid TAN Format (e.g., ABCD12345E)' : '';
+    }
+    if (name === 'ptax') {
+      return !value.trim() ? 'P. Tax is required!' : '';
+    }
+    if (name === 'email') {
+      if (!value.trim()) return 'Primary Email Id is required!';
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return !emailRegex.test(value) ? 'Invalid Email Address Format!' : '';
+    }
+    if (name === 'phone') {
+      if (!value.trim()) return 'Phone is required!';
+      const phoneRegex = /^[0-9]{10}$/;
+      return !phoneRegex.test(value) ? 'Phone number must be exactly 10 digits!' : '';
+    }
+    if (name === 'website') {
+      if (value && value.trim()) {
+        const websiteRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/;
+        return !websiteRegex.test(value) ? 'Invalid Website URL Format!' : '';
+      }
+      return '';
+    }
+    return '';
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    let finalValue = value;
+
+    if (name === 'phone') {
+      finalValue = value.replace(/\D/g, '').slice(0, 10);
+    } else if (name === 'linNo') {
+      finalValue = value.replace(/\D/g, '').slice(0, 10);
+    } else if (name === 'esicId') {
+      finalValue = value.replace(/\D/g, '').slice(0, 17);
+    } else if (name === 'pan' || name === 'tan') {
+      finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: finalValue
+    }));
+
+    const error = validateField(name, finalValue);
+    setErrors((prev) => ({
+      ...prev,
+      [name]: error
+    }));
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
+    setErrors((prev) => ({
+      ...prev,
+      [name]: error
     }));
   };
 
@@ -107,63 +205,32 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
         address: val
       }));
     }
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.address;
+      delete next.postOffice;
+      delete next.district;
+      delete next.pincode;
+      return next;
+    });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Validations
-    if (!formData.estbId.trim()) {
-      addToast({ type: 'error', message: 'Estb ID is required!' });
-      return;
-    }
-    if (!formData.estbName.trim()) {
-      addToast({ type: 'error', message: 'Establishment Name is required!' });
-      return;
-    }
-    if (!formData.estbType) {
-      addToast({ type: 'error', message: 'Establishment Type is required!' });
-      return;
-    }
-    if (!formData.epfoOffice.trim()) {
-      addToast({ type: 'error', message: 'Under EPFO Office is required!' });
-      return;
-    }
-    if (!formData.linNo.trim()) {
-      addToast({ type: 'error', message: 'LIN No. is required!' });
-      return;
-    }
-    if (!formData.address) {
-      addToast({ type: 'error', message: 'Address is required!' });
-      return;
-    }
-    if (!formData.postOffice.trim()) {
-      addToast({ type: 'error', message: 'Post Office is required!' });
-      return;
-    }
-    
-    // Regex validations
-    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-    if (formData.pan && !panRegex.test(formData.pan.toUpperCase())) {
-      addToast({ type: 'warning', message: 'Invalid PAN Format (e.g., ABCDE1234F)' });
-      return;
-    }
+    const tempErrors = {};
+    Object.keys(formData).forEach((key) => {
+      if (key !== 'id') {
+        const error = validateField(key, formData[key]);
+        if (error) {
+          tempErrors[key] = error;
+        }
+      }
+    });
 
-    const tanRegex = /^[A-Z]{4}[0-9]{5}[A-Z]{1}$/;
-    if (formData.tan && !tanRegex.test(formData.tan.toUpperCase())) {
-      addToast({ type: 'warning', message: 'Invalid TAN Format (e.g., ABCD12345E)' });
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
-      addToast({ type: 'warning', message: 'Invalid Email Address Format' });
-      return;
-    }
-
-    const phoneRegex = /^[0-9]{10}$/;
-    if (formData.phone && !phoneRegex.test(formData.phone)) {
-      addToast({ type: 'warning', message: 'Phone number must be exactly 10 digits' });
+    if (Object.keys(tempErrors).length > 0) {
+      setErrors(tempErrors);
+      addToast({ type: 'error', message: 'Please correct the errors in the form.' });
       return;
     }
 
@@ -172,7 +239,7 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
 
   return (
     <div className={styles.formCard}>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <div className={styles.formGrid}>
           
           {/* Row 1 */}
@@ -185,10 +252,12 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="estbId"
               value={formData.estbId}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER ESTB ID *"
               className={styles.input}
               required
             />
+            {errors.estbId && <span className={styles.errorText}>{errors.estbId}</span>}
           </div>
 
           <div className={`${styles.field} ${styles.fieldEstbName}`}>
@@ -200,10 +269,12 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="estbName"
               value={formData.estbName}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER ESTABLISHMENT NAME *"
               className={styles.input}
               required
             />
+            {errors.estbName && <span className={styles.errorText}>{errors.estbName}</span>}
           </div>
 
           <div className={`${styles.field} ${styles.fieldEstbType}`}>
@@ -214,6 +285,7 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="estbType"
               value={formData.estbType}
               onChange={handleChange}
+              onBlur={handleBlur}
               className={styles.select}
               required
             >
@@ -222,6 +294,7 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
+            {errors.estbType && <span className={styles.errorText}>{errors.estbType}</span>}
           </div>
 
           <div className={`${styles.field} ${styles.fieldEpfo}`}>
@@ -233,10 +306,12 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="epfoOffice"
               value={formData.epfoOffice}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER UNDER EPFO OFFICE *"
               className={styles.input}
               required
             />
+            {errors.epfoOffice && <span className={styles.errorText}>{errors.epfoOffice}</span>}
           </div>
 
           {/* Row 2 */}
@@ -249,10 +324,13 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="linNo"
               value={formData.linNo}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER LIN NO. *"
               className={styles.input}
+              maxLength={10}
               required
             />
+            {errors.linNo && <span className={styles.errorText}>{errors.linNo}</span>}
           </div>
 
           <div className={`${styles.field} ${styles.fieldEsic}`}>
@@ -264,10 +342,13 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="esicId"
               value={formData.esicId}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER ESIC ID *"
               className={styles.input}
+              maxLength={17}
               required
             />
+            {errors.esicId && <span className={styles.errorText}>{errors.esicId}</span>}
           </div>
 
           {/* Row 3 */}
@@ -279,6 +360,7 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="address"
               value={formData.address}
               onChange={handleAddressChange}
+              onBlur={handleBlur}
               className={styles.select}
               required
             >
@@ -287,6 +369,7 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
+            {errors.address && <span className={styles.errorText}>{errors.address}</span>}
           </div>
 
           <div className={`${styles.field} ${styles.fieldPostOffice}`}>
@@ -298,10 +381,12 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="postOffice"
               value={formData.postOffice}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER POST OFFICE *"
               className={styles.input}
               required
             />
+            {errors.postOffice && <span className={styles.errorText}>{errors.postOffice}</span>}
           </div>
 
           <div className={`${styles.field} ${styles.fieldDist}`}>
@@ -318,6 +403,7 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               readOnly
               required
             />
+            {errors.district && <span className={styles.errorText}>{errors.district}</span>}
           </div>
 
           {/* Row 4 */}
@@ -335,6 +421,7 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               readOnly
               required
             />
+            {errors.pincode && <span className={styles.errorText}>{errors.pincode}</span>}
           </div>
 
           <div className={`${styles.field} ${styles.fieldPan}`}>
@@ -346,10 +433,13 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="pan"
               value={formData.pan}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER PAN *"
               className={styles.input}
+              maxLength={10}
               required
             />
+            {errors.pan && <span className={styles.errorText}>{errors.pan}</span>}
           </div>
 
           <div className={`${styles.field} ${styles.fieldTan}`}>
@@ -361,10 +451,13 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="tan"
               value={formData.tan}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER TAN *"
               className={styles.input}
+              maxLength={10}
               required
             />
+            {errors.tan && <span className={styles.errorText}>{errors.tan}</span>}
           </div>
 
           <div className={`${styles.field} ${styles.fieldPtax}`}>
@@ -376,10 +469,12 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="ptax"
               value={formData.ptax}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER P. TAX *"
               className={styles.input}
               required
             />
+            {errors.ptax && <span className={styles.errorText}>{errors.ptax}</span>}
           </div>
 
           {/* Row 5 */}
@@ -392,10 +487,12 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="email"
               value={formData.email}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER PRIMARY EMAIL ID *"
               className={styles.input}
               required
             />
+            {errors.email && <span className={styles.errorText}>{errors.email}</span>}
           </div>
 
           <div className={`${styles.field} ${styles.fieldPhone}`}>
@@ -407,10 +504,13 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="phone"
               value={formData.phone}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER PHONE *"
               className={styles.input}
+              maxLength={10}
               required
             />
+            {errors.phone && <span className={styles.errorText}>{errors.phone}</span>}
           </div>
 
           <div className={`${styles.field} ${styles.fieldWebsite}`}>
@@ -422,9 +522,11 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               name="website"
               value={formData.website}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="ENTER WEBSITE NAME"
               className={styles.input}
             />
+            {errors.website && <span className={styles.errorText}>{errors.website}</span>}
           </div>
 
         </div>

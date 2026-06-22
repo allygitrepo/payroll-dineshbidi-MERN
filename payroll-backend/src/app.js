@@ -7,7 +7,14 @@ const routes = require("./routes.index");
 const app = express();
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true
+}));
+app.use((req, res, next) => {
+    console.log(`[DEBUG] Incoming Request: ${req.method} ${req.originalUrl || req.url}`);
+    next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

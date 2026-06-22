@@ -4,19 +4,43 @@ import styles from '../components/KycUpdatePage.module.css';
 import KycSearch from '../components/KycSearch';
 import KycForm from '../components/KycForm';
 import { getEmployees, saveEmployee } from '../../employee/services/employeeService';
+import { getAddresses } from '../../address/services/addressService';
+import { getContractors } from '../../contractor/services/contractorService';
 import { useToast } from '../../../../shared/components';
 
 const KycUpdatePage = () => {
   const addToast = useToast();
   const [employees, setEmployees] = useState([]);
+  const [addresses, setAddresses] = useState([]);
+  const [contractors, setContractors] = useState([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [activeEmployee, setActiveEmployee] = useState(null);
   const [localKycDetails, setLocalKycDetails] = useState([]);
 
-  // Load registered employees on mount
+  // Load registered employees, addresses and contractors on mount
   useEffect(() => {
-    setEmployees(getEmployees());
-  }, []);
+    const fetchInitialData = async () => {
+      const companyId = localStorage.getItem('selectedCompany');
+      if (!companyId) {
+        addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+        return;
+      }
+      try {
+        const [loadedEmployees, loadedAddresses, loadedContractors] = await Promise.all([
+          getEmployees(companyId),
+          getAddresses(companyId),
+          getContractors(companyId)
+        ]);
+        setEmployees(loadedEmployees);
+        setAddresses(loadedAddresses);
+        setContractors(loadedContractors);
+      } catch (err) {
+        console.error('Error fetching initial KYC data:', err);
+        addToast({ type: 'error', message: 'Failed to load employee directory.' });
+      }
+    };
+    fetchInitialData();
+  }, [addToast]);
 
   const handleSelectEmployee = (id) => {
     setSelectedEmployeeId(id);
@@ -31,7 +55,6 @@ const KycUpdatePage = () => {
     if (emp) {
       setActiveEmployee(emp);
       setLocalKycDetails(emp.kycDetails || []);
-      addToast({ type: 'success', message: `Loaded KYC details for ${emp.memberName}` });
     }
   };
 
@@ -39,7 +62,6 @@ const KycUpdatePage = () => {
     setSelectedEmployeeId('');
     setActiveEmployee(null);
     setLocalKycDetails([]);
-    addToast({ type: 'info', message: 'Search reset' });
   };
 
   const handleAddKyc = (newDoc) => {
@@ -52,15 +74,13 @@ const KycUpdatePage = () => {
       id: 'k_local_' + Date.now()
     };
     setLocalKycDetails(prev => [...prev, docWithId]);
-    addToast({ type: 'info', message: 'Document added to queue' });
   };
 
   const handleRemoveKyc = (id) => {
     setLocalKycDetails(prev => prev.filter(item => (item.id || item.documentNumber) !== id));
-    addToast({ type: 'info', message: 'Document removed from queue' });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!activeEmployee) {
       addToast({ type: 'error', message: 'No active employee loaded. Search first!' });
       return;
@@ -71,16 +91,24 @@ const KycUpdatePage = () => {
       kycDetails: localKycDetails
     };
 
-    const updatedList = saveEmployee(updatedEmployee);
-    setEmployees(updatedList);
-    setActiveEmployee(updatedEmployee);
-    addToast({ type: 'success', message: `KYC documents saved successfully for ${activeEmployee.memberName}!` });
+    const companyId = localStorage.getItem('selectedCompany');
+    try {
+      const updatedList = await saveEmployee(updatedEmployee, companyId, addresses, contractors);
+      setEmployees(updatedList);
+      setActiveEmployee(updatedEmployee);
+      addToast({ type: 'success', message: `KYC documents saved successfully for ${activeEmployee.memberName}!` });
+    } catch (err) {
+      console.error('Error saving KYC details:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to save KYC details.'
+      });
+    }
   };
 
   const handleCancel = () => {
     if (activeEmployee) {
       setLocalKycDetails(activeEmployee.kycDetails || []);
-      addToast({ type: 'info', message: 'Changes reverted to last saved state' });
     } else {
       handleReset();
     }
@@ -91,9 +119,9 @@ const KycUpdatePage = () => {
       {/* Title Header */}
       <div className={styles.headerSection}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ color: 'var(--primary)', backgroundColor: 'var(--primary-light)', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center' }}>
+          {/*<div style={{ color: 'var(--primary)', backgroundColor: 'var(--primary-light)', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center' }}>
             <Fingerprint size={24} />
-          </div>
+          </div>*/}
           <h1 className={styles.title} style={{ fontSize: '1.75rem', fontWeight: 700 }}>KYC Update</h1>
         </div>
       </div>

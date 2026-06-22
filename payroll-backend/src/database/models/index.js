@@ -9,6 +9,11 @@ const EmployeeKycDetail = require("../../modules/Masters/Employee/employeeKycDet
 const EmployeeNomineeDetail = require("../../modules/Masters/Employee/employeeNomineeDetail.model");
 const EmployeeFamilyMember = require("../../modules/Masters/Employee/employeeFamilyMember.model");
 const Attendance = require("../../modules/Attendance/attendance.model");
+const ChallanSetup = require("../../modules/Setup/ChallanSetup/challanSetup.model");
+const ProfessionalTax = require("../../modules/Setup/ProfessionalTax/professionalTax.model");
+const BidiRollerWage = require("../../modules/Setup/BidiRollerWage/bidiRollerWage.model");
+const PackingWage = require("../../modules/Setup/PackingWage/packingWage.model");
+const OfficeStaffSalary = require("../../modules/Setup/OfficeStaffSalary/officeStaffSalary.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -27,6 +32,11 @@ db.EmployeeKycDetail = EmployeeKycDetail;
 db.EmployeeNomineeDetail = EmployeeNomineeDetail;
 db.EmployeeFamilyMember = EmployeeFamilyMember;
 db.Attendance = Attendance;
+db.ChallanSetup = ChallanSetup;
+db.ProfessionalTax = ProfessionalTax;
+db.BidiRollerWage = BidiRollerWage;
+db.PackingWage = PackingWage;
+db.OfficeStaffSalary = OfficeStaffSalary;
 
 // Model associations
 db.User.hasMany(db.RefreshToken, {
@@ -76,6 +86,70 @@ db.Address.hasMany(db.Contractor, {
 db.Contractor.belongsTo(db.Address, {
     foreignKey: "address_id",
     as: "address",
+});
+
+// ChallanSetup relationships
+db.Company.hasMany(db.ChallanSetup, {
+    foreignKey: "company_id",
+    as: "challanSetups",
+    onDelete: "CASCADE",
+});
+db.ChallanSetup.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+// ProfessionalTax relationships
+db.Company.hasMany(db.ProfessionalTax, {
+    foreignKey: "company_id",
+    as: "professionalTaxes",
+    onDelete: "CASCADE",
+});
+db.ProfessionalTax.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+// BidiRollerWage relationships
+db.Company.hasMany(db.BidiRollerWage, {
+    foreignKey: "company_id",
+    as: "bidiRollerWages",
+    onDelete: "CASCADE",
+});
+db.BidiRollerWage.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+// PackingWage relationships
+db.Company.hasMany(db.PackingWage, {
+    foreignKey: "company_id",
+    as: "packingWages",
+    onDelete: "CASCADE",
+});
+db.PackingWage.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+// OfficeStaffSalary relationships
+db.Company.hasMany(db.OfficeStaffSalary, {
+    foreignKey: "company_id",
+    as: "officeStaffSalaries",
+    onDelete: "CASCADE",
+});
+db.OfficeStaffSalary.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+db.Employee.hasMany(db.OfficeStaffSalary, {
+    foreignKey: "employee_id",
+    as: "officeStaffSalaries",
+    onDelete: "CASCADE",
+});
+db.OfficeStaffSalary.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
 });
 
 // Employee relationships

@@ -86,7 +86,7 @@
 
 .buttonGroupCentered {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 16px;
   margin-top: 16px;
 }
@@ -124,7 +124,7 @@
 /* Document entries inline inputs */
 .inlineRow {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 16px;
   margin-bottom: 24px;
   flex-wrap: wrap;
@@ -226,7 +226,7 @@
 }
 
 .cancelBtn {
-  background-color: var(--primary);
+  background-color: var(--text-muted);
   color: white;
   border: none;
   padding: 10px 28px;
@@ -237,7 +237,7 @@
 }
 
 .cancelBtn:hover {
-  background-color: var(--primary-hover);
+  background-color: var(--text-secondary);
 }
 
 @media (max-width: 900px) {
@@ -256,3 +256,12 @@
     margin-top: 10px;
   }
 }
+
+.errorText {
+  color: var(--danger, #ef4444);
+  font-size: 0.75rem;
+  margin-top: 4px;
+  font-weight: 500;
+  display: block;
+}
+
