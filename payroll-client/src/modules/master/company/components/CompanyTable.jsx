@@ -25,7 +25,10 @@ const CompanyTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
     <div className={styles.tableCard}>
       
       {/* Search Controls */}
-      <div className={styles.tableControls} style={{ justifyContent: 'flex-end' }}>
+      <div className={styles.tableControls}>
+        <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+          Total Companies: {totalEntries}
+        </div>
 
         <div className={styles.searchWrapper}>
           <Search size={16} className={styles.searchIcon} />
@@ -37,7 +40,6 @@ const CompanyTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
             className={styles.searchInput}
           />
         </div>
-
       </div>
 
 

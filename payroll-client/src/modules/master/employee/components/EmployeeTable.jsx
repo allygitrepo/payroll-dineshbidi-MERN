@@ -11,14 +11,14 @@ const formatDate = (dateStr) => {
   return dateStr;
 };
 
-const EmployeeTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) => {
+const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeFilterChange, onEdit, onDelete, onToggleAbry }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Reset pagination if filter changes
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, pageSize]);
+  }, [searchTerm, pageSize, selectedType]);
 
   // Pagination calculations
   const totalEntries = data.length;
@@ -31,17 +31,45 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =
 
   return (
     <div className={styles.tableCard}>
-      {/* Search Controls right-aligned */}
-      <div className={styles.tableControls} style={{ justifyContent: 'flex-end' }}>
-        <div className={styles.searchWrapper}>
-          <Search size={16} className={styles.searchIcon} />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search..."
-            className={styles.searchInput}
-          />
+      {/* Search Controls */}
+      <div className={styles.tableControls}>
+        <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+          Total Employees: {totalEntries}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <select
+            value={selectedType || ''}
+            onChange={(e) => onTypeFilterChange && onTypeFilterChange(e.target.value)}
+            className={styles.limitSelect}
+            style={{
+              height: '42px',
+              padding: '0 14px',
+              borderRadius: '8px',
+              border: '1px solid var(--border)',
+              outline: 'none',
+              backgroundColor: 'var(--card-bg)',
+              color: 'var(--text-primary)',
+              fontSize: '0.9rem',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="">ALL EMPLOYEE TYPES</option>
+            <option value="OFFICE STAFF">OFFICE STAFF</option>
+            <option value="PACKING STAFF">PACKING STAFF</option>
+            <option value="BIDI ROLLER">BIDI ROLLER</option>
+          </select>
+
+          <div className={styles.searchWrapper}>
+            <Search size={16} className={styles.searchIcon} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search..."
+              className={styles.searchInput}
+            />
+          </div>
         </div>
       </div>
 
@@ -76,9 +104,9 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =
                     <input
                       type="checkbox"
                       checked={employee.abryApplicable || false}
-                      readOnly
-                      disabled
+                      onChange={() => onToggleAbry && onToggleAbry(employee.id)}
                       className={styles.checkbox}
+                      style={{ cursor: 'pointer' }}
                     />
                   </td>
                   <td style={{ fontWeight: '500' }}>{employee.uan}</td>

@@ -199,11 +199,9 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
       return !mobileRegex.test(value) ? 'Mobile must be exactly 10 digits' : '';
     }
     if (name === 'aadhaarCard') {
-      if (value && value.trim()) {
-        const aadhaarRegex = /^[0-9]{12}$/;
-        return !aadhaarRegex.test(value) ? 'Aadhar Card Number must be exactly 12 digits!' : '';
-      }
-      return '';
+      if (!value || !value.trim()) return 'Aadhar Card Number is required!';
+      const aadhaarRegex = /^[0-9]{12}$/;
+      return !aadhaarRegex.test(value) ? 'Aadhar Card Number must be exactly 12 digits!' : '';
     }
     return '';
   };
@@ -601,7 +599,9 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
             </div>
 
             <div className={styles.field}>
-              <label className={styles.label}>Aadhar Card Number</label>
+              <label className={styles.label}>
+                Aadhar Card Number <span className={styles.required}>*</span>
+              </label>
               <input
                 type="text"
                 name="aadhaarCard"
