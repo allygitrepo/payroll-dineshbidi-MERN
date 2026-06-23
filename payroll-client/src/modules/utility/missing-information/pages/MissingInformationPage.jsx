@@ -5,127 +5,6 @@ import { useToast } from '../../../../shared/components';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import styles from '../components/MissingInformationPage.module.css';
 
-// Preloaded mock data with various missing fields for realistic audits
-const MOCK_EMPLOYEES = [
-  {
-    id: 'mock1',
-    memberName: 'NAMITA MAHATO',
-    uan: '102318950034',
-    dob: '', // Missing Dob
-    dateOfJoining: '2026-06-23',
-    gender: 'FEMALE',
-    relation: '', // Missing Relation
-    maritalStatus: 'SINGLE',
-    qualification: 'MATRIC',
-    kycDetails: [
-      { documentType: 'AADHAAR', documentNumber: '657199054792' },
-      { documentType: 'BANK PASSBOOK', documentNumber: '99283726182', ifsc: 'SBIN0002031' }
-    ] // Missing PAN KYC
-  },
-  {
-    id: 'mock2',
-    memberName: 'REKHA KUMAR',
-    uan: '102318088496',
-    dob: '1995-08-12',
-    dateOfJoining: '2026-06-23',
-    gender: 'FEMALE',
-    relation: 'HUSBAND',
-    maritalStatus: 'MARRIED',
-    qualification: 'GRADUATE',
-    kycDetails: [] // Missing AADHAAR, PAN, BANK KYC
-  },
-  {
-    id: 'mock3',
-    memberName: 'NIYATI MACHHUAR',
-    uan: '102318063813',
-    dob: '1998-11-20',
-    dateOfJoining: '2026-06-23',
-    gender: 'FEMALE',
-    relation: 'FATHER',
-    maritalStatus: 'SINGLE',
-    qualification: 'UNDER GRADUATE',
-    kycDetails: [
-      { documentType: 'AADHAAR', documentNumber: '399417814159' },
-      { documentType: 'PAN', documentNumber: 'ABCDE1234F' }
-    ] // Missing BANK KYC
-  },
-  {
-    id: 'mock4',
-    memberName: 'RAHUL KUMAR',
-    uan: '101556427344',
-    dob: '2001-04-05',
-    dateOfJoining: '2026-06-23',
-    gender: 'MALE',
-    relation: 'FATHER',
-    maritalStatus: '', // Missing Marital Status
-    qualification: '', // Missing Qualification
-    kycDetails: [
-      { documentType: 'AADHAAR', documentNumber: '804595857184' },
-      { documentType: 'PAN', documentNumber: 'XYZAB5678K' },
-      { documentType: 'BANK PASSBOOK', documentNumber: '88392817263', ifsc: 'HDFC0001928' }
-    ]
-  },
-  {
-    id: 'mock5',
-    memberName: 'MONARANJAN MAHATO',
-    uan: '102316622517',
-    dob: '1990-12-15',
-    dateOfJoining: '', // Missing Doj
-    gender: '', // Missing Gender
-    relation: 'FATHER',
-    maritalStatus: 'MARRIED',
-    qualification: 'POST GRADUATE',
-    kycDetails: [
-      { documentType: 'AADHAAR', documentNumber: '361931314912' }
-    ] // Missing PAN, BANK KYC
-  },
-  {
-    id: 'mock6',
-    memberName: 'ARCHANA MAHATO',
-    uan: '102318953530',
-    dob: '1996-03-24',
-    dateOfJoining: '2026-06-23',
-    gender: 'FEMALE',
-    relation: 'FATHER',
-    maritalStatus: 'SINGLE',
-    qualification: 'GRADUATE',
-    kycDetails: [
-      { documentType: 'PAN', documentNumber: 'QWERP9876O' }
-    ] // Missing AADHAAR, BANK KYC
-  },
-  {
-    id: 'mock7',
-    memberName: 'MANIK MAHATO',
-    uan: '102318956783',
-    dob: '', // Missing Dob
-    dateOfJoining: '2026-06-23',
-    gender: 'MALE',
-    relation: 'FATHER',
-    maritalStatus: 'MARRIED',
-    qualification: 'MATRIC',
-    kycDetails: [
-      { documentType: 'AADHAAR', documentNumber: '547473395083' },
-      { documentType: 'PAN', documentNumber: 'PLKMJ7483K' },
-      { documentType: 'BANK PASSBOOK', documentNumber: '99281736452', ifsc: 'ICIC0003829' }
-    ]
-  },
-  {
-    id: 'mock8',
-    memberName: 'RABI NAYEK',
-    uan: '102318079307',
-    dob: '1992-06-18',
-    dateOfJoining: '2026-06-23',
-    gender: 'MALE',
-    relation: 'FATHER',
-    maritalStatus: 'MARRIED',
-    qualification: 'GRADUATE',
-    kycDetails: [
-      { documentType: 'AADHAAR', documentNumber: '414445977128' },
-      { documentType: 'BANK PASSBOOK', documentNumber: '88371625439', ifsc: 'UTIB0000293' }
-    ] // Missing PAN KYC
-  }
-];
-
 const DIAGNOSTIC_FIELDS = [
   { key: 'Name', label: 'Name' },
   { key: 'Dob', label: 'Dob' },
@@ -183,13 +62,34 @@ const MissingInformationPage = () => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Load database employees combined with mocks
-  const allEmployees = useMemo(() => {
-    const dbList = getEmployees() || [];
-    const dbUans = new Set(dbList.map(emp => emp.uan).filter(Boolean));
-    const uniqueMocks = MOCK_EMPLOYEES.filter(emp => !dbUans.has(emp.uan));
-    return [...dbList, ...uniqueMocks];
+  const [dbEmployees, setDbEmployees] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      setIsLoading(true);
+      try {
+        const companyId = localStorage.getItem('selectedCompany');
+        if (companyId) {
+          const res = await getEmployees(companyId);
+          setDbEmployees(res || []);
+        } else {
+          setDbEmployees([]);
+          addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+        }
+      } catch (err) {
+        addToast({ type: 'error', message: 'Failed to fetch employees' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchEmployees();
   }, []);
+
+  // Load database employees
+  const allEmployees = useMemo(() => {
+    return dbEmployees;
+  }, [dbEmployees]);
 
   // Filter list by selected fields
   const diagnosticResults = useMemo(() => {
@@ -362,7 +262,13 @@ const MissingInformationPage = () => {
               </tr>
             </thead>
             <tbody>
-              {paginatedData.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                    Loading...
+                  </td>
+                </tr>
+              ) : paginatedData.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                     No employees with missing details matching selected criteria.
