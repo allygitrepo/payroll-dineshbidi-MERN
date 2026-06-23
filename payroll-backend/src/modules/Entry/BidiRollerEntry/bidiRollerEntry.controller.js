@@ -1,5 +1,5 @@
 const db = require("../../../database/models/index");
-const { PackersEntry, Employee, PackingWage, ChallanSetup, ProfessionalTax } = db;
+const { BidiRollerEntry, Employee, BidiRollerWage, ChallanSetup, ProfessionalTax } = db;
 const { Op } = require("sequelize");
 
 exports.getEntries = async (req, res) => {
@@ -20,15 +20,15 @@ exports.getEntries = async (req, res) => {
         const lastDayOfMonthStr = `${year}-${String(month).padStart(2, "0")}-${String(lastDayOfMonth.getDate()).padStart(2, "0")}`;
         const firstDayOfMonthStr = `${year}-${String(month).padStart(2, "0")}-01`;
 
-        // 1. Fetch active BIDI PACKER employees joined before or on the last day of the month
+        // 1. Fetch active BIDI MAKER employees joined before or on the last day of the month
         const employees = await Employee.findAll({
             where: {
                 company_id,
-                employee_type: "BIDI PACKER",
+                employee_type: "BIDI MAKER",
                 date_of_joining: { [Op.lte]: lastDayOfMonthStr },
                 status: true,
             },
-            attributes: ["id", "name", "uan", "member_id", "gender", "status", "date_of_joining"]
+            attributes: ["id", "name", "uan", "member_id", "gender", "status", "date_of_joining", "contractor_id"]
         });
 
         if (!employees.length) {
@@ -38,7 +38,7 @@ exports.getEntries = async (req, res) => {
         const employeeIds = employees.map(emp => emp.id);
 
         // 2. Fetch existing entries for the given month_year
-        const existingEntries = await PackersEntry.findAll({
+        const existingEntries = await BidiRollerEntry.findAll({
             where: {
                 company_id,
                 month_year,
@@ -50,8 +50,8 @@ exports.getEntries = async (req, res) => {
             existingMap[entry.employee_id] = entry;
         });
 
-        // 3. Fetch Packing Wages (Rates) for the month
-        const packingWage = await PackingWage.findOne({
+        // 3. Fetch Bidi Roller Wages (Rates and Bonuses) for the month
+        const bidiRollerWage = await BidiRollerWage.findOne({
             where: {
                 company_id,
                 start_date: { [Op.lte]: firstDayOfMonthStr }
@@ -59,10 +59,10 @@ exports.getEntries = async (req, res) => {
             order: [["start_date", "DESC"]]
         });
 
-        const rate1 = packingWage ? parseFloat(packingWage.rate_1) : 0;
-        const rate2 = packingWage ? parseFloat(packingWage.rate_2) : 0;
-        const rate3 = packingWage ? parseFloat(packingWage.rate_3) : 0;
-        const rate4 = packingWage ? parseFloat(packingWage.rate_4) : 0;
+        const rate1 = bidiRollerWage ? parseFloat(bidiRollerWage.rate_1) : 0;
+        const rate2 = bidiRollerWage ? parseFloat(bidiRollerWage.rate_2) : 0;
+        const bonus1 = bidiRollerWage ? parseFloat(bidiRollerWage.bonus_1) : 0;
+        const bonus2 = bidiRollerWage ? parseFloat(bidiRollerWage.bonus_2) : 0;
 
         // 4. Fetch ChallanSetup for ESIC & PF rates
         const challanSetup = await ChallanSetup.findOne({
@@ -92,14 +92,13 @@ exports.getEntries = async (req, res) => {
                     employeeCode: empCode,
                     uan,
                     gender: emp.gender,
+                    contractorId: emp.contractor_id,
                     daysWorked: existing.no_of_days_worked,
-                    unit1: existing.unit_1,
-                    unit2: existing.unit_2,
-                    unit3: existing.unit_3,
-                    unit4: existing.unit_4,
+                    leaveWithPay: existing.leave_with_pay,
+                    unit1: existing.unit_1_days,
+                    unit2: existing.unit_2_days,
                     wages: existing.wages,
-                    weeklyLeave: existing.weekly_leave,
-                    addition: existing.addition_if_any,
+                    bonus: existing.bonus,
                     gross: existing.gross_wages,
                     pf: existing.epf_contri_remitted,
                     pt: existing.pt_amount,
@@ -116,14 +115,13 @@ exports.getEntries = async (req, res) => {
                 employeeCode: empCode,
                 uan,
                 gender: emp.gender,
+                contractorId: emp.contractor_id,
                 daysWorked: "",
+                leaveWithPay: "",
                 unit1: "",
                 unit2: "",
-                unit3: "",
-                unit4: "",
                 wages: 0,
-                weeklyLeave: 0,
-                addition: "",
+                bonus: 0,
                 gross: 0,
                 pf: 0,
                 pt: 0,
@@ -139,8 +137,8 @@ exports.getEntries = async (req, res) => {
             config: {
                 rate1,
                 rate2,
-                rate3,
-                rate4,
+                bonus1,
+                bonus2,
                 ptSlabs: ptSlabs.map(s => ({ from: s.from, to: s.to, taxRate: s.tax_rate })),
                 pfRateMale: challanSetup ? parseFloat(challanSetup.ac1_ee_male) / 100 : 0.12,
                 pfRateFemale: challanSetup ? parseFloat(challanSetup.ac1_ee_female) / 100 : 0.12,
@@ -149,54 +147,88 @@ exports.getEntries = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("PackersEntry getEntries error:", error);
-        res.status(500).json({ status: false, message: "Internal server error", error: error.message });
+        console.error("Error fetching bidi roller entries:", error);
+        res.status(500).json({ status: false, message: "Internal Server Error" });
     }
 };
 
 exports.saveEntries = async (req, res) => {
+    const transaction = await db.sequelize.transaction();
     try {
         const company_id = req.user?.company_id || req.body.company_id;
-        const { month_year, entries } = req.body;
+        const { month_year, entries } = req.body; // array of objects
 
-        if (!company_id || !month_year || !entries || !Array.isArray(entries)) {
+        if (!company_id || !month_year || !Array.isArray(entries)) {
             return res.status(400).json({ status: false, message: "Invalid payload" });
         }
 
-        // We will process updates or inserts
-        for (const entry of entries) {
-            const payload = {
-                company_id,
-                employee_id: entry.employeeId,
-                month_year,
-                no_of_days_worked: parseFloat(entry.daysWorked) || 0,
-                unit_1: parseInt(entry.unit1, 10) || 0,
-                unit_2: parseInt(entry.unit2, 10) || 0,
-                unit_3: parseInt(entry.unit3, 10) || 0,
-                unit_4: parseInt(entry.unit4, 10) || 0,
-                wages: parseFloat(entry.wages) || 0,
-                weekly_leave: parseFloat(entry.weeklyLeave) || 0,
-                addition_if_any: parseFloat(entry.addition) || 0,
-                gross_wages: parseFloat(entry.gross) || 0,
-                epf_wages: parseFloat(entry.gross) || 0, // Using gross as per instructions
-                epf_contri_remitted: parseFloat(entry.pf) || 0,
-                pt_amount: parseFloat(entry.pt) || 0,
-                esic_amount: parseFloat(entry.esic) || 0,
-                net_wages: parseFloat(entry.netWages) || 0,
-            };
+        for (const row of entries) {
+            const employee_id = row.employeeId;
+            const no_of_days_worked = parseFloat(row.daysWorked) || 0;
+            const leave_with_pay = parseFloat(row.leaveWithPay) || 0;
+            const unit_1_days = parseFloat(row.unit1) || 0;
+            const unit_2_days = parseFloat(row.unit2) || 0;
+            const wages = parseFloat(row.wages) || 0;
+            const bonus = parseFloat(row.bonus) || 0;
+            const gross_wages = parseFloat(row.gross) || 0;
+            // epf_wages is calculated as gross without bonus (or just piece wages + leave wages)
+            const epf_wages = wages;
+            const epf_contri_remitted = parseFloat(row.pf) || 0;
+            const pt_amount = parseFloat(row.pt) || 0;
+            const esic_amount = parseFloat(row.esic) || 0;
+            const net_wages = parseFloat(row.netWages) || 0;
 
-            if (entry.id) {
-                // Update
-                await PackersEntry.update(payload, { where: { id: entry.id } });
+            if (row.id) {
+                // Update existing
+                await BidiRollerEntry.update(
+                    {
+                        no_of_days_worked,
+                        leave_with_pay,
+                        unit_1_days,
+                        unit_2_days,
+                        wages,
+                        bonus,
+                        gross_wages,
+                        epf_wages,
+                        epf_contri_remitted,
+                        pt_amount,
+                        esic_amount,
+                        net_wages,
+                    },
+                    { where: { id: row.id, company_id }, transaction }
+                );
             } else {
-                // Insert
-                await PackersEntry.create(payload);
+                // Ignore empty rows
+                if (no_of_days_worked > 0 || unit_1_days > 0 || unit_2_days > 0) {
+                    await BidiRollerEntry.create(
+                        {
+                            company_id,
+                            employee_id,
+                            month_year,
+                            no_of_days_worked,
+                            leave_with_pay,
+                            unit_1_days,
+                            unit_2_days,
+                            wages,
+                            bonus,
+                            gross_wages,
+                            epf_wages,
+                            epf_contri_remitted,
+                            pt_amount,
+                            esic_amount,
+                            net_wages,
+                        },
+                        { transaction }
+                    );
+                }
             }
         }
 
-        res.status(200).json({ status: true, message: "Records saved successfully" });
+        await transaction.commit();
+        res.status(200).json({ status: true, message: "Entries saved successfully" });
     } catch (error) {
-        console.error("PackersEntry saveEntries error:", error);
-        res.status(500).json({ status: false, message: "Internal server error", error: error.message });
+        await transaction.rollback();
+        console.error("Error saving bidi roller entries:", error);
+        res.status(500).json({ status: false, message: "Internal Server Error" });
     }
 };

@@ -14,6 +14,7 @@ const exportRoutes = require("./modules/Export/export.routes");
 const calenderRoutes = require("./modules/Setup/Calender/calender.routes");
 const officeStaffEntryRoutes = require("./modules/Entry/OfficeStaffEntry/officeStaffEntry.routes");
 const packersEntryRoutes = require("./modules/Entry/PackersEntry/packersEntry.routes");
+const bidiRollerEntryRoutes = require("./modules/Entry/BidiRollerEntry/bidiRollerEntry.routes");
 
 
 router.get("/v1/test", (req, res) => {
@@ -40,6 +41,7 @@ router.use("/v1/export", exportRoutes);
 router.use("/v1/calenders", calenderRoutes);
 router.use("/v1/office-staff-entries", officeStaffEntryRoutes);
 router.use("/v1/packers-entries", packersEntryRoutes);
+router.use("/v1/bidi-roller-entries", bidiRollerEntryRoutes);
 
 
 module.exports = router;

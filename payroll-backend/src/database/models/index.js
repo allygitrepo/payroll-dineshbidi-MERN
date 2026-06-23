@@ -16,6 +16,7 @@ const PackingWage = require("../../modules/Setup/PackingWage/packingWage.model")
 const Calender = require("../../modules/Setup/Calender/calender.model");
 const OfficeStaffEntry = require("../../modules/Entry/OfficeStaffEntry/officeStaffEntry.model");
 const PackersEntry = require("../../modules/Entry/PackersEntry/packersEntry.model");
+const BidiRollerEntry = require("../../modules/Entry/BidiRollerEntry/bidiRollerEntry.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -41,6 +42,7 @@ db.OfficeStaffSalary = OfficeStaffSalary;
 db.Calender = Calender;
 db.OfficeStaffEntry = OfficeStaffEntry;
 db.PackersEntry = PackersEntry;
+db.BidiRollerEntry = BidiRollerEntry;
 
 // Model associations
 db.User.hasMany(db.RefreshToken, {
