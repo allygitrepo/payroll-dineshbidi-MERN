@@ -27,6 +27,12 @@ const createOfficeStaffSalarySchema = Joi.object({
 });
 
 const updateOfficeStaffSalarySchema = Joi.object({
+    company_id: Joi.string().guid({ version: "uuidv4" }).optional().messages({
+        "string.guid": "Company ID must be a valid UUID.",
+    }),
+    employee_id: Joi.string().guid({ version: "uuidv4" }).optional().messages({
+        "string.guid": "Employee ID must be a valid UUID.",
+    }),
     start_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional().messages({
         "string.pattern.base": "Start date must be in YYYY-MM-DD format.",
     }),

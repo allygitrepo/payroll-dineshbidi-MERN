@@ -12,6 +12,7 @@ const packingWageRoutes = require("./modules/Setup/PackingWage/packingWage.route
 const officeStaffSalaryRoutes = require("./modules/Setup/OfficeStaffSalary/officeStaffSalary.routes");
 const exportRoutes = require("./modules/Export/export.routes");
 const calenderRoutes = require("./modules/Setup/Calender/calender.routes");
+const officeStaffEntryRoutes = require("./modules/Entry/OfficeStaffEntry/officeStaffEntry.routes");
 
 
 router.get("/v1/test", (req, res) => {
@@ -36,6 +37,7 @@ router.use("/v1/packing-wages", packingWageRoutes);
 router.use("/v1/office-staff-salaries", officeStaffSalaryRoutes);
 router.use("/v1/export", exportRoutes);
 router.use("/v1/calenders", calenderRoutes);
+router.use("/v1/office-staff-entries", officeStaffEntryRoutes);
 
 
 module.exports = router;

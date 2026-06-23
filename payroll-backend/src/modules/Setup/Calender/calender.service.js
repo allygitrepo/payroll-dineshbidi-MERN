@@ -66,7 +66,7 @@ class CalenderService {
             where: { company_id: companyId, status: true },
             order: [
                 ["holiday_date", "ASC"],
-                ["created_at", "DESC"],
+                ["createdAt", "DESC"],
             ],
         });
     }
