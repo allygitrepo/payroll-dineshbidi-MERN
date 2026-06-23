@@ -36,8 +36,17 @@ const EpfChallanDatePage = () => {
   const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   // Load initial data
+  const fetchData = async () => {
+    try {
+      const data = await getEpfChallans();
+      setChallans(data);
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to fetch EPF Challans' });
+    }
+  };
+
   useEffect(() => {
-    setChallans(getEpfChallans());
+    fetchData();
   }, []);
 
   // Close dropdown when clicking outside
@@ -72,11 +81,15 @@ const EpfChallanDatePage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deleteEpfChallan(deleteTargetId);
-      setChallans(updated);
-      addToast({ type: 'success', message: 'EPF Challan record deleted successfully!' });
+      try {
+        await deleteEpfChallan(deleteTargetId);
+        addToast({ type: 'success', message: 'EPF Challan record deleted successfully!' });
+        fetchData(); // Reload from server
+      } catch (error) {
+        addToast({ type: 'error', message: 'Failed to delete EPF Challan' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -87,15 +100,19 @@ const EpfChallanDatePage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (challanData) => {
-    const updated = saveEpfChallan(challanData);
-    setChallans(updated);
-    setIsFormOpen(false);
-    setEditingChallan(null);
-    addToast({
-      type: 'success',
-      message: challanData.id ? 'EPF Challan record updated successfully!' : 'EPF Challan record created successfully!'
-    });
+  const handleSave = async (challanData) => {
+    try {
+      await saveEpfChallan(challanData);
+      setIsFormOpen(false);
+      setEditingChallan(null);
+      addToast({
+        type: 'success',
+        message: challanData.id ? 'EPF Challan record updated successfully!' : 'EPF Challan record created successfully!'
+      });
+      fetchData(); // Reload from server
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to save EPF Challan' });
+    }
   };
 
   const handleCancel = () => {
@@ -112,9 +129,9 @@ const EpfChallanDatePage = () => {
       const formattedReturn = formatDate(item.returnDate).toLowerCase();
 
       return (
-        (item.trrn && item.trrn.toLowerCase().includes(search)) ||
-        (item.crnNo && item.crnNo.toLowerCase().includes(search)) ||
-        (item.wageMonth && item.wageMonth.toLowerCase().includes(search)) ||
+        (item.trrn && String(item.trrn).toLowerCase().includes(search)) ||
+        (item.crnNo && String(item.crnNo).toLowerCase().includes(search)) ||
+        (item.wageMonth && String(item.wageMonth).toLowerCase().includes(search)) ||
         formattedDue.includes(search) ||
         formattedChallan.includes(search) ||
         formattedReturn.includes(search) ||
