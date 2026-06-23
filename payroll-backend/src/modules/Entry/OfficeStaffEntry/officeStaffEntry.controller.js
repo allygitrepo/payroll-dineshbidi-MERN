@@ -167,51 +167,8 @@ exports.getEntries = async (req, res) => {
                 };
             }
 
-            // New logic based on spec:
-            const defaultDaysWorked = Math.max(0, totalDaysInMonth - lwp);
-            const paidDays = defaultDaysWorked + lwp;
-            
-            // Per-day Salary = Basic Salary / (Total Days in Month - Leave with Pay)
-            // Cut Salary = Per-day Salary * Leave without Pay
-            const divisorForDailyRate = totalDaysInMonth - lwp;
-            const dailyRate = divisorForDailyRate > 0 ? basicSalary / divisorForDailyRate : 0;
-            const defaultLeaveWithoutPay = totalDaysInMonth - paidDays; // which is 0 for defaults
-            
-            const cutSalary = dailyRate * defaultLeaveWithoutPay;
-            const earned = Math.round(basicSalary - cutSalary);
-            const addition = 0; // Addition is 0 by default
-            const gross = earned + addition;
-
-            // PF: 12% of Total (gross) (capped at 15000), using gender-specific challan_setup rate
-            let pfRate = 0.12;
-            if (challanSetup) {
-                const isMale = emp.gender === 'MALE' || emp.gender === 'Male' || emp.gender === 'M';
-                const ac1Rate = isMale ? challanSetup.ac1_ee_male : challanSetup.ac1_ee_female;
-                pfRate = parseFloat(ac1Rate) / 100 || 0.12;
-            }
-            const pfWageLimit = 15000;
-            const pfWage = Math.min(gross, pfWageLimit);
-            const pfAmount = Math.round(pfWage * pfRate);
-
-            // PT: from slab
-            const ptAmount = calculatePTAmount(gross, ptSlabs);
-
-            // ESIC
-            let esicAmount = 0;
-            if (challanSetup) {
-                const esicWageThreshold = parseFloat(challanSetup.esic_wages) || 21000;
-                const esicShare = parseFloat(challanSetup.employee_share) / 100 || 0.0075;
-                const divisor = paidDays;
-                const dailyWage = divisor > 0 ? gross / divisor : 0;
-                
-                // Exempted if daily wage <= 176
-                if (dailyWage > esicWageThreshold) {
-                    esicAmount = Math.ceil(gross * esicShare);
-                }
-            }
-
-            const netWages = Math.max(0, gross - pfAmount - ptAmount - esicAmount);
-
+            // For new records, no default days should be pre-filled.
+            // When the user inputs the days, the frontend will automatically calculate the rest.
             return {
                 id: null,
                 employeeId: emp.id,
@@ -219,16 +176,16 @@ exports.getEntries = async (req, res) => {
                 employeeCode: empCode,
                 uan,
                 gender: emp.gender,
-                daysWorked: defaultDaysWorked,
+                daysWorked: "",
                 leaveWithPay: lwp,
                 leaveWithoutPay: 0,
                 addition: 0,
                 basicSalary,
-                gross,
-                pf: pfAmount,
-                pt: ptAmount,
-                esic: esicAmount,
-                netWages,
+                gross: 0,
+                pf: 0,
+                pt: 0,
+                esic: 0,
+                netWages: 0,
             };
         });
 
