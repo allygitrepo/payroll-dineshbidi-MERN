@@ -3,6 +3,7 @@
   position: relative;
   display: inline-block;
   min-width: 200px;
+  width: 100%;
 }
 
 /* ===== Input trigger box ===== */
@@ -18,6 +19,7 @@
   transition: all 0.2s ease;
   user-select: none;
   min-width: 200px;
+  width: 100%;
   height: 42px;
   box-sizing: border-box;
 }
@@ -80,8 +82,8 @@
   to   { opacity: 1; transform: translateY(0)   scale(1);    }
 }
 
-/* ===== Year navigation row ===== */
-.yearRow {
+/* ===== Year range header row ===== */
+.rangeHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -89,7 +91,7 @@
   padding: 0 2px;
 }
 
-.yearNavBtn {
+.rangeNavBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -102,27 +104,27 @@
   transition: all 0.18s ease;
 }
 
-.yearNavBtn:hover {
+.rangeNavBtn:hover {
   background-color: var(--primary-light, rgba(39,214,138,0.1));
   border-color: var(--primary);
   color: var(--primary);
 }
 
-.yearLabel {
+.rangeLabel {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: 0.01em;
 }
 
-/* ===== Month grid ===== */
-.monthGrid {
+/* ===== Year grid ===== */
+.yearGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
 }
 
-.monthBtn {
+.yearBtn {
   padding: 9px 4px;
   border: none;
   border-radius: 8px;
@@ -135,12 +137,12 @@
   text-align: center;
 }
 
-.monthBtn:hover {
+.yearBtn:hover {
   background-color: var(--bg-main);
   color: var(--primary);
 }
 
-.monthSelected {
+.yearSelected {
   background-color: var(--primary) !important;
   color: #ffffff !important;
   font-weight: 700;
