@@ -164,8 +164,6 @@ const LeavePage = () => {
       return `${dd}-${mm}-${yyyy} ${hrs}:${mins}:${secs}`;
     };
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
     const htmlContent = `
       <html>
         <head>
@@ -208,31 +206,44 @@ const LeavePage = () => {
             <tbody>
               ${data.map(r => `
                 <tr>
-                  <td><strong>${r.employeeName}</strong></td>
-                  <td>${r.uan}</td>
-                  <td>${r.mobile}</td>
-                  <td>${r.leaveType}</td>
+                  <td><strong>${r.employeeName || ''}</strong></td>
+                  <td>${r.uan || ''}</td>
+                  <td>${r.mobile || ''}</td>
+                  <td>${r.leaveType || ''}</td>
                   <td>${r.fromDate === r.toDate 
                     ? `${formatDateToDMY(r.fromDate)} (${r.leaveType === 'Half Day Leave' ? '0.5 Day' : '1 Day'})` 
                     : `${formatDateToDMY(r.fromDate)} to ${formatDateToDMY(r.toDate)} (${getDurationInDays(r.fromDate, r.toDate, r.leaveType)} Days)`}</td>
-                  <td>${r.remainingLeaves}</td>
+                  <td>${r.remainingLeaves ?? ''}</td>
                   <td>${r.description || '-'}</td>
-                  <td><span class="status-${r.status}">${r.status}</span></td>
+                  <td><span class="status-${r.status || ''}">${r.status || ''}</span></td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
         </body>
       </html>
     `;
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    printFrame.style.visibility = 'hidden';
+    document.body.appendChild(printFrame);
+
+    const frameDoc = printFrame.contentWindow.document;
+    frameDoc.write(htmlContent);
+    frameDoc.close();
+
+    printFrame.contentWindow.focus();
+    printFrame.contentWindow.print();
+
+    setTimeout(() => {
+      document.body.removeChild(printFrame);
+    }, 1000);
   };
 
   // Export handlers
@@ -252,7 +263,6 @@ const LeavePage = () => {
         addToast({ type: 'success', message: 'Excel file exported successfully!' });
       } else if (type === 'PDF' || type === 'Print') {
         printTable(filteredRequests);
-        addToast({ type: 'success', message: `${type === 'PDF' ? 'PDF Generation' : 'Print'} window opened successfully!` });
       }
     } catch (err) {
       console.error('Export failed:', err);
