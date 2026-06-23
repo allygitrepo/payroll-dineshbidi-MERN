@@ -1,130 +1,88 @@
-const STORAGE_KEY = 'payroll_resignations';
+import apiClient from '../../../../shared/services/apiClient';
 
-const DEFAULT_RESIGNATIONS = [
-  {
-    id: 'res-1',
-    uan: '1',
-    accountNo: 'DLCPM0012345/0000001',
-    nameOfMember: 'RAMESH KUMAR',
-    nameOfParents: 'HARISH PRASAD',
-    dateOfLeaving: '2019-03-01',
-    reasonOfLeaving: 'CESSATION (SHORT SERVICE)'
-  },
-  {
-    id: 'res-2',
-    uan: '100043291997',
-    accountNo: 'DLCPM0012345/0000432',
-    nameOfMember: 'ANIL SHARMA',
-    nameOfParents: 'VIJAY SHARMA',
-    dateOfLeaving: '2021-10-31',
-    reasonOfLeaving: 'CESSATION (SHORT SERVICE)'
-  },
-  {
-    id: 'res-3',
-    uan: '100060535254',
-    accountNo: 'DLCPM0012345/0000605',
-    nameOfMember: 'MANOJ PATEL',
-    nameOfParents: 'RAMESH BHAI',
-    dateOfLeaving: '2021-10-31',
-    reasonOfLeaving: 'CESSATION (SHORT SERVICE)'
-  },
-  {
-    id: 'res-4',
-    uan: '100065601181',
-    accountNo: 'DLCPM0012345/0000656',
-    nameOfMember: 'SANJAY SINGH',
-    nameOfParents: 'BALDEV SINGH',
-    dateOfLeaving: '2021-10-31',
-    reasonOfLeaving: 'CESSATION (SHORT SERVICE)'
-  },
-  {
-    id: 'res-5',
-    uan: '100074172012',
-    accountNo: 'DLCPM0012345/0000741',
-    nameOfMember: 'RAJESH MISHRA',
-    nameOfParents: 'OM PRAKASH',
-    dateOfLeaving: '2018-09-01',
-    reasonOfLeaving: 'CESSATION (SHORT SERVICE)'
-  },
-  {
-    id: 'res-6',
-    uan: '100076131260',
-    accountNo: 'DLCPM0012345/0000761',
-    nameOfMember: 'VIKRAM DUBEY',
-    nameOfParents: 'KAILASH DUBEY',
-    dateOfLeaving: '2023-04-28',
-    reasonOfLeaving: 'SUPERANNUATION'
-  },
-  {
-    id: 'res-7',
-    uan: '100076520002',
-    accountNo: 'DLCPM0012345/0000765',
-    nameOfMember: 'KIRAN MEHTA',
-    nameOfParents: 'SURENDRA MEHTA',
-    dateOfLeaving: '2023-03-08',
-    reasonOfLeaving: 'SUPERANNUATION'
-  },
-  {
-    id: 'res-8',
-    uan: '100076905132',
-    accountNo: 'DLCPM0012345/0000769',
-    nameOfMember: 'DEEPAK GUPTA',
-    nameOfParents: 'RAM GUPTA',
-    dateOfLeaving: '2019-07-31',
-    reasonOfLeaving: 'CESSATION (SHORT SERVICE)'
-  },
-  {
-    id: 'res-9',
-    uan: '100077688284',
-    accountNo: 'DLCPM0012345/0000776',
-    nameOfMember: 'ARVIND JOSHI',
-    nameOfParents: 'DHARAM PAL',
-    dateOfLeaving: '2025-09-05',
-    reasonOfLeaving: 'SUPERANNUATION'
-  },
-  {
-    id: 'res-10',
-    uan: '100079616984',
-    accountNo: 'DLCPM0012345/0000796',
-    nameOfMember: 'SUNIL VERMA',
-    nameOfParents: 'SHIV KUMAR',
-    dateOfLeaving: '2024-06-30',
-    reasonOfLeaving: 'CESSATION (SHORT SERVICE)'
-  }
-];
-
-export const getResignations = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_RESIGNATIONS));
-    return DEFAULT_RESIGNATIONS;
-  }
-  return JSON.parse(data);
+const REASON_MAP_FROM_DB = {
+  'C': 'CESSATION (SHORT SERVICE)',
+  'S': 'SUPERANNUATION',
+  'R': 'RETIREMENT',
+  'D': 'DEATH IN SERVICE',
+  'P': 'PERMANENT DISABLEMENT'
 };
 
-export const saveResignation = (resignation) => {
-  const list = getResignations();
-  if (resignation.id) {
-    // Edit mode
-    const idx = list.findIndex(item => item.id === resignation.id);
-    if (idx !== -1) {
-      list[idx] = { ...list[idx], ...resignation };
+const REASON_MAP_TO_DB = {
+  'CESSATION (SHORT SERVICE)': 'C',
+  'SUPERANNUATION': 'S',
+  'RETIREMENT': 'R',
+  'DEATH IN SERVICE': 'D',
+  'PERMANENT DISABLEMENT': 'P'
+};
+
+const mapToFrontend = (data) => {
+  return {
+    id: data.id,
+    accountNo: data.account_no,
+    uan: data.uan,
+    nameOfMember: data.name_of_member,
+    nameOfParents: data.name_of_parents,
+    dateOfLeaving: data.date_of_leaving,
+    reasonOfLeaving: REASON_MAP_FROM_DB[data.reason_of_leaving] || data.reason_of_leaving
+  };
+};
+
+const mapToBackend = (data) => {
+  const company_id = localStorage.getItem('company_id');
+  return {
+    id: data.id,
+    account_no: data.accountNo,
+    uan: data.uan,
+    name_of_member: data.nameOfMember,
+    name_of_parents: data.nameOfParents,
+    date_of_leaving: data.dateOfLeaving,
+    reason_of_leaving: REASON_MAP_TO_DB[data.reasonOfLeaving] || data.reasonOfLeaving,
+    company_id: company_id || null
+  };
+};
+
+export const getResignations = async () => {
+  try {
+    const response = await apiClient.get('/resignations');
+    const data = response.data?.data || [];
+    return data.map(mapToFrontend);
+  } catch (error) {
+    console.error('Error fetching resignations:', error);
+    throw error;
+  }
+};
+
+export const saveResignation = async (resignationData) => {
+  try {
+    const payload = mapToBackend(resignationData);
+    const response = await apiClient.post('/resignations', payload);
+    return mapToFrontend(response.data?.data || {});
+  } catch (error) {
+    console.error('Error saving resignation:', error);
+    throw error;
+  }
+};
+
+export const deleteResignation = async (id) => {
+  try {
+    const response = await apiClient.delete(`/resignations/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting resignation:', error);
+    throw error;
+  }
+};
+
+export const fetchEmployeeByUan = async (uan) => {
+  try {
+    const response = await apiClient.get(`/resignations/employee/${uan}`);
+    if (response.data && response.data.status) {
+      return response.data.data; // { uan, name_of_member, name_of_parents, account_no }
     }
-  } else {
-    // Add mode
-    const newResignation = {
-      ...resignation,
-      id: `res-${Date.now()}`
-    };
-    list.unshift(newResignation);
+    return null;
+  } catch (error) {
+    console.error('Error fetching employee by UAN:', error);
+    throw error;
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  return list;
-};
-
-export const deleteResignation = (id) => {
-  const list = getResignations();
-  const updated = list.filter(item => item.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  return updated;
 };
