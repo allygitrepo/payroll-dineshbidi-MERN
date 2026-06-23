@@ -19,6 +19,7 @@ const EmployeePage = () => {
 
   // Search filter and download dropdown states
   const [searchTerm, setSearchTerm] = useState('');
+  const [employeeTypeFilter, setEmployeeTypeFilter] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Confirm delete states
@@ -125,6 +126,24 @@ const EmployeePage = () => {
     }
   };
 
+  const handleToggleAbry = (employeeId) => {
+    const employee = employees.find(e => e.id === employeeId);
+    if (!employee) return;
+
+    const updatedEmployee = {
+      ...employee,
+      abryApplicable: !employee.abryApplicable
+    };
+
+    const updatedList = saveEmployee(updatedEmployee);
+    setEmployees(updatedList);
+
+    addToast({
+      type: 'success',
+      message: `ABRY Applicable status toggled for ${employee.memberName}!`
+    });
+  };
+
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingEmployee(null);
@@ -133,6 +152,9 @@ const EmployeePage = () => {
   // Filtered employees listing
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
+      if (employeeTypeFilter && employee.employeeType !== employeeTypeFilter) {
+        return false;
+      }
       const search = searchTerm.toLowerCase();
       return (
         (employee.uan && employee.uan.toLowerCase().includes(search)) ||
@@ -147,7 +169,7 @@ const EmployeePage = () => {
         (employee.pincode && employee.pincode.toLowerCase().includes(search))
       );
     });
-  }, [employees, searchTerm]);
+  }, [employees, searchTerm, employeeTypeFilter]);
 
   // Export handlers
   const handleExportClick = async (type) => {
@@ -231,8 +253,11 @@ const EmployeePage = () => {
         data={filteredEmployees}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+        selectedType={employeeTypeFilter}
+        onTypeFilterChange={setEmployeeTypeFilter}
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
+        onToggleAbry={handleToggleAbry}
       />
 
       {/* Reusable Confirm Delete Modal */}

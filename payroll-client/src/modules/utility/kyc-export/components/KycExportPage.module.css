@@ -25,29 +25,13 @@
   margin: 0;
 }
 
-.addBtn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: var(--primary);
-  color: #ffffff;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px -1px rgba(39, 214, 138, 0.2);
+.subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 4px 0 0 0;
 }
 
-.addBtn:hover {
-  background-color: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 12px -2px rgba(39, 214, 138, 0.3);
-}
-
-.formCard {
+.card {
   background-color: var(--card-bg);
   border-radius: var(--radius);
   border: 1px solid var(--border);
@@ -55,20 +39,18 @@
   box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.03);
 }
 
-.formGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+.filterRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.field {
+.filterGroup {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.fieldFull {
-  grid-column: span 4;
+  width: 250px;
 }
 
 .label {
@@ -77,12 +59,7 @@
   color: var(--text-secondary);
 }
 
-.required {
-  color: var(--danger);
-  margin-left: 3px;
-}
-
-.input, .select {
+.input {
   width: 100%;
   padding: 10px 14px;
   font-size: 0.9rem;
@@ -92,60 +69,56 @@
   color: var(--text-primary);
   outline: none;
   transition: all 0.2s ease;
+  height: 42px;
 }
 
-.input:focus, .select:focus {
+.input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.15);
 }
 
-.input::placeholder {
-  color: var(--text-muted);
-}
-
-.disabledInput {
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
-  cursor: not-allowed;
-}
-
-.buttonGroup {
+.searchBtn {
   display: flex;
-  justify-content: flex-end;
-  gap: 16px;
-  margin-top: 24px;
-  border-top: 1px solid var(--border);
-  padding-top: 20px;
-}
-
-.saveBtn {
+  align-items: center;
+  gap: 8px;
   background-color: var(--primary);
-  color: white;
+  color: #ffffff;
   border: none;
-  padding: 10px 28px;
+  padding: 10px 24px;
   border-radius: 8px;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
+  height: 42px;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 6px -1px rgba(39, 214, 138, 0.2);
 }
 
-.saveBtn:hover {
+.searchBtn:hover {
   background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px -2px rgba(39, 214, 138, 0.3);
 }
 
-.cancelBtn {
-  background-color: var(--text-muted);
-  color: white;
-  border: none;
-  padding: 10px 28px;
+.clearBtn {
+  background: none;
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+  padding: 8px 16px;
   border-radius: 8px;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.2s ease;
 }
 
-.cancelBtn:hover {
-  background-color: var(--text-secondary);
+.clearBtn:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 /* Table Card styles */
@@ -180,6 +153,8 @@
   border-radius: 6px;
   outline: none;
   cursor: pointer;
+  background-color: var(--card-bg);
+  color: var(--text-primary);
 }
 
 .searchWrapper {
@@ -212,29 +187,6 @@
   box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.15);
 }
 
-.exportBar {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.exportBtn {
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.exportBtn:hover {
-  background-color: var(--border);
-  color: var(--text-primary);
-}
-
 .tableContainer {
   width: 100%;
   overflow-x: auto;
@@ -259,6 +211,7 @@
   letter-spacing: 0.05em;
   background-color: var(--bg-main);
   border-bottom: 2px solid var(--border);
+  white-space: nowrap;
 }
 
 .table td {
@@ -266,6 +219,7 @@
   font-size: 0.85rem;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
 .table tr:last-child td {
@@ -274,58 +228,6 @@
 
 .table tr:hover td {
   background-color: var(--bg-main);
-}
-
-.actionCell {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
-
-.editBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background-color: var(--primary, #27d68a);
-  color: #ffffff !important;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.editBtn:hover {
-  background-color: var(--primary-hover, #20b876);
-  transform: translateY(-1px);
-}
-
-.editBtn svg {
-  color: #ffffff !important;
-}
-
-.deleteBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background-color: var(--danger, #ef4444);
-  color: #ffffff !important;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.deleteBtn:hover {
-  background-color: #dc2626; /* Darker red */
-  transform: translateY(-1px);
-}
-
-.deleteBtn svg {
-  color: #ffffff !important;
 }
 
 .tableFooter {
@@ -378,49 +280,6 @@
 .pageBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* Explicit Grid Placements for Form Fields */
-.fieldEstbId { grid-row: 1; grid-column: 1; }
-.fieldEstbName { grid-row: 1; grid-column: 2; }
-.fieldEstbType { grid-row: 1; grid-column: 3; }
-.fieldEpfo { grid-row: 1; grid-column: 4; }
-
-.fieldLin { grid-row: 2; grid-column: 1; }
-.fieldEsic { grid-row: 2; grid-column: 2; }
-
-.fieldAddress { grid-row: 3; grid-column: 1; }
-.fieldPostOffice { grid-row: 3; grid-column: 2; }
-.fieldDist { grid-row: 3; grid-column: 3; }
-
-.fieldPincode { grid-row: 4; grid-column: 1; }
-.fieldPan { grid-row: 4; grid-column: 2; }
-.fieldTan { grid-row: 4; grid-column: 3; }
-.fieldPtax { grid-row: 4; grid-column: 4; }
-
-.fieldEmail { grid-row: 5; grid-column: 1; }
-.fieldPhone { grid-row: 5; grid-column: 2; }
-.fieldWebsite { grid-row: 5; grid-column: 3; }
-
-/* Responsive adjustments */
-@media (max-width: 1024px) {
-  .formGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .fieldEstbId, .fieldEstbName, .fieldEstbType, .fieldEpfo,
-  .fieldLin, .fieldEsic, .fieldAddress, .fieldPostOffice,
-  .fieldDist, .fieldPincode, .fieldPan, .fieldTan,
-  .fieldPtax, .fieldEmail, .fieldPhone, .fieldWebsite {
-    grid-row: auto !important;
-    grid-column: auto !important;
-  }
-}
-
-@media (max-width: 600px) {
-  .formGrid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .headerActions {
@@ -507,11 +366,19 @@
   color: var(--primary);
 }
 
-.errorText {
-  color: var(--danger, #ef4444);
-  font-size: 0.75rem;
-  margin-top: 4px;
-  font-weight: 500;
-  display: block;
+@media (max-width: 600px) {
+  .filterGroup {
+    width: 100%;
+  }
+  .filterRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tableControls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .searchInput {
+    width: 100%;
+  }
 }
-

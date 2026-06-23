@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, Link as RouterLink } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import {
   LayoutDashboard,
@@ -203,7 +203,6 @@ const getActiveMenuAndSubMenu = (pathname) => {
 
 const Sidebar = ({ sidebarCollapsed }) => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { activeMenu, activeSubMenu } = getActiveMenuAndSubMenu(location.pathname);
 
   const [expandedMenus, setExpandedMenus] = useState({});
@@ -235,31 +234,42 @@ const Sidebar = ({ sidebarCollapsed }) => {
           const hasSubItems = !!item.subItems;
           const isExpanded = expandedMenus[item.name];
           const isActive = activeMenu === item.name;
+          const itemPath = item.name === 'Dashboard' ? '/dashboard' : `/${nameToSlug(item.name)}`;
 
           return (
             <div key={item.name} className={styles.menuItemWrapper}>
-              <button
-                className={`${styles.sidebarItem} ${isActive ? styles.activeItem : ''}`}
-                onClick={() => {
-                  if (hasSubItems && !sidebarCollapsed) {
+              {hasSubItems && !sidebarCollapsed ? (
+                <button
+                  className={`${styles.sidebarItem} ${isActive ? styles.activeItem : ''}`}
+                  onClick={() => {
                     setExpandedMenus(prev => ({
                       ...prev,
                       [item.name]: !prev[item.name]
                     }));
-                  } else {
-                    navigate(item.name === 'Dashboard' ? '/dashboard' : `/${nameToSlug(item.name)}`);
-                  }
-                }}
-              >
-                <IconComp size={18} className={styles.sidebarIcon} />
-                <span className={styles.sidebarText}>{item.name}</span>
-                {hasSubItems && !sidebarCollapsed && (
+                  }}
+                >
+                  <IconComp size={18} className={styles.sidebarIcon} />
+                  <span className={styles.sidebarText}>{item.name}</span>
                   <ChevronRight
                     size={16}
                     className={`${styles.chevron} ${isExpanded ? styles.chevronExpanded : ''}`}
                   />
-                )}
-              </button>
+                </button>
+              ) : (
+                <RouterLink
+                  to={itemPath}
+                  className={`${styles.sidebarItem} ${isActive ? styles.activeItem : ''}`}
+                >
+                  <IconComp size={18} className={styles.sidebarIcon} />
+                  <span className={styles.sidebarText}>{item.name}</span>
+                  {hasSubItems && !sidebarCollapsed && (
+                    <ChevronRight
+                      size={16}
+                      className={`${styles.chevron} ${isExpanded ? styles.chevronExpanded : ''}`}
+                    />
+                  )}
+                </RouterLink>
+              )}
 
               {hasSubItems && isExpanded && !sidebarCollapsed && (
                 <div className={styles.subMenuContainer}>
@@ -268,54 +278,52 @@ const Sidebar = ({ sidebarCollapsed }) => {
                     const SubIcon = sub.icon;
                     const hasNestedItems = !!sub.nestedItems;
                     const isSubExpanded = expandedSubMenus[sub.name];
+                    const subPath = `/${nameToSlug(item.name)}/${nameToSlug(sub.name)}`;
 
                     return (
                       <div key={sub.name} className={styles.subItemWrapper}>
-                        <button
-                          className={`${styles.subItem} ${isSubActive ? styles.activeSubItem : ''} ${hasNestedItems ? styles.formParentSubItem : ''}`}
-                          onClick={() => {
-                            if (hasNestedItems) {
+                        {hasNestedItems ? (
+                          <button
+                            className={`${styles.subItem} ${isSubActive ? styles.activeSubItem : ''} ${styles.formParentSubItem}`}
+                            onClick={() => {
                               setExpandedSubMenus(prev => ({
                                 ...prev,
                                 [sub.name]: !prev[sub.name]
                               }));
-                            } else {
-                              navigate(`/${nameToSlug(item.name)}/${nameToSlug(sub.name)}`);
-                            }
-                          }}
-                        >
-                          {hasNestedItems ? (
-                            <>
-                              <ChevronRight
-                                size={14}
-                                className={`${styles.leftChevron} ${isSubExpanded ? styles.leftChevronExpanded : ''}`}
-                              />
-                              <span>{sub.name}</span>
-                            </>
-                          ) : (
-                            <>
-                              <SubIcon size={16} className={styles.subIcon} />
-                              <span>{sub.name}</span>
-                            </>
-                          )}
-                        </button>
+                            }}
+                          >
+                            <ChevronRight
+                              size={14}
+                              className={`${styles.leftChevron} ${isSubExpanded ? styles.leftChevronExpanded : ''}`}
+                            />
+                            <span>{sub.name}</span>
+                          </button>
+                        ) : (
+                          <RouterLink
+                            to={subPath}
+                            className={`${styles.subItem} ${isSubActive ? styles.activeSubItem : ''}`}
+                          >
+                            <SubIcon size={16} className={styles.subIcon} />
+                            <span>{sub.name}</span>
+                          </RouterLink>
+                        )}
 
                         {hasNestedItems && isSubExpanded && (
                           <div className={styles.nestedMenuContainer}>
                             {sub.nestedItems.map(nested => {
                               const isNestedActive = activeSubMenu === nested.name;
                               const NestedIcon = nested.icon;
+                              const nestedPath = `/${nameToSlug(item.name)}/${nameToSlug(nested.name)}`;
+
                               return (
-                                <button
+                                <RouterLink
                                   key={nested.name}
+                                  to={nestedPath}
                                   className={`${styles.nestedItem} ${isNestedActive ? styles.activeNestedItem : ''} ${styles.formNestedItem}`}
-                                  onClick={() => {
-                                    navigate(`/${nameToSlug(item.name)}/${nameToSlug(nested.name)}`);
-                                  }}
                                 >
                                   <NestedIcon size={14} className={styles.nestedIcon} />
                                   <span>{nested.name}</span>
-                                </button>
+                                </RouterLink>
                               );
                             })}
                           </div>

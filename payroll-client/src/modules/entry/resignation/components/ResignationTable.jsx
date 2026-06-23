@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Edit3, Trash2, Search } from 'lucide-react';
+import { Edit, Trash2, Search } from 'lucide-react';
 import { MonthYearPicker } from '../../../../shared/components';
 import styles from './ResignationPage.module.css';
 
@@ -114,7 +114,7 @@ const ResignationTable = ({
                         className={styles.editBtn}
                         title="Edit Record"
                       >
-                        <Edit3 size={16} />
+                        <Edit size={16} />
                       </button>
                       <button
                         onClick={() => onDelete(row.id)}

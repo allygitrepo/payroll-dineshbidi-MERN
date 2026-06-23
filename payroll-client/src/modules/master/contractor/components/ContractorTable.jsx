@@ -41,30 +41,42 @@ const ContractorTable = ({
     <div className={styles.tableCard}>
       {/* Table Controls containing Status Filter on left, Search on right */}
       <div className={styles.tableControls}>
-        {/* Top-Level Status Filter */}
-        <div className={styles.statusFilterWrapper}>
-          <label className={styles.label}>Status Filter</label>
+        <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+          Total Contractors: {totalEntries}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <select
             value={statusFilter}
             onChange={(e) => onStatusFilterChange(e.target.value)}
-            className={styles.select}
+            className={styles.limitSelect}
+            style={{
+              height: '42px',
+              padding: '0 14px',
+              borderRadius: '8px',
+              border: '1px solid var(--border)',
+              outline: 'none',
+              backgroundColor: 'var(--card-bg)',
+              color: 'var(--text-primary)',
+              fontSize: '0.9rem',
+              cursor: 'pointer'
+            }}
           >
             <option value="Active">ACTIVE</option>
             <option value="Inactive">INACTIVE</option>
-            <option value="All">ALL</option>
+            <option value="All">ALL STATUSES</option>
           </select>
-        </div>
 
-        {/* Search on right */}
-        <div className={styles.searchWrapper}>
-          <Search size={16} className={styles.searchIcon} />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search..."
-            className={styles.searchInput}
-          />
+          <div className={styles.searchWrapper}>
+            <Search size={16} className={styles.searchIcon} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search..."
+              className={styles.searchInput}
+            />
+          </div>
         </div>
       </div>
 

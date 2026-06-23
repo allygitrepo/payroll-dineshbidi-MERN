@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Edit3, Trash2, Search } from 'lucide-react';
+import { Edit, Trash2, Search } from 'lucide-react';
 import styles from './EpfChallanDatePage.module.css';
 
 const formatDate = (dateStr) => {
@@ -104,7 +104,7 @@ const EpfChallanDateTable = ({ data, searchTerm, onSearchChange, onEdit, onDelet
                         className={styles.editBtn}
                         title="Edit Record"
                       >
-                        <Edit3 size={16} />
+                        <Edit size={16} />
                       </button>
                       <button
                         onClick={() => onDelete(row.id)}
