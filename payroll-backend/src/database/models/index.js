@@ -15,7 +15,7 @@ const OfficeStaffSalary = require("../../modules/Setup/OfficeStaffSalary/officeS
 const PackingWage = require("../../modules/Setup/PackingWage/packingWage.model");
 const Calender = require("../../modules/Setup/Calender/calender.model");
 const OfficeStaffEntry = require("../../modules/Entry/OfficeStaffEntry/officeStaffEntry.model");
-
+const PackersEntry = require("../../modules/Entry/PackersEntry/packersEntry.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -40,7 +40,7 @@ db.PackingWage = PackingWage;
 db.OfficeStaffSalary = OfficeStaffSalary;
 db.Calender = Calender;
 db.OfficeStaffEntry = OfficeStaffEntry;
-
+db.PackersEntry = PackersEntry;
 
 // Model associations
 db.User.hasMany(db.RefreshToken, {
@@ -256,4 +256,25 @@ db.OfficeStaffEntry.belongsTo(db.Employee, {
     as: "employee",
 });
 
-module.exports = db;
+// PackersEntry relationships
+db.Company.hasMany(db.PackersEntry, {
+    foreignKey: "company_id",
+    as: "packersEntries",
+    onDelete: "CASCADE",
+});
+db.PackersEntry.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+db.Employee.hasMany(db.PackersEntry, {
+    foreignKey: "employee_id",
+    as: "packersEntries",
+    onDelete: "CASCADE",
+});
+db.PackersEntry.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
+module.exports = db;

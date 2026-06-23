@@ -7,7 +7,7 @@ const GENDERS = ['MALE', 'FEMALE', 'OTHER'];
 const RELATIONS = ['FATHER', 'MOTHER', 'HUSBAND', 'WIFE', 'SON', 'DAUGHTER', 'BROTHER', 'SISTER', 'OTHER'];
 const MARITAL_STATUSES = ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED'];
 const QUALIFICATIONS = ['UNDER MATRIC', 'MATRIC', 'INTERMEDIATE', 'GRADUATE', 'POST GRADUATE', 'DIPLOMA'];
-const EMPLOYEE_TYPES = ['OFFICE STAFF', 'PACKING STAFF', 'BIDI ROLLER'];
+const EMPLOYEE_TYPES = ['BIDI PACKER', 'BIDI MAKER', 'OFFICE STAFF'];
 const DOC_TYPES = ['AADHAAR', 'PAN', 'UAN', 'BANK PASSBOOK', 'VOTER ID'];
 
 const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCancel }) => {

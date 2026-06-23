@@ -1,11 +1,11 @@
 const Joi = require("joi");
 
 const createOfficeStaffSalarySchema = Joi.object({
-    company_id: Joi.string().guid({ version: "uuidv4" }).required().messages({
+    company_id: Joi.string().guid().required().messages({
         "string.guid": "Company ID must be a valid UUID.",
         "any.required": "Company ID is required.",
     }),
-    employee_id: Joi.string().guid({ version: "uuidv4" }).required().messages({
+    employee_id: Joi.string().guid().required().messages({
         "string.guid": "Employee ID must be a valid UUID.",
         "any.required": "Employee ID is required.",
     }),
@@ -27,10 +27,10 @@ const createOfficeStaffSalarySchema = Joi.object({
 });
 
 const updateOfficeStaffSalarySchema = Joi.object({
-    company_id: Joi.string().guid({ version: "uuidv4" }).optional().messages({
+    company_id: Joi.string().guid().optional().messages({
         "string.guid": "Company ID must be a valid UUID.",
     }),
-    employee_id: Joi.string().guid({ version: "uuidv4" }).optional().messages({
+    employee_id: Joi.string().guid().optional().messages({
         "string.guid": "Employee ID must be a valid UUID.",
     }),
     start_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional().messages({

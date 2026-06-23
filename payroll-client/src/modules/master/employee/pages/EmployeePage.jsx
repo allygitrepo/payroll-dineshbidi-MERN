@@ -120,7 +120,7 @@ const EmployeePage = () => {
       console.error('Error saving employee:', err);
       addToast({
         type: 'error',
-        message: err.response?.data?.messageToShow || 'Failed to save employee.'
+        message: err.response?.data?.messageToShow || err.message || 'Failed to save employee.'
       });
     }
   };

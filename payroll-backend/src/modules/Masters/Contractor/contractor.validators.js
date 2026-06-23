@@ -1,13 +1,13 @@
 const Joi = require("joi");
 
 const createContractorSchema = Joi.object({
-    company_id: Joi.string().guid({ version: "uuidv4" }).required().messages({
+    company_id: Joi.string().guid().required().messages({
         "string.base": "Company ID must be a string.",
         "string.empty": "Company ID is required.",
         "string.guid": "Company ID must be a valid UUID.",
         "any.required": "Company ID is required.",
     }),
-    address_id: Joi.string().guid({ version: "uuidv4" }).required().messages({
+    address_id: Joi.string().guid().required().messages({
         "string.base": "Address ID must be a string.",
         "string.empty": "Address ID is required.",
         "string.guid": "Address ID must be a valid UUID.",
@@ -62,7 +62,7 @@ const createContractorSchema = Joi.object({
 });
 
 const updateContractorSchema = Joi.object({
-    address_id: Joi.string().guid({ version: "uuidv4" }).optional().messages({
+    address_id: Joi.string().guid().optional().messages({
         "string.guid": "Address ID must be a valid UUID.",
     }),
     ccode: Joi.string().min(2).max(50).optional().messages({
