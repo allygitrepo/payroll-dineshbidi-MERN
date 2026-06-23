@@ -1,10 +1,186 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Download } from 'lucide-react';
+import { useToast, MonthYearPicker } from '../../../../../shared/components';
+import styles from '../components/Form10Page.module.css';
+
+// Helper function to generate a standard compliant PDF file dynamically
+const generatePDF = (text) => {
+  const lines = text.split('\n');
+  const fontSize = 10;
+  const lineSpacing = 14;
+  
+  // Construct content stream drawing commands
+  let streamContent = 'BT\n/F1 ' + fontSize + ' Tf\n' + lineSpacing + ' TL\n50 780 Td\n';
+  lines.forEach((line) => {
+    // Escape standard PDF delimiters
+    const escapedLine = line
+      .replace(/\\/g, '\\\\')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
+    streamContent += `(${escapedLine}) Tj T*\n`;
+  });
+  streamContent += 'ET';
+  
+  const catalogIdx = 1;
+  const pagesIdx = 2;
+  const pageIdx = 3;
+  const resourcesIdx = 4;
+  const contentIdx = 5;
+  const fontIdx = 6;
+  
+  const catalog = `${catalogIdx} 0 obj\n<< /Type /Catalog /Pages ${pagesIdx} 0 R >>\nendobj`;
+  const pages = `${pagesIdx} 0 obj\n<< /Type /Pages /Kids [${pageIdx} 0 R] /Count 1 >>\nendobj`;
+  const page = `${pageIdx} 0 obj\n<< /Type /Page /Parent ${pagesIdx} 0 R /Resources ${resourcesIdx} 0 R /MediaBox [0 0 595 842] /Contents ${contentIdx} 0 R >>\nendobj`;
+  const resources = `${resourcesIdx} 0 obj\n<< /Font << /F1 ${fontIdx} 0 R >> >>\nendobj`;
+  
+  const streamLength = streamContent.length;
+  const contentStream = `${contentIdx} 0 obj\n<< /Length ${streamLength} >>\nstream\n${streamContent}\nendstream\nendobj`;
+  const font = `${fontIdx} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj`;
+  
+  const pdfObjects = [catalog, pages, page, resources, contentStream, font];
+  
+  let pdfString = '%PDF-1.4\n';
+  const offsets = [];
+  
+  pdfObjects.forEach((obj) => {
+    offsets.push(pdfString.length);
+    pdfString += obj + '\n';
+  });
+  
+  const xrefOffset = pdfString.length;
+  pdfString += 'xref\n';
+  pdfString += `0 ${pdfObjects.length + 1}\n`;
+  pdfString += '0000000000 65535 f \n';
+  
+  offsets.forEach((offset) => {
+    const paddedOffset = ('0000000000' + offset).slice(-10);
+    pdfString += `${paddedOffset} 00000 n \n`;
+  });
+  
+  pdfString += 'trailer\n';
+  pdfString += `<< /Size ${pdfObjects.length + 1} /Root 1 0 R >>\n`;
+  pdfString += 'startxref\n';
+  pdfString += `${xrefOffset}\n`;
+  pdfString += '%%EOF';
+  
+  // Convert output string to matching binary array buffer
+  const buf = new ArrayBuffer(pdfString.length);
+  const bufView = new Uint8Array(buf);
+  for (let i = 0; i < pdfString.length; i++) {
+    bufView[i] = pdfString.charCodeAt(i);
+  }
+  
+  return new Blob([buf], { type: 'application/pdf' });
+};
 
 const Form10Page = () => {
+  const [selectedMonth, setSelectedMonth] = useState('2026-06'); // Default selection matching screenshot
+  const [isDownloading, setIsDownloading] = useState(false);
+  const addToast = useToast();
+
+  const handleDownload = (e) => {
+    e.preventDefault();
+    setIsDownloading(true);
+
+    // Premium micro-animation: Simulate download delay for 800ms
+    setTimeout(() => {
+      try {
+        const formattedMonth = selectedMonth 
+          ? selectedMonth.split('-')[1] + '/' + selectedMonth.split('-')[0] 
+          : '06/2026';
+        
+        // Generate formatted text content for Form 10 report
+        const reportContent = `========================================================================
+                      EMPLOYEES' PROVIDENT FUND SCHEME, 1952
+                                     FORM 10
+               RETURN OF MEMBERS LEAVING SERVICE DURING THE MONTH
+========================================================================
+Month/Year           : ${formattedMonth}
+Establishment Name   : ALLY SOFT SOLUTIONS PRIVATE LIMITED
+EPF Scheme Status    : Active
+Generated On         : ${new Date().toLocaleString()}
+------------------------------------------------------------------------
+
+MEMBERS LEAVING SERVICE REGISTER SCHEDULE:
+------------------------------------------------------------------------
+Sr.  Employee Name      UAN           Leaving Date   Reason of Leaving
+------------------------------------------------------------------------
+1    SAMIR MACHHWAR     100329862005  15/06/2026     CESSATION (SHORT SERVICE)
+2    NARESH BAGDI       100251178836  22/06/2026     SUPERANNUATION
+------------------------------------------------------------------------
+
+Certified that the details of the members who have left the service 
+during the currency month are correct and verified with reference to the 
+actual records of the establishment.
+
+========================================================================
+              *** SYSTEM GENERATED FORM 10 REPORT COPY ***
+========================================================================`;
+
+        const pdfBlob = generatePDF(reportContent);
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Form_10_${formattedMonth.replace('/', '_')}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        addToast({
+          type: 'success',
+          message: `Form 10 downloaded successfully for Month ${formattedMonth}!`
+        });
+      } catch (err) {
+        addToast({
+          type: 'error',
+          message: 'Failed to generate and download Form 10. Please try again.'
+        });
+      } finally {
+        setIsDownloading(false);
+      }
+    }, 800);
+  };
+
   return (
-    <div style={{ padding: '30px', backgroundColor: 'var(--card-bg)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-      <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '10px' }}>Form 10</h2>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Form 10 report will be displayed here.</p>
+    <div className={styles.container}>
+      {/* Page Header */}
+      <div className={styles.headerSection}>
+        <div>
+          <h2 className={styles.title}>Form 10</h2>
+          <p className={styles.subtitle}>
+            Generate and download Form 10 return of members leaving service during the month.
+          </p>
+        </div>
+      </div>
+
+      {/* Form Input Card */}
+      <div className={styles.card}>
+        <form onSubmit={handleDownload} className={styles.formContainer}>
+          {/* Month Picker */}
+          <div className={styles.field}>
+            <label className={styles.label}>
+              Select Month <span className={styles.required}>*</span>
+            </label>
+            <MonthYearPicker
+              value={selectedMonth}
+              onChange={setSelectedMonth}
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className={styles.buttonGroup}>
+            <button 
+              type="submit" 
+              className={styles.downloadBtn} 
+              disabled={isDownloading}
+            >
+              <Download size={18} />
+              {isDownloading ? 'Downloading...' : 'Download Form 10'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
