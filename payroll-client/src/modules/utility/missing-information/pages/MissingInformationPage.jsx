@@ -1,18 +1,470 @@
-import React from 'react';
-import { AlertCircle } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Search, RotateCcw, Edit, AlertCircle } from 'lucide-react';
+import { useToast } from '../../../../shared/components';
+import { getEmployees } from '../../../master/employee/services/employeeService';
+import styles from '../components/MissingInformationPage.module.css';
+
+// Preloaded mock data with various missing fields for realistic audits
+const MOCK_EMPLOYEES = [
+  {
+    id: 'mock1',
+    memberName: 'NAMITA MAHATO',
+    uan: '102318950034',
+    dob: '', // Missing Dob
+    dateOfJoining: '2026-06-23',
+    gender: 'FEMALE',
+    relation: '', // Missing Relation
+    maritalStatus: 'SINGLE',
+    qualification: 'MATRIC',
+    kycDetails: [
+      { documentType: 'AADHAAR', documentNumber: '657199054792' },
+      { documentType: 'BANK PASSBOOK', documentNumber: '99283726182', ifsc: 'SBIN0002031' }
+    ] // Missing PAN KYC
+  },
+  {
+    id: 'mock2',
+    memberName: 'REKHA KUMAR',
+    uan: '102318088496',
+    dob: '1995-08-12',
+    dateOfJoining: '2026-06-23',
+    gender: 'FEMALE',
+    relation: 'HUSBAND',
+    maritalStatus: 'MARRIED',
+    qualification: 'GRADUATE',
+    kycDetails: [] // Missing AADHAAR, PAN, BANK KYC
+  },
+  {
+    id: 'mock3',
+    memberName: 'NIYATI MACHHUAR',
+    uan: '102318063813',
+    dob: '1998-11-20',
+    dateOfJoining: '2026-06-23',
+    gender: 'FEMALE',
+    relation: 'FATHER',
+    maritalStatus: 'SINGLE',
+    qualification: 'UNDER GRADUATE',
+    kycDetails: [
+      { documentType: 'AADHAAR', documentNumber: '399417814159' },
+      { documentType: 'PAN', documentNumber: 'ABCDE1234F' }
+    ] // Missing BANK KYC
+  },
+  {
+    id: 'mock4',
+    memberName: 'RAHUL KUMAR',
+    uan: '101556427344',
+    dob: '2001-04-05',
+    dateOfJoining: '2026-06-23',
+    gender: 'MALE',
+    relation: 'FATHER',
+    maritalStatus: '', // Missing Marital Status
+    qualification: '', // Missing Qualification
+    kycDetails: [
+      { documentType: 'AADHAAR', documentNumber: '804595857184' },
+      { documentType: 'PAN', documentNumber: 'XYZAB5678K' },
+      { documentType: 'BANK PASSBOOK', documentNumber: '88392817263', ifsc: 'HDFC0001928' }
+    ]
+  },
+  {
+    id: 'mock5',
+    memberName: 'MONARANJAN MAHATO',
+    uan: '102316622517',
+    dob: '1990-12-15',
+    dateOfJoining: '', // Missing Doj
+    gender: '', // Missing Gender
+    relation: 'FATHER',
+    maritalStatus: 'MARRIED',
+    qualification: 'POST GRADUATE',
+    kycDetails: [
+      { documentType: 'AADHAAR', documentNumber: '361931314912' }
+    ] // Missing PAN, BANK KYC
+  },
+  {
+    id: 'mock6',
+    memberName: 'ARCHANA MAHATO',
+    uan: '102318953530',
+    dob: '1996-03-24',
+    dateOfJoining: '2026-06-23',
+    gender: 'FEMALE',
+    relation: 'FATHER',
+    maritalStatus: 'SINGLE',
+    qualification: 'GRADUATE',
+    kycDetails: [
+      { documentType: 'PAN', documentNumber: 'QWERP9876O' }
+    ] // Missing AADHAAR, BANK KYC
+  },
+  {
+    id: 'mock7',
+    memberName: 'MANIK MAHATO',
+    uan: '102318956783',
+    dob: '', // Missing Dob
+    dateOfJoining: '2026-06-23',
+    gender: 'MALE',
+    relation: 'FATHER',
+    maritalStatus: 'MARRIED',
+    qualification: 'MATRIC',
+    kycDetails: [
+      { documentType: 'AADHAAR', documentNumber: '547473395083' },
+      { documentType: 'PAN', documentNumber: 'PLKMJ7483K' },
+      { documentType: 'BANK PASSBOOK', documentNumber: '99281736452', ifsc: 'ICIC0003829' }
+    ]
+  },
+  {
+    id: 'mock8',
+    memberName: 'RABI NAYEK',
+    uan: '102318079307',
+    dob: '1992-06-18',
+    dateOfJoining: '2026-06-23',
+    gender: 'MALE',
+    relation: 'FATHER',
+    maritalStatus: 'MARRIED',
+    qualification: 'GRADUATE',
+    kycDetails: [
+      { documentType: 'AADHAAR', documentNumber: '414445977128' },
+      { documentType: 'BANK PASSBOOK', documentNumber: '88371625439', ifsc: 'UTIB0000293' }
+    ] // Missing PAN KYC
+  }
+];
+
+const DIAGNOSTIC_FIELDS = [
+  { key: 'Name', label: 'Name' },
+  { key: 'Dob', label: 'Dob' },
+  { key: 'Doj', label: 'Doj' },
+  { key: 'Gender', label: 'Gender' },
+  { key: 'Relation', label: 'Relation' },
+  { key: 'Marital Status', label: 'Marital Status' },
+  { key: 'Qualification', label: 'Qualification' },
+  { key: 'AADHAAR KYC', label: 'AADHAAR KYC' },
+  { key: 'PAN KYC', label: 'PAN KYC' },
+  { key: 'BANK KYC', label: 'BANK KYC' }
+];
+
+const getMissingFields = (emp) => {
+  const missing = [];
+  if (!emp.memberName || !emp.memberName.trim()) missing.push('Name');
+  if (!emp.dob || !emp.dob.trim()) missing.push('Dob');
+  if (!emp.dateOfJoining || !emp.dateOfJoining.trim()) missing.push('Doj');
+  if (!emp.gender || !emp.gender.trim()) missing.push('Gender');
+  if (!emp.relation || !emp.relation.trim()) missing.push('Relation');
+  if (!emp.maritalStatus || !emp.maritalStatus.trim()) missing.push('Marital Status');
+  if (!emp.qualification || !emp.qualification.trim()) missing.push('Qualification');
+  
+  const hasAadhaar = emp.kycDetails && emp.kycDetails.some(
+    k => k.documentType === 'AADHAAR' && k.documentNumber && k.documentNumber.trim()
+  );
+  if (!hasAadhaar) missing.push('AADHAAR KYC');
+  
+  const hasPan = emp.kycDetails && emp.kycDetails.some(
+    k => k.documentType === 'PAN' && k.documentNumber && k.documentNumber.trim()
+  );
+  if (!hasPan) missing.push('PAN KYC');
+  
+  const hasBank = emp.kycDetails && emp.kycDetails.some(
+    k => (k.documentType === 'BANK PASSBOOK' || k.documentType === 'BANK') && k.documentNumber && k.documentNumber.trim()
+  );
+  if (!hasBank) missing.push('BANK KYC');
+  
+  return missing;
+};
 
 const MissingInformationPage = () => {
+  const navigate = useNavigate();
+  const addToast = useToast();
+
+  const allFieldKeys = useMemo(() => DIAGNOSTIC_FIELDS.map(f => f.key), []);
+
+  // Selection states for checkbox grid
+  const [selectedFields, setSelectedFields] = useState(allFieldKeys);
+  // Applied search states for results table
+  const [appliedFields, setAppliedFields] = useState(allFieldKeys);
+
+  // Local text search & pagination states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Load database employees combined with mocks
+  const allEmployees = useMemo(() => {
+    const dbList = getEmployees() || [];
+    const dbUans = new Set(dbList.map(emp => emp.uan).filter(Boolean));
+    const uniqueMocks = MOCK_EMPLOYEES.filter(emp => !dbUans.has(emp.uan));
+    return [...dbList, ...uniqueMocks];
+  }, []);
+
+  // Filter list by selected fields
+  const diagnosticResults = useMemo(() => {
+    const processed = allEmployees.map(emp => {
+      const missing = getMissingFields(emp);
+      return {
+        ...emp,
+        missingFields: missing
+      };
+    });
+
+    return processed.filter(emp => {
+      return emp.missingFields.some(field => appliedFields.includes(field));
+    });
+  }, [allEmployees, appliedFields]);
+
+  // Apply query text matching
+  const searchedResults = useMemo(() => {
+    const query = searchTerm.toLowerCase().trim();
+    if (!query) return diagnosticResults;
+    return diagnosticResults.filter(emp => {
+      const matchName = emp.memberName && emp.memberName.toLowerCase().includes(query);
+      const matchUan = emp.uan && emp.uan.toLowerCase().includes(query);
+      const matchMissing = emp.missingFields.some(f => f.toLowerCase().includes(query));
+      return matchName || matchUan || matchMissing;
+    });
+  }, [diagnosticResults, searchTerm]);
+
+  // Reset pagination on filter updates
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [appliedFields, searchTerm, pageSize]);
+
+  // Pagination index bounds
+  const totalEntries = searchedResults.length;
+  const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalEntries);
+  const paginatedData = useMemo(() => {
+    return searchedResults.slice(startIndex, endIndex);
+  }, [searchedResults, startIndex, endIndex]);
+
+  const handleToggleField = (key) => {
+    setSelectedFields(prev => 
+      prev.includes(key) 
+        ? prev.filter(k => k !== key) 
+        : [...prev, key]
+    );
+  };
+
+  const handleSearch = () => {
+    if (selectedFields.length === 0) {
+      addToast({
+        type: 'error',
+        message: 'Please select at least one field for diagnostic audit.'
+      });
+      return;
+    }
+    setAppliedFields(selectedFields);
+    addToast({
+      type: 'success',
+      message: `Diagnostic audit completed for ${selectedFields.length} selected categories.`
+    });
+  };
+
+  const handleReset = () => {
+    setSelectedFields(allFieldKeys);
+    setAppliedFields(allFieldKeys);
+    setSearchTerm('');
+    addToast({
+      type: 'info',
+      message: 'Diagnostic parameters reset to default.'
+    });
+  };
+
+  const handleEditClick = (emp) => {
+    addToast({
+      type: 'info',
+      message: `Redirecting to edit employee: ${emp.memberName}`
+    });
+    // Navigate to employee edit profile route, or employee master page
+    navigate('/master/employee');
+  };
+
   return (
-    <div style={{ padding: '30px', backgroundColor: 'var(--card-bg)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-        <div style={{ color: 'var(--primary)', backgroundColor: 'var(--primary-light)', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center' }}>
-          <AlertCircle size={24} />
+    <div className={styles.container}>
+      {/* Page Title & Header */}
+      <div className={styles.headerSection}>
+        <div>
+          <h2 className={styles.title}>Missing Information</h2>
+          <p className={styles.subtitle}>
+            Analyze the database to discover employees missing mandatory profile details or KYC records.
+          </p>
         </div>
-        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Missing Information Finder</h2>
       </div>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6' }}>
-        Run diagnostic database audits to identify and list employees missing essential KYC details, PAN cards, or bank numbers.
-      </p>
+
+      {/* Audit Form Grid Selector Card */}
+      <div className={styles.card}>
+        <h3 className={styles.sectionTitle}>
+          <AlertCircle size={18} style={{ color: 'var(--primary)' }} />
+          Select Diagnostic Categories
+        </h3>
+        
+        <div className={styles.checkboxGrid}>
+          {DIAGNOSTIC_FIELDS.map(field => {
+            const isActive = selectedFields.includes(field.key);
+            return (
+              <div
+                key={field.key}
+                className={`${styles.checkboxItem} ${isActive ? styles.checkboxItemActive : ''}`}
+                onClick={() => handleToggleField(field.key)}
+              >
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={() => {}} // Toggled by parent click
+                  className={styles.checkboxInput}
+                />
+                <span className={styles.checkboxLabel}>{field.label}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className={styles.buttonGroup}>
+          <button
+            type="button"
+            className={styles.searchBtn}
+            onClick={handleSearch}
+          >
+            <Search size={16} />
+            Search
+          </button>
+          <button
+            type="button"
+            className={styles.resetBtn}
+            onClick={handleReset}
+          >
+            <RotateCcw size={16} />
+            Reset
+          </button>
+        </div>
+      </div>
+
+      {/* Results Table Card */}
+      <div className={styles.tableCard}>
+        <div className={styles.tableControls}>
+          <div className={styles.searchWrapper}>
+            <Search size={16} className={styles.searchIcon} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name, UAN, or field..."
+              className={styles.searchInput}
+            />
+          </div>
+        </div>
+
+        {/* Data Table */}
+        <div className={styles.tableContainer}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th style={{ width: '80px', textAlign: 'center' }}>Sr. No.</th>
+                <th>Employee Name</th>
+                <th>Universal Account Number (UAN)</th>
+                <th>Missing Fields</th>
+                <th style={{ width: '100px', textAlign: 'center' }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedData.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                    No employees with missing details matching selected criteria.
+                  </td>
+                </tr>
+              ) : (
+                paginatedData.map((emp, index) => (
+                  <tr key={emp.id}>
+                    <td style={{ textAlign: 'center', fontWeight: '500' }}>
+                      {startIndex + index + 1}
+                    </td>
+                    <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                      {emp.memberName}
+                    </td>
+                    <td style={{ color: 'var(--text-primary)' }}>
+                      {emp.uan || '-'}
+                    </td>
+                    <td>
+                      <div className={styles.badgeContainer}>
+                        {emp.missingFields.map(f => {
+                          const isAuditTarget = appliedFields.includes(f);
+                          return (
+                            <span
+                              key={f}
+                              className={`${styles.badge} ${
+                                isAuditTarget ? styles.badgeActive : styles.badgeInactive
+                              }`}
+                            >
+                              {f}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </td>
+                    <td>
+                      <div className={styles.actionCell}>
+                        <button
+                          onClick={() => handleEditClick(emp)}
+                          title="Update Employee Details"
+                          className={styles.editBtn}
+                        >
+                          <Edit size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer controls: Info text, limit control and pagination */}
+        <div className={styles.tableFooter}>
+          <div className={styles.footerLeft}>
+            <div className={styles.limitControl}>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className={styles.limitSelect}
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+              <span>records per page</span>
+            </div>
+            <div className={styles.infoText}>
+              Showing {totalEntries > 0 ? startIndex + 1 : 0} to {endIndex} of {totalEntries} entries
+            </div>
+          </div>
+
+          <div className={styles.pagination}>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={styles.pageBtn}
+            >
+              Previous
+            </button>
+
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
+              >
+                {i + 1}
+              </button>
+            ))}
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={styles.pageBtn}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
