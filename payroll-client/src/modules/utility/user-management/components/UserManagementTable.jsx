@@ -1,33 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { Edit, Trash2, Search } from 'lucide-react';
-import { MonthYearPicker } from '../../../../shared/components';
-import styles from './ResignationPage.module.css';
+import styles from './UserManagementPage.module.css';
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-  return dateStr;
-};
-
-const ResignationTable = ({
-  data,
-  selectedMonth,
-  onMonthChange,
-  searchTerm,
-  onSearchChange,
-  onEdit,
-  onDelete
-}) => {
+const UserManagementTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Reset pagination if search, month, or limit changes
+  // Reset pagination if filter changes
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedMonth, pageSize]);
+  }, [searchTerm, pageSize]);
 
   // Pagination math
   const totalEntries = data.length;
@@ -45,26 +27,7 @@ const ResignationTable = ({
   return (
     <div className={styles.tableCard}>
       {/* Table Top Controls Bar */}
-      <div className={styles.tableControls}>
-        {/* Month Wise Search */}
-        <div className={styles.monthFilterWrapper}>
-          <span className={styles.monthFilterLabel}>Month Wise Search</span>
-          <MonthYearPicker
-            value={selectedMonth}
-            onChange={onMonthChange}
-            placeholder="Select Month"
-          />
-          {selectedMonth && (
-            <button
-              onClick={() => onMonthChange('')}
-              className={styles.clearFilterBtn}
-              title="Clear Month Filter"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-
+      <div className={styles.tableControls} style={{ justifyContent: 'flex-end' }}>
         {/* Local Search box */}
         <div className={styles.searchWrapper}>
           <Search size={16} className={styles.searchIcon} />
@@ -83,27 +46,37 @@ const ResignationTable = ({
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Account No.</th>
-              <th>Date of Leaving</th>
-              <th>Reason Of Leaving</th>
+              <th style={{ width: '70px', textAlign: 'center' }}>Sr No.</th>
+              <th>User Name</th>
+              <th>User Id</th>
+              <th>Password</th>
+              <th>Designation</th>
               <th style={{ textAlign: 'center', width: '90px' }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {paginatedData.length > 0 ? (
-              paginatedData.map((row) => (
+              paginatedData.map((row, idx) => (
                 <tr key={row.id}>
-                  {/* Account No (displaying UAN value as per screenshot requirements) */}
-                  <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
-                    {row.uan}
+                  {/* Sr No */}
+                  <td style={{ textAlign: 'center', fontWeight: '500' }}>
+                    {startIndex + idx + 1}
                   </td>
 
-                  {/* Date of Leaving */}
-                  <td>{formatDate(row.dateOfLeaving)}</td>
+                  {/* User Name */}
+                  <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                    {row.userName}
+                  </td>
 
-                  {/* Reason of Leaving */}
-                  <td style={{ fontSize: '0.82rem', fontWeight: '500', color: 'var(--text-secondary)' }}>
-                    {row.reasonOfLeaving}
+                  {/* User ID */}
+                  <td style={{ fontWeight: '500' }}>{row.userId}</td>
+
+                  {/* Password */}
+                  <td>{row.password}</td>
+
+                  {/* Designation */}
+                  <td style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--primary)' }}>
+                    {row.designation}
                   </td>
 
                   {/* Actions Column */}
@@ -112,14 +85,14 @@ const ResignationTable = ({
                       <button
                         onClick={() => onEdit(row)}
                         className={styles.editBtn}
-                        title="Edit Record"
+                        title="Edit User"
                       >
                         <Edit size={16} />
                       </button>
                       <button
                         onClick={() => onDelete(row.id)}
                         className={styles.deleteBtn}
-                        title="Delete Record"
+                        title="Delete User"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -129,8 +102,8 @@ const ResignationTable = ({
               ))
             ) : (
               <tr>
-                <td colSpan="4" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-                  No matching resignation records found.
+                <td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                  No matching user accounts found.
                 </td>
               </tr>
             )}
@@ -195,4 +168,4 @@ const ResignationTable = ({
   );
 };
 
-export default ResignationTable;
+export default UserManagementTable;
