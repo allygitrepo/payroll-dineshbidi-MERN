@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import faceService from '../../../master/employee/services/faceService';
 import { clockToggleEmployee } from '../../attendanceService';
-import { Camera, CheckCircle2, AlertTriangle, RefreshCw, Sparkles, MapPin, Clock, Compass, HelpCircle } from 'lucide-react';
+import { Camera, CheckCircle2, AlertTriangle, RefreshCw, Sparkles, MapPin, Clock, Compass, HelpCircle, X } from 'lucide-react';
 import { useToast } from '../../../../shared/components';
 import styles from './FaceAttendanceSelfPage.module.css';
 
@@ -24,6 +24,19 @@ const FaceAttendanceSelfPage = () => {
   const [scannedResult, setScannedResult] = useState(null);
   const [gpsCoords, setGpsCoords] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Bulk Scan States
+  const [isBulkActive, setIsBulkActive] = useState(false);
+  const [bulkLog, setBulkLog] = useState([]);
+  const isBulkActiveRef = useRef(false);
+  const streamRef = useRef(null);
+
+  // Remount helper for video element when toggled by scannedResult
+  useEffect(() => {
+    if (videoRef.current && streamRef.current && !videoRef.current.srcObject) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [scannedResult, isCameraActive]);
 
   useEffect(() => {
     // Load face-api models on page mount
@@ -38,7 +51,10 @@ const FaceAttendanceSelfPage = () => {
       }
     };
     load();
-    return () => stopCamera();
+    return () => {
+      isBulkActiveRef.current = false;
+      stopCamera();
+    };
   }, []);
 
   const getGeoLocation = () => {
@@ -109,6 +125,7 @@ const FaceAttendanceSelfPage = () => {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: 400, height: 300, facingMode: 'user' },
         });
+        streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           setIsCameraActive(true);
@@ -124,10 +141,11 @@ const FaceAttendanceSelfPage = () => {
   };
 
   const stopCamera = () => {
-    const s = videoRef.current?.srcObject;
+    const s = streamRef.current || videoRef.current?.srcObject;
     if (s && s.getTracks) {
       s.getTracks().forEach((t) => t.stop());
     }
+    streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraActive(false);
   };
@@ -174,12 +192,18 @@ const FaceAttendanceSelfPage = () => {
     let faceDescriptor = null;
     let photoData = null;
     let attempts = 0;
+    let multipleFacesDetected = false;
     
     // Try to detect a face in 10 frames
     while (attempts < 10) {
       try {
-        faceDescriptor = await faceService.detectFaceDescriptor(videoRef.current);
-        if (faceDescriptor) {
+        const allDescriptors = await faceService.detectAllFaceDescriptors(videoRef.current);
+        if (allDescriptors && allDescriptors.length > 1) {
+          multipleFacesDetected = true;
+          break;
+        }
+        if (allDescriptors && allDescriptors.length === 1) {
+          faceDescriptor = allDescriptors[0];
           photoData = capturePhoto();
           break;
         }
@@ -188,6 +212,16 @@ const FaceAttendanceSelfPage = () => {
       }
       attempts++;
       await new Promise((r) => setTimeout(r, 600));
+    }
+
+    if (multipleFacesDetected) {
+      addToast({
+        type: 'warning',
+        message: 'Multiple faces detected! Only one face should be scanned at a time.'
+      });
+      setErrorMsg('Multiple faces detected! Scanning aborted.');
+      setIsProcessing(false);
+      return;
     }
 
     const locationStr = await locationPromise;
@@ -248,6 +282,150 @@ const FaceAttendanceSelfPage = () => {
     }
   };
 
+  // Bulk Attendance Handlers
+  const startBulkMode = async () => {
+    setScannedResult(null);
+    setErrorMsg('');
+    setBulkLog([]);
+    setStatus('Acquiring GPS coordinates for bulk session...');
+    setIsProcessing(true);
+
+    await startCamera();
+
+    // Acquire GPS location once for the entire continuous session
+    const loc = await getGeoLocation();
+    setGpsCoords(loc);
+
+    isBulkActiveRef.current = true;
+    setIsBulkActive(true);
+    setIsProcessing(false);
+
+    // Start background scanner loop
+    runBulkScanLoop(loc);
+  };
+
+  const stopBulkMode = () => {
+    isBulkActiveRef.current = false;
+    setIsBulkActive(false);
+    setStatus('Bulk session stopped.');
+    stopCamera();
+  };
+
+  const runBulkScanLoop = async (cachedGps) => {
+    while (isBulkActiveRef.current) {
+      if (!videoRef.current) {
+        await new Promise((r) => setTimeout(r, 500));
+        continue;
+      }
+
+      setStatus('Ready for next face. Scan in progress...');
+      setIsProcessing(true);
+
+      let faceDescriptor = null;
+      let photoData = null;
+      let multipleFacesDetected = false;
+
+      // Single frame scan attempt
+      try {
+        const allDescriptors = await faceService.detectAllFaceDescriptors(videoRef.current);
+        if (allDescriptors && allDescriptors.length > 1) {
+          multipleFacesDetected = true;
+        } else if (allDescriptors && allDescriptors.length === 1) {
+          faceDescriptor = allDescriptors[0];
+          photoData = capturePhoto();
+        }
+      } catch (err) {
+        console.warn('Bulk frame detection failure:', err);
+      }
+
+      if (multipleFacesDetected) {
+        addToast({
+          type: 'warning',
+          message: 'Multiple faces detected! Only one face should be scanned at a time.'
+        });
+        setStatus('⚠️ Multiple faces detected! Scanning paused.');
+        setIsProcessing(false);
+        // Cooldown before retrying so admin can read message
+        await new Promise((r) => setTimeout(r, 3000));
+        continue;
+      }
+
+      if (!faceDescriptor) {
+        // Retry scanning in a bit
+        setIsProcessing(false);
+        await new Promise((r) => setTimeout(r, 800));
+        continue;
+      }
+
+      // Process match
+      try {
+        setStatus('Face detected! Matching biometrics...');
+        const recognizeResponse = await faceService.recognize(faceDescriptor);
+
+        if (!recognizeResponse.data?.data?.matched) {
+          setStatus('❌ Face not recognized! Please realign.');
+          addToast({
+            type: 'error',
+            message: 'Face not recognized!'
+          });
+          setIsProcessing(false);
+          // 2.5 seconds cooldown
+          await new Promise((r) => setTimeout(r, 2500));
+          continue;
+        }
+
+        const { employee_id, name } = recognizeResponse.data.data;
+        setStatus(`Face Matched: ${name}. Recording attendance...`);
+
+        const response = await clockToggleEmployee(employee_id, cachedGps, photoData);
+        const action = response.data?.action || 'in';
+        const actionLabel = action === 'in' ? 'Clocked In' : 'Clocked Out';
+
+        const scanItem = {
+          id: Date.now() + '-' + employee_id,
+          name,
+          mode: actionLabel,
+          time: new Date().toLocaleTimeString(),
+          photo: photoData
+        };
+
+        setBulkLog((prev) => [scanItem, ...prev]);
+
+        addToast({
+          type: 'success',
+          message: `${name} successfully ${actionLabel}!`
+        });
+
+        // Set scannedResult to display the Clocking Match Result panel (Single Scan view)
+        setScannedResult({
+          name,
+          mode: actionLabel,
+          time: new Date().toLocaleTimeString(),
+          location: cachedGps,
+          photo: photoData
+        });
+
+        // Cooldown to prevent double scans and allow subject departure (with visual countdown)
+        setIsProcessing(false);
+        for (let i = 5; i > 0; i--) {
+          if (!isBulkActiveRef.current) break;
+          setStatus(`✓ Scanned: ${name} (${actionLabel})! Next scan in ${i}s...`);
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+
+        // Reset scannedResult to restore camera viewport and resume bulk scanning
+        setScannedResult(null);
+
+      } catch (err) {
+        console.error('Bulk match error:', err);
+        const msg = err.response?.data?.messageToShow || err.message || 'Verification failed.';
+        setStatus(`⚠️ Scan error: ${msg}`);
+        setIsProcessing(false);
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    }
+  };
+
   return (
     <div className={styles.wrapper}>
       <div className={styles.header}>
@@ -265,119 +443,201 @@ const FaceAttendanceSelfPage = () => {
           <span>Loading face recognition modules...</span>
         </div>
       ) : (
-        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: '10px' }}>
-          {scannedResult ? (
-            /* Results Panel shown in place of Scan card */
-            <div className={styles.card} style={{ width: '100%', maxWidth: '480px', animation: 'fadeIn 0.3s ease' }}>
-              <h4 className={styles.panelTitle} style={{ alignSelf: 'stretch', textAlign: 'center', fontSize: '1.25rem', marginBottom: '20px', color: 'var(--primary)', paddingBottom: '10px', borderBottom: '1px solid var(--border)' }}>
-                Clocking Match Result
-              </h4>
-              
-              <div className={styles.resultDetails} style={{ width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-                  <div className={styles.resultPhotoFrame}>
-                    {scannedResult.photo ? (
-                      <img src={getPhotoUrl(scannedResult.photo)} alt="Scanned Subject" className={styles.resultPhoto} />
-                    ) : (
-                      <div className={styles.photoFallback}><Camera size={32} /></div>
-                    )}
-                    <div className={styles.passBadge}>MATCH PASSED</div>
+        <div className={isBulkActive ? styles.grid : ''} style={{ marginTop: '10px', width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            {scannedResult ? (
+              /* Results Panel shown in place of Scan card */
+              <div className={styles.card} style={{ width: '100%', maxWidth: '480px', animation: 'fadeIn 0.3s ease' }}>
+                <h4 className={styles.panelTitle} style={{ alignSelf: 'stretch', textAlign: 'center', fontSize: '1.25rem', marginBottom: '20px', color: 'var(--primary)', paddingBottom: '10px', borderBottom: '1px solid var(--border)' }}>
+                  Clocking Match Result
+                </h4>
+                
+                <div className={styles.resultDetails} style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+                    <div className={styles.resultPhotoFrame}>
+                      {scannedResult.photo ? (
+                        <img src={getPhotoUrl(scannedResult.photo)} alt="Scanned Subject" className={styles.resultPhoto} />
+                      ) : (
+                        <div className={styles.photoFallback}><Camera size={32} /></div>
+                      )}
+                      <div className={styles.passBadge}>MATCH PASSED</div>
+                    </div>
                   </div>
-                </div>
 
-                <div className={styles.resultInfoList}>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoKey}>Employee</span>
-                    <span className={styles.infoValue}>{scannedResult.name}</span>
+                  <div className={styles.resultInfoList}>
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoKey}>Employee</span>
+                      <span className={styles.infoValue}>{scannedResult.name}</span>
+                    </div>
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoKey}>Action</span>
+                      <span className={`${styles.infoValue} ${scannedResult.mode.includes('In') ? styles.textGreen : styles.textOrange}`}>
+                        {scannedResult.mode}
+                      </span>
+                    </div>
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoKey}>Time</span>
+                      <span className={styles.infoValue}>{scannedResult.time}</span>
+                    </div>
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoKey}>GPS Telemetry</span>
+                      <span className={styles.infoValue} style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <MapPin size={12} style={{ color: 'var(--primary)' }} />
+                        {scannedResult.location}
+                      </span>
+                    </div>
                   </div>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoKey}>Action</span>
-                    <span className={`${styles.infoValue} ${scannedResult.mode.includes('In') ? styles.textGreen : styles.textOrange}`}>
-                      {scannedResult.mode}
-                    </span>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoKey}>Time</span>
-                    <span className={styles.infoValue}>{scannedResult.time}</span>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span className={styles.infoKey}>GPS Telemetry</span>
-                    <span className={styles.infoValue} style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <MapPin size={12} style={{ color: 'var(--primary)' }} />
-                      {scannedResult.location}
-                    </span>
-                  </div>
+
+                  {isBulkActive && (
+                    <div className={styles.actionsGrid} style={{ marginTop: '20px', width: '100%' }}>
+                      <button
+                        type="button"
+                        className={styles.btn}
+                        onClick={stopBulkMode}
+                        style={{ backgroundColor: '#EF4444', width: '100%', maxWidth: 'none' }}
+                      >
+                        <X size={18} /> Stop Bulk Attendance
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          ) : (
-            /* Viewport Card */
-            <div className={styles.card} style={{ width: '100%', maxWidth: '520px' }}>
-              <div className={styles.viewportWrapper}>
-                <div className={styles.cameraBox} style={{ display: isCameraActive ? 'block' : 'none' }}>
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    width={400}
-                    height={300}
-                    style={{ transform: 'scaleX(-1)' }}
-                  />
-                  {isProcessing && <div className={styles.scanningLine} />}
-                  <div className={styles.hudOverlay}>
-                    <div className={styles.hudCornerTL} />
-                    <div className={styles.hudCornerTR} />
-                    <div className={styles.hudCornerBL} />
-                    <div className={styles.hudCornerBR} />
+            ) : (
+              /* Viewport Card */
+              <div className={styles.card} style={{ width: '100%', maxWidth: '520px' }}>
+                <div className={styles.viewportWrapper}>
+                  <div className={styles.cameraBox} style={{ display: isCameraActive ? 'block' : 'none' }}>
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      width={400}
+                      height={300}
+                      style={{ transform: 'scaleX(-1)' }}
+                    />
+                    {isProcessing && <div className={styles.scanningLine} />}
+                    <div className={styles.hudOverlay}>
+                      <div className={styles.hudCornerTL} />
+                      <div className={styles.hudCornerTR} />
+                      <div className={styles.hudCornerBL} />
+                      <div className={styles.hudCornerBR} />
+                    </div>
                   </div>
+                  {!isCameraActive && (
+                    <div className={styles.cameraPlaceholder}>
+                      <Camera size={48} className={styles.placeholderIcon} />
+                      <span>Camera Standby</span>
+                    </div>
+                  )}
                 </div>
-                {!isCameraActive && (
-                  <div className={styles.cameraPlaceholder}>
-                    <Camera size={48} className={styles.placeholderIcon} />
-                    <span>Camera Standby</span>
+
+                {/* Status messages */}
+                {status && (
+                  <div className={styles.statusBox}>
+                    {isProcessing && <RefreshCw className={styles.spin} size={14} style={{ marginRight: 8 }} />}
+                    {status}
                   </div>
                 )}
-              </div>
 
-              {/* Status messages */}
-              {status && (
-                <div className={styles.statusBox}>
-                  {isProcessing && <RefreshCw className={styles.spin} size={14} style={{ marginRight: 8 }} />}
-                  {status}
+                {errorMsg && (
+                  <div className={styles.errorBox}>
+                    <AlertTriangle size={16} style={{ marginRight: 8, flexShrink: 0 }} />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className={styles.actionsGrid}>
+                  {isBulkActive ? (
+                    <button
+                      type="button"
+                      className={styles.btn}
+                      onClick={stopBulkMode}
+                      style={{ backgroundColor: '#EF4444', width: '100%', maxWidth: 'none' }}
+                    >
+                      <X size={18} /> Stop Bulk Attendance
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnIn}`}
+                        onClick={handleAction}
+                        disabled={isProcessing || isCameraActive}
+                        style={{ flex: 1 }}
+                      >
+                        <Clock size={18} /> Single Scan
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnOut}`}
+                        onClick={startBulkMode}
+                        disabled={isProcessing || isCameraActive}
+                        style={{ flex: 1 }}
+                      >
+                        <Sparkles size={18} /> Bulk Scan
+                      </button>
+                    </>
+                  )}
                 </div>
-              )}
 
-              {errorMsg && (
-                <div className={styles.errorBox}>
-                  <AlertTriangle size={16} style={{ marginRight: 8, flexShrink: 0 }} />
-                  <span>{errorMsg}</span>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className={styles.actionsGrid}>
-                <button
-                  type="button"
-                  className={`${styles.btn} ${styles.btnIn}`}
-                  onClick={handleAction}
-                  disabled={isProcessing}
-                  style={{ width: '100%', maxWidth: 'none' }}
-                >
-                  <Clock size={18} /> Scan Face to Clock In / Out
-                </button>
+                {isCameraActive && !isBulkActive && (
+                  <button
+                    type="button"
+                    className={styles.btnCancel}
+                    onClick={stopCamera}
+                    disabled={isProcessing}
+                  >
+                    Close Camera
+                  </button>
+                )}
               </div>
+            )}
+          </div>
 
-              {isCameraActive && (
-                <button
-                  type="button"
-                  className={styles.btnCancel}
-                  onClick={stopCamera}
-                  disabled={isProcessing}
-                >
-                  Close Camera
-                </button>
-              )}
+          {/* Bulk Logs Panel */}
+          {isBulkActive && (
+            <div className={styles.sideCard} style={{ width: '100%', maxWidth: '400px', animation: 'fadeIn 0.3s ease' }}>
+              <h3 className={styles.panelTitle} style={{ color: 'var(--primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Scanned Session Log</span>
+                <span style={{ fontSize: '0.8rem', backgroundColor: 'var(--primary-light)', color: 'var(--primary-hover)', padding: '2px 8px', borderRadius: '4px' }}>
+                  {bulkLog.length} Scans
+                </span>
+              </h3>
+              
+              <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {bulkLog.length === 0 ? (
+                  <div className={styles.emptyPanel}>
+                    <Clock size={32} style={{ opacity: 0.3 }} />
+                    <p>No scans recorded yet in this session.</p>
+                  </div>
+                ) : (
+                  bulkLog.map((log) => (
+                    <div key={log.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', border: '1px solid var(--border)', borderRadius: '8px', animation: 'fadeIn 0.25s ease' }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
+                        {log.photo ? (
+                          <img src={getPhotoUrl(log.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-muted)' }}><Camera size={16} /></div>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: '600', fontSize: '0.85rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {log.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                          <span>{log.time}</span>
+                          <span style={{ height: '4px', width: '4px', borderRadius: '50%', backgroundColor: 'var(--border)' }} />
+                          <span style={{ fontWeight: '700', color: log.mode.includes('In') ? 'var(--primary)' : '#f59e0b' }}>
+                            {log.mode}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
         </div>

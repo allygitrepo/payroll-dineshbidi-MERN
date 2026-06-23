@@ -68,6 +68,30 @@ const faceService = {
   },
 
   /**
+   * Detect all faces in the frame and retrieve their descriptors.
+   */
+  detectAllFaceDescriptors: async (videoElement) => {
+    if (!faceapiModule) {
+      throw new Error('Face models not loaded. Call loadModels() first.');
+    }
+    try {
+      const options = new faceapiModule.TinyFaceDetectorOptions({ inputSize: 224 });
+      const results = await faceapiModule
+        .detectAllFaces(videoElement, options)
+        .withFaceLandmarks()
+        .withFaceDescriptors();
+      
+      if (results && results.length > 0) {
+        return results.map(r => r.descriptor);
+      }
+      return [];
+    } catch (err) {
+      console.error('detectAllFaceDescriptors error:', err);
+      throw err;
+    }
+  },
+
+  /**
    * Enroll user face descriptors to the backend
    */
   enroll: async (employeeId, name, descriptors) => {

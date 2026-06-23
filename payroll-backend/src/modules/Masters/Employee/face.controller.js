@@ -154,12 +154,16 @@ class FaceController {
             // Standard Euclidean distance matching threshold for face-api.js model is <= 0.6
             const MATCH_THRESHOLD = 0.6;
             if (best.distance <= MATCH_THRESHOLD) {
+                // Fetch the latest employee details from DB to get the most updated name
+                const dbEmp = await Employee.findOne({ where: { id: best.employee_id } });
+                const matchedName = dbEmp ? dbEmp.name : best.name;
+
                 return res.status(200).json(
                     successResponse(
                         "FACE_MATCHED",
                         "Biometric matching completed successfully.",
                         "Face recognized successfully.",
-                        { matched: true, employee_id: best.employee_id, name: best.name, distance: best.distance }
+                        { matched: true, employee_id: best.employee_id, name: matchedName, distance: best.distance }
                     )
                 );
             }
@@ -191,11 +195,20 @@ class FaceController {
         try {
             ensureDataDir();
             const files = fs.readdirSync(FACE_DATA_DIR).filter((f) => f.endsWith(".json"));
+
+            // Get all employees to map their names dynamically from DB
+            const employees = await Employee.findAll({ attributes: ["id", "name"] });
+            const employeeMap = {};
+            for (const emp of employees) {
+                employeeMap[emp.id] = emp.name;
+            }
+
             const data = [];
             for (const f of files) {
                 try {
                     const fileData = JSON.parse(fs.readFileSync(path.join(FACE_DATA_DIR, f), "utf8"));
-                    data.push({ employee_id: fileData.employee_id, name: fileData.name });
+                    const currentName = employeeMap[fileData.employee_id] || fileData.name;
+                    data.push({ employee_id: fileData.employee_id, name: currentName });
                 } catch (e) {
                     // Skip malformed files
                 }

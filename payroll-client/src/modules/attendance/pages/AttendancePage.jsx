@@ -4,11 +4,14 @@ import PackingAttendancePage from '../packing/pages/PackingAttendancePage';
 import BidiRollerAttendancePage from '../bidi-roller/pages/BidiRollerAttendancePage';
 import AttendanceListPage from '../list/pages/AttendanceListPage';
 import FaceAttendanceSelfPage from '../self/pages/FaceAttendanceSelfPage';
+import LeavePage from '../leave/pages/LeavePage';
 
 const AttendancePage = ({ activeSubMenu }) => {
   switch (activeSubMenu) {
     case 'Attendence List':
       return <AttendanceListPage />;
+    case 'Leave Management':
+      return <LeavePage />;
     case 'Face Attendance (Self)':
       return <FaceAttendanceSelfPage />;
     case 'Office Attendance':

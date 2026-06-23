@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search,
   X,
@@ -7,8 +7,15 @@ import {
   MapPin,
   Image,
   Clock,
-  Calendar
+  Calendar,
+  Download,
+  FileSpreadsheet,
+  Copy,
+  FileText,
+  File,
+  Printer
 } from 'lucide-react';
+import { useToast } from '../../../../shared/components';
 import styles from './AttendanceListPage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { getCompanyAttendance } from '../../attendanceService';
@@ -125,6 +132,20 @@ const getPhotoUrl = (photoPath) => {
   return `${cleanBase}${photoPath}`;
 };
 
+const formatDateFriendly = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const formatTime = (timeStr) => {
+  if (!timeStr) return '';
+  const d = new Date(timeStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
 const AttendanceListPage = () => {
   const [employees, setEmployees] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -146,6 +167,9 @@ const AttendanceListPage = () => {
   
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const addToast = useToast();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   // Modals state
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -175,6 +199,180 @@ const AttendanceListPage = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Close download dropdown if clicked outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+  const exportToCSV = (data, filename) => {
+    const headers = ['SR No', 'Emp Code (UAN)', 'Name', 'Category', 'Date', 'Sign-In Time', 'Sign-Out Time', 'Status'];
+    const rows = data.map((rec, index) => {
+      const srNo = index + 1;
+      const signIn = rec.record?.sign_in_time ? formatTime(rec.record.sign_in_time) : '—';
+      const signOut = rec.record?.sign_out_time ? formatTime(rec.record.sign_out_time) : '—';
+      return [
+        srNo,
+        rec.empCode || '',
+        rec.name || '',
+        rec.category || '',
+        formatDateFriendly(rec.date),
+        signIn,
+        signOut,
+        rec.status || ''
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(val => {
+        const str = String(val === undefined || val === null ? '' : val);
+        return `"${str.replace(/"/g, '""')}"`;
+      }).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const printTable = (data) => {
+    const formatPrintDateTime = (date) => {
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const yyyy = date.getFullYear();
+      const hrs = String(date.getHours()).padStart(2, '0');
+      const mins = String(date.getMinutes()).padStart(2, '0');
+      const secs = String(date.getSeconds()).padStart(2, '0');
+      return `${dd}-${mm}-${yyyy} ${hrs}:${mins}:${secs}`;
+    };
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    const htmlContent = `
+      <html>
+        <head>
+          <title>&nbsp;</title>
+          <style>
+            @media print {
+              @page { margin: 0; }
+              body { 
+                margin: 0; 
+                padding: 1.6cm; 
+              }
+            }
+            body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+            h1 { text-align: center; color: #27d68a; margin-bottom: 5px; }
+            p.info { text-align: center; color: #666; font-size: 0.9rem; margin-top: 0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.9rem; }
+            th { background-color: #f8f9fa; font-weight: bold; }
+            .status-Present { color: #27d68a; font-weight: bold; }
+            .status-Absent { color: #ef4444; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h1>Attendance Report</h1>
+          <p class="info">Generated on: ${formatPrintDateTime(new Date())}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>SR No.</th>
+                <th>Emp Code</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Date</th>
+                <th>Sign-In Time</th>
+                <th>Sign-Out Time</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map((rec, index) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${rec.empCode || ''}</td>
+                  <td><strong>${rec.name || ''}</strong></td>
+                  <td>${rec.category || ''}</td>
+                  <td>${formatDateFriendly(rec.date)}</td>
+                  <td>${rec.record?.sign_in_time ? formatTime(rec.record.sign_in_time) : '—'}</td>
+                  <td>${rec.record?.sign_out_time ? formatTime(rec.record.sign_out_time) : '—'}</td>
+                  <td><span class="status-${rec.status || ''}">${rec.status || ''}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
+  const handleExportClick = (type) => {
+    setIsDropdownOpen(false);
+    if (filteredRecords.length === 0) {
+      addToast({ type: 'warning', message: 'No records to export.' });
+      return;
+    }
+
+    try {
+      if (type === 'CSV') {
+        exportToCSV(filteredRecords, 'attendance_report.csv');
+        addToast({ type: 'success', message: 'CSV file exported successfully!' });
+      } else if (type === 'Excel') {
+        exportToCSV(filteredRecords, 'attendance_report.csv');
+        addToast({ type: 'success', message: 'Excel file exported successfully!' });
+      } else if (type === 'PDF' || type === 'Print') {
+        printTable(filteredRecords);
+        addToast({ type: 'success', message: `${type === 'PDF' ? 'PDF Generation' : 'Print'} window opened successfully!` });
+      }
+    } catch (err) {
+      console.error('Export failed:', err);
+      addToast({ type: 'error', message: `Failed to export ${type} file.` });
+    }
+  };
+
+  const handleCopyClick = () => {
+    if (filteredRecords.length === 0) {
+      addToast({ type: 'warning', message: 'No records to copy.' });
+      return;
+    }
+    const text = filteredRecords
+      .map((rec, index) => {
+        const srNo = index + 1;
+        const signIn = rec.record?.sign_in_time ? formatTime(rec.record.sign_in_time) : '—';
+        const signOut = rec.record?.sign_out_time ? formatTime(rec.record.sign_out_time) : '—';
+        return `${srNo}\t${rec.empCode}\t${rec.name}\t${rec.category}\t${formatDateFriendly(rec.date)}\tIn: ${signIn}\tOut: ${signOut}\t${rec.status}`;
+      })
+      .join('\n');
+    navigator.clipboard.writeText(text);
+    addToast({ type: 'success', message: 'Copied filtered attendance list to clipboard!' });
+    setIsDropdownOpen(false);
+  };
+
   // Generate Daily Attendance Sheet (combining check-ins with generated Absent logs)
   const generateDailySheet = () => {
     if (!selectedDate) {
@@ -184,8 +382,8 @@ const AttendanceListPage = () => {
         return {
           id: log.id,
           empCode: emp.uan || 'N/A',
-          name: emp.memberName || 'Unknown Employee',
-          category: emp.employeeType || 'N/A',
+          name: emp.memberName || emp.name || log.employee?.name || 'Unknown Employee',
+          category: emp.employeeType || log.employee?.employee_type || 'N/A',
           contact: emp.mobile || '',
           address: emp.address || '',
           avatarSeed: 1,
@@ -204,8 +402,8 @@ const AttendanceListPage = () => {
         return {
           id: log.id,
           empCode: emp.uan || 'N/A',
-          name: emp.memberName,
-          category: emp.employeeType || 'N/A',
+          name: emp.memberName || emp.name || log.employee?.name || 'Unknown Employee',
+          category: emp.employeeType || log.employee?.employee_type || 'N/A',
           contact: emp.mobile || '',
           address: emp.address || '',
           avatarSeed: 1,
@@ -218,7 +416,7 @@ const AttendanceListPage = () => {
         return {
           id: `absent-${emp.id}-${selectedDate}`,
           empCode: emp.uan || 'N/A',
-          name: emp.memberName,
+          name: emp.memberName || emp.name || 'Unknown Employee',
           category: emp.employeeType || 'N/A',
           contact: emp.mobile || '',
           address: emp.address || '',
@@ -296,74 +494,91 @@ const AttendanceListPage = () => {
     setIsImageModalOpen(true);
   };
 
-  const formatDateFriendly = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
-
-  const formatTime = (timeStr) => {
-    if (!timeStr) return '';
-    const d = new Date(timeStr);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
   return (
     <div className={styles.pageContainer}>
       {/* Main Page Header */}
       <div className={styles.headerSection}>
         <h1 className={styles.pageTitle}>Attendance List</h1>
+        
+        <div className={styles.dropdownContainer} ref={dropdownRef}>
+            <button
+              className={styles.downloadBtn}
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            >
+              <Download size={18} /> Download
+            </button>
+            {isDropdownOpen && (
+              <div className={styles.dropdownMenu}>
+                <button onClick={() => handleExportClick('Excel')}>
+                  <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button onClick={handleCopyClick}>
+                  <Copy size={16} /> Copy
+                </button>
+                <button onClick={() => handleExportClick('CSV')}>
+                  <FileText size={16} /> CSV
+                </button>
+                <button onClick={() => handleExportClick('PDF')}>
+                  <File size={16} /> PDF
+                </button>
+                <button onClick={() => handleExportClick('Print')}>
+                  <Printer size={16} /> Print
+                </button>
+              </div>
+            )}
+          </div>
       </div>
 
       {/* Table Card wrapper */}
       <div className={styles.tableCard}>
         {/* Toolbar */}
-        <div className={styles.toolbar} style={{ justifyContent: 'flex-end' }}>
-          <div className={styles.rightControls}>
-          {/* Calendar Date Picker Filter */}
-          <div className={styles.dateFilter}>
-            <span className={styles.controlLabel}>
-              <Calendar size={14} style={{ marginRight: '4px', verticalAlign: 'middle', color: 'var(--primary)' }} />
-              Date Filter
-            </span>
-            <div className={styles.dateInputWrapper}>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className={styles.datePickerInput}
-              />
-              <button
-                type="button"
-                className={`${styles.quickBtn} ${selectedDate === todayStr ? styles.activeQuickBtn : ''}`}
-                onClick={() => setSelectedDate(todayStr)}
-                title="Go to Today"
-              >
-                Today
-              </button>
-              <button
-                type="button"
-                className={`${styles.quickBtn} ${!selectedDate ? styles.activeQuickBtn : ''}`}
-                onClick={() => setSelectedDate('')}
-                title="Show All Dates"
-              >
-                All
-              </button>
+        <div className={styles.toolbar}>
+          <div className={styles.leftControls}>
+            {/* Calendar Date Picker Filter */}
+            <div className={styles.dateFilter}>
+              <span className={styles.controlLabel}>
+                <Calendar size={14} style={{ marginRight: '4px', verticalAlign: 'middle', color: 'var(--primary)' }} />
+                Date Filter
+              </span>
+              <div className={styles.dateInputWrapper}>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className={styles.datePickerInput}
+                />
+                <button
+                  type="button"
+                  className={`${styles.quickBtn} ${selectedDate === todayStr ? styles.activeQuickBtn : ''}`}
+                  onClick={() => setSelectedDate(todayStr)}
+                  title="Go to Today"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.quickBtn} ${!selectedDate ? styles.activeQuickBtn : ''}`}
+                  onClick={() => setSelectedDate('')}
+                  title="Show All Dates"
+                >
+                  All
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* Category Selector */}
-          <div className={styles.categorySelect}>
-            <span className={styles.controlLabel}>Category</span>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              <option value="All">All Categories</option>
-              <option value="OFFICE STAFF">Office Staff</option>
-              <option value="PACKING STAFF">Packing Staff</option>
-              <option value="BIDI ROLLER">Bidi Roller</option>
-            </select>
+            {/* Category Selector */}
+            <div className={styles.categorySelect}>
+              <span className={styles.controlLabel}>Category</span>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <option value="All">All Categories</option>
+                <option value="OFFICE STAFF">Office Staff</option>
+                <option value="PACKING STAFF">Packing Staff</option>
+                <option value="BIDI ROLLER">Bidi Roller</option>
+              </select>
+            </div>
           </div>
 
           {/* Search Input */}
@@ -377,7 +592,6 @@ const AttendanceListPage = () => {
             />
           </div>
         </div>
-      </div>
 
       {/* Responsive Table */}
       <div className={styles.tableResponsive}>

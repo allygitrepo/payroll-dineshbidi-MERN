@@ -72,7 +72,7 @@ const createEmployeeSchema = Joi.object({
         "string.guid": "Address ID must be a valid UUID.",
         "any.required": "Address ID is required.",
     }),
-    image_path: Joi.string().max(500).optional().allow(null, ""),
+    image_path: Joi.string().optional().allow(null, ""),
     uan: Joi.string().pattern(/^[0-9]{12}$/).required().messages({
         "string.pattern.base": "UAN must be exactly 12 digits.",
         "any.required": "UAN is required.",
@@ -134,7 +134,7 @@ const updateEmployeeSchema = Joi.object({
     address_id: Joi.string().guid({ version: "uuidv4" }).optional().messages({
         "string.guid": "Address ID must be a valid UUID.",
     }),
-    image_path: Joi.string().max(500).optional().allow(null, ""),
+    image_path: Joi.string().optional().allow(null, ""),
     uan: Joi.string().pattern(/^[0-9]{12}$/).optional().messages({
         "string.pattern.base": "UAN must be exactly 12 digits.",
     }),

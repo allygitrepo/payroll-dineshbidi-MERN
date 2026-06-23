@@ -256,11 +256,36 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        employeeImage: e.target.files[0].name
-      }));
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({
+          ...prev,
+          employeeImage: reader.result
+        }));
+      };
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData((prev) => ({
+      ...prev,
+      employeeImage: ''
+    }));
+    const fileInput = document.getElementById('employeeImageInput');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
+  const getPhotoUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('data:')) return path;
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/payroll/v1/';
+    const host = baseUrl.replace('/payroll/v1/', '');
+    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+    return `${host}/payroll/${cleanPath}`;
   };
 
   // KYC Helpers
@@ -494,15 +519,28 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
             <div className={styles.field}>
               <label className={styles.label}>Select Employee Image:</label>
               <input
+                id="employeeImageInput"
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
                 className={styles.input}
               />
               {formData.employeeImage && (
-                <span style={{ fontSize: '0.8rem', color: 'var(--primary)' }}>
-                  Selected: {formData.employeeImage}
-                </span>
+                <div className={styles.imagePreviewContainer}>
+                  <img
+                    src={getPhotoUrl(formData.employeeImage)}
+                    alt="Employee"
+                    className={styles.previewImage}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className={styles.removeImageBtn}
+                    title="Remove Image"
+                  >
+                    ✕
+                  </button>
+                </div>
               )}
             </div>
 
