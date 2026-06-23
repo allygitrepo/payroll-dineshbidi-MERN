@@ -38,12 +38,35 @@ const KycExportPage = () => {
   const dropdownRef = useRef(null);
   const addToast = useToast();
 
+  const [dbEmployees, setDbEmployees] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      setIsLoading(true);
+      try {
+        const companyId = localStorage.getItem('selectedCompany');
+        if (companyId) {
+          const res = await getEmployees(companyId);
+          setDbEmployees(res || []);
+        } else {
+          setDbEmployees([]);
+          addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+        }
+      } catch (err) {
+        addToast({ type: 'error', message: 'Failed to fetch employees' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchEmployees();
+  }, []);
+
   // Load database employees flattened to individual KYC records
   const allKycRecords = useMemo(() => {
-    const dbList = getEmployees() || [];
     const parsedKyc = [];
 
-    dbList.forEach(emp => {
+    dbEmployees.forEach(emp => {
       if (emp.kycDetails && emp.kycDetails.length > 0) {
         emp.kycDetails.forEach(k => {
           parsedKyc.push({
@@ -66,7 +89,7 @@ const KycExportPage = () => {
     const uniqueMocks = MOCK_KYC_RECORDS.filter(k => !dbUans.has(k.uan));
 
     return [...parsedKyc, ...uniqueMocks];
-  }, []);
+  }, [dbEmployees]);
 
   // Filter based on Date Range
   const filteredData = useMemo(() => {
@@ -166,17 +189,112 @@ const KycExportPage = () => {
       return;
     }
 
-    if (type === 'Copy') {
-      addToast({
-        type: 'success',
-        message: 'Copied filtered KYC records to clipboard!'
+    if (type === 'Excel' || type === 'CSV') {
+      const headers = ['SR.NO.', 'Employee Name', 'Universal Account Number (UAN)', 'KYC Type Code', 'KYC Document Number', 'Name as on KYC document', 'IFSC', 'Expiry Date'];
+      let csvContent = headers.join(',') + '\n';
+      
+      searchedData.forEach((rec, index) => {
+        const row = [
+          index + 1,
+          `"${rec.employeeName || ''}"`,
+          `"${rec.uan || ''}"`,
+          `"${rec.typeCode || ''}"`,
+          `"${rec.docNumber || ''}"`,
+          `"${rec.nameAsPerDoc || ''}"`,
+          `"${rec.ifsc || ''}"`,
+          `"${formatDate(rec.expiryDate)}"`
+        ];
+        csvContent += row.join(',') + '\n';
       });
-    } else {
-      addToast({
-        type: 'info',
-        message: `${type} export started for ${totalEntries} KYC records!`
-      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `kyc_export_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      addToast({ type: 'success', message: `${type} file downloaded successfully!` });
+    } 
+    else if (type === 'Print' || type === 'PDF') {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        let html = `
+          <html>
+          <head>
+            <title>KYC Export Data</title>
+            <style>
+              body { font-family: sans-serif; padding: 20px; }
+              table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 20px; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #f2f2f2; font-weight: bold; }
+              h2 { color: #333; margin-bottom: 5px; }
+            </style>
+          </head>
+          <body>
+            <h2>KYC Export Data</h2>
+            <p>Total Records: ${searchedData.length}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 50px; text-align: center;">SR.NO.</th>
+                  <th>Employee Name</th>
+                  <th>UAN</th>
+                  <th>KYC Type</th>
+                  <th>Document Number</th>
+                  <th>Name on Document</th>
+                  <th>IFSC</th>
+                  <th>Expiry Date</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+        
+        searchedData.forEach((rec, index) => {
+          html += `
+            <tr>
+              <td style="text-align: center;">${index + 1}</td>
+              <td>${rec.employeeName || ''}</td>
+              <td>${rec.uan || ''}</td>
+              <td style="text-align: center;">${rec.typeCode || ''}</td>
+              <td>${rec.docNumber || ''}</td>
+              <td>${rec.nameAsPerDoc || ''}</td>
+              <td>${rec.ifsc || '-'}</td>
+              <td>${formatDate(rec.expiryDate)}</td>
+            </tr>
+          `;
+        });
+        
+        html += `
+              </tbody>
+            </table>
+            <script>
+              window.onload = function() { 
+                setTimeout(function() { window.print(); window.close(); }, 500);
+              };
+            </script>
+          </body>
+          </html>
+        `;
+        
+        printWindow.document.write(html);
+        printWindow.document.close();
+        addToast({ type: 'success', message: `${type} document generated successfully!` });
+      } else {
+        addToast({ type: 'error', message: 'Pop-up blocker prevented printing.' });
+      }
     }
+    else if (type === 'Copy') {
+      const text = searchedData.map((rec, index) => 
+        `${index + 1}\t${rec.employeeName || ''}\t${rec.uan || ''}\t${rec.typeCode || ''}\t${rec.docNumber || ''}\t${rec.nameAsPerDoc || ''}\t${rec.ifsc || '-'}\t${formatDate(rec.expiryDate)}`
+      ).join('\n');
+      navigator.clipboard.writeText(text);
+      addToast({ type: 'success', message: 'Copied filtered KYC records to clipboard!' });
+    }
+
     setIsDropdownOpen(false);
   };
 
