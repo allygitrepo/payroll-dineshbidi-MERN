@@ -139,3 +139,45 @@
   background-color: #DC2626; /* Darker red */
   box-shadow: 0 6px 12px -2px rgba(239, 68, 68, 0.3);
 }
+
+/* successTheme */
+.successTheme .iconWrapper {
+  background-color: #DEF7EC;
+  color: #31C48D;
+}
+.successTheme .confirmBtn {
+  background-color: #31C48D;
+  box-shadow: 0 4px 6px -1px rgba(49, 196, 141, 0.2);
+}
+.successTheme .confirmBtn:hover {
+  background-color: #0E9F6E;
+  box-shadow: 0 6px 12px -2px rgba(49, 196, 141, 0.3);
+}
+
+/* warningTheme */
+.warningTheme .iconWrapper {
+  background-color: #FEF3C7;
+  color: #D97706;
+}
+.warningTheme .confirmBtn {
+  background-color: #F59E0B;
+  box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.2);
+}
+.warningTheme .confirmBtn:hover {
+  background-color: #D97706;
+  box-shadow: 0 6px 12px -2px rgba(245, 158, 11, 0.3);
+}
+
+/* infoTheme */
+.infoTheme .iconWrapper {
+  background-color: #E1EFFE;
+  color: #3F83F8;
+}
+.infoTheme .confirmBtn {
+  background-color: #3F83F8;
+  box-shadow: 0 4px 6px -1px rgba(63, 131, 248, 0.2);
+}
+.infoTheme .confirmBtn:hover {
+  background-color: #1C64F2;
+  box-shadow: 0 6px 12px -2px rgba(63, 131, 248, 0.3);
+}

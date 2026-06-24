@@ -78,6 +78,7 @@ const mapToFrontend = (e) => {
     physicalHandicap: e.physical_handicap ? 'YES' : 'NO',
     pmrpy: e.pmrpy ? 'YES' : 'NO',
     employeeImage: e.image_path || '',
+    faceDescriptorPath: e.face_descriptor_path || null,
     kycDetails: kycDetails,
     nomineeDetails: (e.nomineeDetails || []).map(n => ({
       id: n.id,
@@ -221,11 +222,31 @@ export const getEmployees = async (companyId) => {
 
 export const saveEmployee = async (employee, companyId, addresses = [], contractors = []) => {
   const payload = mapToBackend(employee, companyId, addresses, contractors);
+  let savedEmpId = employee.id;
+  let savedEmpName = employee.memberName;
+
   if (employee.id) {
-    await apiClient.put(`employees/${employee.id}`, payload);
+    // Strip company_id from update payload to satisfy backend schema constraints
+    const { company_id, ...updatePayload } = payload;
+    await apiClient.put(`employees/${employee.id}`, updatePayload);
   } else {
-    await apiClient.post('employees', payload);
+    const res = await apiClient.post('employees', payload);
+    if (res.data?.data) {
+      savedEmpId = res.data.data.id;
+      savedEmpName = res.data.data.name;
+    }
   }
+
+  // If there are temp face descriptors to enroll, save them
+  if (employee.tempFaceDescriptors && employee.tempFaceDescriptors.length > 0) {
+    const enrollPayload = {
+      employee_id: savedEmpId,
+      name: savedEmpName,
+      descriptors: employee.tempFaceDescriptors.map(d => Array.from(d))
+    };
+    await apiClient.post('employees/face/enroll', enrollPayload);
+  }
+
   return await getEmployees(companyId);
 };
 

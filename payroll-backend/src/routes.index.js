@@ -18,6 +18,8 @@ const bidiRollerEntryRoutes = require("./modules/Entry/BidiRollerEntry/bidiRolle
 const challanDateEntryRoutes = require("./modules/Entry/ChallanDateEntry/challanDateEntry.routes");
 const resignationRoutes = require("./modules/Entry/Resignation/resignation.routes");
 const noteRoutes = require("./modules/Todo List/Note/note.routes");
+const attendanceRoutes = require("./modules/Attendance/attendance.routes");
+const leaveRequestRoutes = require("./modules/Attendance/Leave/leaveRequest.routes");
 
 router.get("/v1/test", (req, res) => {
     res.json({
@@ -47,5 +49,7 @@ router.use("/v1/bidi-roller-entries", bidiRollerEntryRoutes);
 router.use("/v1/challan-date-entries", challanDateEntryRoutes);
 router.use("/v1/resignations", resignationRoutes);
 router.use("/v1/notes", noteRoutes);
+router.use("/v1/attendance", attendanceRoutes);
+router.use("/v1/leaves", leaveRequestRoutes);
 
 module.exports = router;

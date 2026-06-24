@@ -70,9 +70,9 @@ const menuItems = [
     name: 'Attendance',
     icon: CalendarCheck,
     subItems: [
-      { name: 'Office Attendance', icon: Users },
-      { name: 'Packing Attendance', icon: Package },
-      { name: 'Bidi Roller Attendance', icon: User }
+      { name: 'Attendence List', icon: ClipboardList },
+      { name: 'Leave Management', icon: FileCheck },
+      { name: 'Face Attendance (Self)', icon: Fingerprint }
     ]
   },
   {

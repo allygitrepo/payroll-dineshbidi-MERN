@@ -8,6 +8,8 @@ const Employee = require("../../modules/Masters/Employee/employee.model");
 const EmployeeKycDetail = require("../../modules/Masters/Employee/employeeKycDetail.model");
 const EmployeeNomineeDetail = require("../../modules/Masters/Employee/employeeNomineeDetail.model");
 const EmployeeFamilyMember = require("../../modules/Masters/Employee/employeeFamilyMember.model");
+const Attendance = require("../../modules/Attendance/attendance.model");
+const LeaveRequest = require("../../modules/Attendance/Leave/leaveRequest.model");
 const ChallanSetup = require("../../modules/Setup/ChallanSetup/challanSetup.model");
 const ProfessionalTax = require("../../modules/Setup/ProfessionalTax/professionalTax.model");
 const BidiRollerWage = require("../../modules/Setup/BidiRollerWage/bidiRollerWage.model");
@@ -37,6 +39,8 @@ db.Employee = Employee;
 db.EmployeeKycDetail = EmployeeKycDetail;
 db.EmployeeNomineeDetail = EmployeeNomineeDetail;
 db.EmployeeFamilyMember = EmployeeFamilyMember;
+db.Attendance = Attendance;
+db.LeaveRequest = LeaveRequest;
 db.ChallanSetup = ChallanSetup;
 db.ProfessionalTax = ProfessionalTax;
 db.BidiRollerWage = BidiRollerWage;
@@ -259,7 +263,14 @@ db.Employee.hasMany(db.OfficeStaffEntry, {
     as: "officeStaffEntries",
     onDelete: "CASCADE",
 });
-db.OfficeStaffEntry.belongsTo(db.Employee, {
+// db.OfficeStaffEntry.belongsTo(db.Employee, {
+
+db.Employee.hasMany(db.Attendance, {
+    foreignKey: "employee_id",
+    as: "attendances",
+    onDelete: "CASCADE",
+});
+db.Attendance.belongsTo(db.Employee, {
     foreignKey: "employee_id",
     as: "employee",
 });
@@ -270,7 +281,14 @@ db.Company.hasMany(db.PackersEntry, {
     as: "packersEntries",
     onDelete: "CASCADE",
 });
-db.PackersEntry.belongsTo(db.Company, {
+
+// LeaveRequest relationships
+db.Company.hasMany(db.LeaveRequest, {
+    foreignKey: "company_id",
+    as: "leaveRequests",
+    onDelete: "CASCADE",
+});
+db.LeaveRequest.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
 });
@@ -280,7 +298,13 @@ db.Employee.hasMany(db.PackersEntry, {
     as: "packersEntries",
     onDelete: "CASCADE",
 });
-db.PackersEntry.belongsTo(db.Employee, {
+// db.PackersEntry.belongsTo(db.Employee, {
+db.Employee.hasMany(db.LeaveRequest, {
+    foreignKey: "employee_id",
+    as: "leaveRequests",
+    onDelete: "CASCADE",
+});
+db.LeaveRequest.belongsTo(db.Employee, {
     foreignKey: "employee_id",
     as: "employee",
 });
@@ -319,3 +343,4 @@ db.Note.belongsTo(db.Company, {
 });
 
 module.exports = db;
+

@@ -109,6 +109,10 @@ const Employee = sequelize.define(
             type: DataTypes.BOOLEAN,
             defaultValue: true,
         },
+        face_descriptor_path: {
+            type: DataTypes.STRING(500),
+            allowNull: true,
+        },
     },
     {
         tableName: "employees",

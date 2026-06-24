@@ -1,16 +1,16 @@
 import React from 'react';
-import OfficeAttendancePage from '../office/pages/OfficeAttendancePage';
-import PackingAttendancePage from '../packing/pages/PackingAttendancePage';
-import BidiRollerAttendancePage from '../bidi-roller/pages/BidiRollerAttendancePage';
+import AttendanceListPage from '../list/pages/AttendanceListPage';
+import FaceAttendanceSelfPage from '../self/pages/FaceAttendanceSelfPage';
+import LeavePage from '../leave/pages/LeavePage';
 
 const AttendancePage = ({ activeSubMenu }) => {
   switch (activeSubMenu) {
-    case 'Office Attendance':
-      return <OfficeAttendancePage />;
-    case 'Packing Attendance':
-      return <PackingAttendancePage />;
-    case 'Bidi Roller Attendance':
-      return <BidiRollerAttendancePage />;
+    case 'Attendence List':
+      return <AttendanceListPage />;
+    case 'Leave Management':
+      return <LeavePage />;
+    case 'Face Attendance (Self)':
+      return <FaceAttendanceSelfPage />;
     default:
       return (
         <div style={{ padding: '30px', backgroundColor: 'var(--card-bg)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>

@@ -1,2 +1,9 @@
 node_modules
 .env
+
+# Ignore biometric templates and captures
+face_data/*.json
+uploads/
+**/*.png
+**/*.jpg
+**/*.jpeg
