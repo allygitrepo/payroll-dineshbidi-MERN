@@ -235,6 +235,15 @@ db.EmployeeFamilyMember.belongsTo(db.Employee, {
     foreignKey: "employee_id",
     as: "employee",
 });
+db.Employee.hasMany(db.Attendance, {
+    foreignKey: "employee_id",
+    as: "attendances",
+    onDelete: "CASCADE",
+});
+db.Attendance.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
 
 // Calender relationships
 db.Company.hasMany(db.Calender, {
@@ -263,7 +272,10 @@ db.Employee.hasMany(db.OfficeStaffEntry, {
     as: "officeStaffEntries",
     onDelete: "CASCADE",
 });
-// db.OfficeStaffEntry.belongsTo(db.Employee, {
+db.OfficeStaffEntry.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
 
 db.Employee.hasMany(db.Attendance, {
     foreignKey: "employee_id",
@@ -298,7 +310,12 @@ db.Employee.hasMany(db.PackersEntry, {
     as: "packersEntries",
     onDelete: "CASCADE",
 });
-// db.PackersEntry.belongsTo(db.Employee, {
+
+db.PackersEntry.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
 db.Employee.hasMany(db.LeaveRequest, {
     foreignKey: "employee_id",
     as: "leaveRequests",
