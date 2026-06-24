@@ -5,6 +5,9 @@ import DashboardPage from '../modules/dashboard/pages/DashboardPage';
 import DashboardHome from '../modules/dashboard/pages/DashboardHome';
 import ModulePageWrapper from './ModulePageWrapper';
 import FaceAttendanceSelfPage from '../modules/attendance/self/pages/FaceAttendanceSelfPage';
+// import FaceAttendanceSelfPage from '../modules/attendance/self/pages/FaceAttendanceSelfPage';
+// import DashboardHome from '../modules/dashboard/pages/DashboardHome';
+import ModulePageWrapper from './ModulePageWrapper';
 
 export const router = createBrowserRouter([
   {

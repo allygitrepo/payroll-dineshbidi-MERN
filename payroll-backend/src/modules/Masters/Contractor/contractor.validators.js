@@ -59,6 +59,7 @@ const createContractorSchema = Joi.object({
     ifsc: Joi.string().pattern(/^[A-Z]{4}0[A-Z0-9]{6}$/).optional().allow(null, "").messages({
         "string.pattern.base": "Invalid IFSC code format (e.g., SBIN0123456).",
     }),
+    status: Joi.boolean().optional(),
 });
 
 const updateContractorSchema = Joi.object({

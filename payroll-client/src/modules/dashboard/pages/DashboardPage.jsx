@@ -8,11 +8,11 @@ const DashboardPage = () => {
 
   return (
     <div className={styles.appContainer}>
-      <Header 
-        sidebarCollapsed={sidebarCollapsed} 
-        setSidebarCollapsed={setSidebarCollapsed} 
+      <Header
+        sidebarCollapsed={sidebarCollapsed}
+        setSidebarCollapsed={setSidebarCollapsed}
       />
-      
+
       <div className={styles.mainBody}>
         {/* Sidebar */}
         <Sidebar sidebarCollapsed={sidebarCollapsed} />
