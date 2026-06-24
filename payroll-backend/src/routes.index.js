@@ -54,4 +54,5 @@ router.use("/v1/leaves", leaveRequestRoutes);
 router.use("/v1/reports", reportRoutes);
 router.use("/v1/utility/backup", require("./modules/Utility/Backup/backup.routes"));
 router.use("/v1/utility/restore", require("./modules/Utility/Restore/restore.routes"));
+router.use("/v1/utility/uan-to-ip", require("./modules/Utility/UanToIp/uanToIp.routes"));
 module.exports = router;
