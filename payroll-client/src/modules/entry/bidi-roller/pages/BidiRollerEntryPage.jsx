@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
-  Search, Save, Download, FileSpreadsheet, Copy, FileText, File, Printer, Users, CalendarDays
+  Search, Save, Download, FileSpreadsheet, Copy, FileText, File, Printer, Users, CalendarDays, ChevronDown, Check, X
 } from 'lucide-react';
 import styles from './BidiRollerEntryPage.module.css';
 import { useToast, MonthYearPicker } from '../../../../shared/components';
@@ -31,7 +31,9 @@ const BidiRollerEntryPage = () => {
   const companyId = localStorage.getItem('selectedCompany');
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
-  const [selectedContractor, setSelectedContractor] = useState('ALL');
+  const [selectedContractors, setSelectedContractors] = useState([]);
+  const [isMultiSelectOpen, setIsMultiSelectOpen] = useState(false);
+  const multiSelectRef = useRef(null);
   const [contractorsList, setContractorsList] = useState([]);
 
   const [activeMonth, setActiveMonth] = useState('');
@@ -48,6 +50,7 @@ const BidiRollerEntryPage = () => {
         try {
           const list = await getContractors(companyId);
           setContractorsList(list);
+          setSelectedContractors(list.map(c => c.id));
         } catch (error) {
           console.error("Failed to load contractors", error);
         }
@@ -62,10 +65,17 @@ const BidiRollerEntryPage = () => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsDropdownOpen(false);
       }
+      if (multiSelectRef.current && !multiSelectRef.current.contains(e.target)) {
+        setIsMultiSelectOpen(false);
+      }
     };
-    if (isDropdownOpen) document.addEventListener('mousedown', handleClickOutside);
+    if (isDropdownOpen || isMultiSelectOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isMultiSelectOpen]);
+
+  const toggleContractorOption = (id) => {
+    setSelectedContractors(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+  };
 
   /* ---- Search / Load ---- */
   const handleSearch = useCallback(async () => {
@@ -145,9 +155,8 @@ const BidiRollerEntryPage = () => {
 
   /* ---- Displayed Rows ---- */
   const displayedRows = useMemo(() => {
-    if (selectedContractor === 'ALL') return rows;
-    return rows.filter(r => r.contractorId === selectedContractor);
-  }, [rows, selectedContractor]);
+    return rows.filter(r => selectedContractors.includes(r.contractorId));
+  }, [rows, selectedContractors]);
 
   /* ---- Export ---- */
   const handleExport = (type) => {
@@ -228,41 +237,79 @@ const BidiRollerEntryPage = () => {
       </div>
 
       {/* ---- Search & Filter Card ---- */}
-      <div className={styles.searchCard}>
-        <div className={styles.searchRow}>
+      <div className={styles.card}>
+        <div className={styles.filterRow}>
           <div className={styles.filterGroup}>
-            <div className={styles.searchCardTitle}>
-              <CalendarDays size={16} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
-              Month and Year
-            </div>
+            <span className={styles.label}>Month and Year</span>
             <MonthYearPicker
               value={selectedMonth}
               onChange={setSelectedMonth}
-              placeholder="Select Month & Year"
             />
           </div>
           <div className={styles.filterGroup}>
-            <div className={styles.searchCardTitle}>
-              <Users size={16} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
-              Contractor
+            <span className={styles.label}>Contractor Name - Pf Code</span>
+            <div className={styles.multiSelectWrapper} ref={multiSelectRef}>
+              <div 
+                className={styles.multiSelectBox}
+                onClick={() => setIsMultiSelectOpen(!isMultiSelectOpen)}
+              >
+                {selectedContractors.length === 0 ? (
+                  <span className={styles.placeholderText}>Select Contractors</span>
+                ) : selectedContractors.length > 2 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: '600' }}>
+                      {selectedContractors.length === contractorsList.length ? 'All Contractors Selected' : `${selectedContractors.length} Contractors Selected`}
+                    </span>
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); setSelectedContractors([]); }}
+                      style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', padding: 0 }}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className={styles.tagsList}>
+                    {selectedContractors.map(id => {
+                      const c = contractorsList.find(x => x.id === id);
+                      if (!c) return null;
+                      return (
+                        <span key={id} className={styles.tag}>
+                          {c.name.split(' ')[0]}
+                          <button type="button" className={styles.tagRemove} onClick={(e) => { e.stopPropagation(); toggleContractorOption(id); }}>
+                            <X size={12} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                <ChevronDown size={16} className={styles.dropdownIndicator} />
+              </div>
+
+              {isMultiSelectOpen && (
+                <div className={styles.selectMenu}>
+                  {contractorsList.map(c => {
+                    const isSelected = selectedContractors.includes(c.id);
+                    return (
+                      <div 
+                        key={c.id}
+                        onClick={() => toggleContractorOption(c.id)}
+                        className={`${styles.selectOption} ${isSelected ? styles.selectOptionActive : ''}`}
+                      >
+                        <span>{`${c.name} - ${c.pfCode}`}</span>
+                        {isSelected && <Check size={14} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <select
-              value={selectedContractor}
-              onChange={(e) => setSelectedContractor(e.target.value)}
-              className={styles.dropdownInput}
-              style={{ padding: '0.45rem 0.5rem', borderRadius: '4px', border: '1px solid #ddd', minWidth: '200px' }}
-            >
-              <option value="ALL">ALL CONTRACTORS</option>
-              {contractorsList.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
           </div>
-          <div className={styles.filterGroup} style={{ justifyContent: 'flex-end', paddingTop: '1.4rem' }}>
-            <button className={styles.searchBtn} onClick={handleSearch} disabled={loading}>
-              <Search size={16} /> {loading ? 'Loading...' : 'Search'}
-            </button>
-          </div>
+          
+          <button type="button" className={styles.searchBtn} onClick={handleSearch} disabled={loading}>
+            <Search size={16} /> {loading ? 'Loading...' : 'Search'}
+          </button>
         </div>
       </div>
 
