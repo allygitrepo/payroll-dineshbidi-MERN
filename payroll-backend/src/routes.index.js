@@ -52,4 +52,5 @@ router.use("/v1/notes", noteRoutes);
 router.use("/v1/attendance", attendanceRoutes);
 router.use("/v1/leaves", leaveRequestRoutes);
 router.use("/v1/reports", reportRoutes);
+router.use("/v1/utility/backup", require("./modules/Utility/Backup/backup.routes"));
 module.exports = router;
