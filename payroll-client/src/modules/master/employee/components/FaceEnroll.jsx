@@ -64,18 +64,19 @@ const FaceEnroll = ({ employeeId, name, faceDescriptorPath, onDescriptorsCapture
   };
 
   const captureOnce = async () => {
-    if (!videoRef.current) return false;
+    if (!videoRef.current) return { success: false, error: 'Camera is not ready.' };
     try {
       const result = await faceService.detectFaceDescriptor(videoRef.current);
       if (result) {
         descriptorsRef.current.push(result);
         setCount(descriptorsRef.current.length);
-        return true;
+        return { success: true };
       }
     } catch (e) {
       console.error('Individual capture trial error:', e);
+      return { success: false, error: e.message || 'Face detection failed.' };
     }
-    return false;
+    return { success: false, error: 'No face detected.' };
   };
 
   const captureMany = async (target = 12) => {
@@ -91,7 +92,10 @@ const FaceEnroll = ({ employeeId, name, faceDescriptorPath, onDescriptorsCapture
       setEnrollmentStatus(`Scanning face... Capture ${descriptorsRef.current.length + 1}/${target}`);
       await new Promise((r) => setTimeout(r, 600)); // Delay for different angles
       try {
-        await captureOnce();
+        const res = await captureOnce();
+        if (!res.success) {
+          setEnrollmentStatus(`Scanning face... Capture ${descriptorsRef.current.length + 1}/${target} (${res.error})`);
+        }
       } catch (e) {
         console.error('Capture frame exception:', e);
       }

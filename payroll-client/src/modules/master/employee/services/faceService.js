@@ -52,15 +52,25 @@ const faceService = {
     
     try {
       const options = new faceapiModule.TinyFaceDetectorOptions({ inputSize: 224 });
-      const result = await faceapiModule
-        .detectSingleFace(videoElement, options)
+      const results = await faceapiModule
+        .detectAllFaces(videoElement, options)
         .withFaceLandmarks()
-        .withFaceDescriptor();
+        .withFaceDescriptors();
       
-      if (result && result.descriptor) {
-        return result.descriptor;
+      if (!results || results.length === 0) {
+        throw new Error('No face detected.');
       }
-      return null;
+      if (results.length > 1) {
+        throw new Error('Multiple faces detected. Exactly one face must be visible.');
+      }
+      
+      const result = results[0];
+      if (!result.detection || result.detection.score < 0.90) {
+        const scorePct = result.detection ? (result.detection.score * 100).toFixed(0) : '0';
+        throw new Error(`Face confidence too low (${scorePct}%). Need >= 90%.`);
+      }
+      
+      return result.descriptor;
     } catch (err) {
       console.error('detectFaceDescriptor error:', err);
       throw err;

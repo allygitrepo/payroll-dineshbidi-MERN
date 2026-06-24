@@ -239,7 +239,15 @@ const FaceAttendanceSelfPage = () => {
       const recognizeResponse = await faceService.recognize(faceDescriptor);
       
       if (!recognizeResponse.data?.data?.matched) {
-        setErrorMsg('Face not recognized! Please ensure you have enrolled your face from Employee Master.');
+        if (recognizeResponse.data?.data?.ambiguous) {
+          setErrorMsg('Face match is ambiguous. Please scan again.');
+          addToast({
+            type: 'warning',
+            message: 'Face match is ambiguous. Please scan again.'
+          });
+        } else {
+          setErrorMsg('Face not recognized! Please ensure you have enrolled your face from Employee Master.');
+        }
         setIsProcessing(false);
         return;
       }
@@ -363,11 +371,19 @@ const FaceAttendanceSelfPage = () => {
         const recognizeResponse = await faceService.recognize(faceDescriptor);
 
         if (!recognizeResponse.data?.data?.matched) {
-          setStatus('❌ Face not recognized! Please realign.');
-          addToast({
-            type: 'error',
-            message: 'Face not recognized!'
-          });
+          if (recognizeResponse.data?.data?.ambiguous) {
+            setStatus('⚠️ Face match is ambiguous. Please scan again.');
+            addToast({
+              type: 'warning',
+              message: 'Face match is ambiguous. Please scan again.'
+            });
+          } else {
+            setStatus('❌ Face not recognized! Please realign.');
+            addToast({
+              type: 'error',
+              message: 'Face not recognized!'
+            });
+          }
           setIsProcessing(false);
           // 2.5 seconds cooldown
           await new Promise((r) => setTimeout(r, 2500));
