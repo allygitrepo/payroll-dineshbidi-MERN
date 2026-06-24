@@ -89,11 +89,11 @@ const PackingSalaryPage = () => {
     const query = searchTerm.toLowerCase().trim();
     if (!query) return reportData;
     
-    return reportData.filter(row => 
-      (row.name && row.name.toLowerCase().includes(query)) ||
-      (row.employeeCode && row.employeeCode.toLowerCase().includes(query)) ||
-      (row.uan && row.uan.toLowerCase().includes(query))
-    );
+    return reportData.filter(row => {
+      return Object.values(row).some(value => 
+        value !== null && value !== undefined && String(value).toLowerCase().includes(query)
+      );
+    });
   }, [reportData, searchTerm]);
 
   const totals = useMemo(() => {

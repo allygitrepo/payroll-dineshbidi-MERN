@@ -37,6 +37,7 @@ const OfficeSalaryReportPage = () => {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [activeMonth, setActiveMonth] = useState('');
   const [reportData, setReportData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -82,6 +83,17 @@ const OfficeSalaryReportPage = () => {
     }
   };
 
+  const filteredData = useMemo(() => {
+    const query = searchTerm.toLowerCase().trim();
+    if (!query) return reportData;
+    
+    return reportData.filter(row => {
+      return Object.values(row).some(value => 
+        value !== null && value !== undefined && String(value).toLowerCase().includes(query)
+      );
+    });
+  }, [reportData, searchTerm]);
+
   const generatePDF = () => {
     const doc = new jsPDF('landscape'); // use landscape to fit all columns
     
@@ -101,7 +113,7 @@ const OfficeSalaryReportPage = () => {
     ];
     const tableRows = [];
 
-    reportData.forEach((row, index) => {
+    filteredData.forEach((row, index) => {
       const rowData = [
         index + 1,
         `${row.name}\nMember Id:${row.employeeCode}\nUAN:${row.uan}`,
@@ -163,7 +175,7 @@ const OfficeSalaryReportPage = () => {
 
   const handleCopy = () => {
     const headers = ["SR NO", "Employee Name", "Member Id", "UAN", "Basic Salary", "NO.Of Days Worked", "Holiday", "Absent", "Additional", "Total Amount", "PT", "PF", "ESIC", "Net Amount Paid"].join("\t");
-    const rows = reportData.map((row, index) => [
+    const rows = filteredData.map((row, index) => [
       index + 1,
       row.name,
       row.employeeCode,
@@ -186,7 +198,7 @@ const OfficeSalaryReportPage = () => {
 
   const handleCSV = (filename) => {
     const headers = ["SR NO", "Employee Name", "Member Id", "UAN", "Basic Salary", "NO.Of Days Worked", "Holiday", "Absent", "Additional", "Total Amount", "PT", "PF", "ESIC", "Net Amount Paid"].join(",");
-    const rows = reportData.map((row, index) => [
+    const rows = filteredData.map((row, index) => [
       index + 1,
       `"${row.name}"`,
       `"${row.employeeCode}"`,
@@ -237,7 +249,7 @@ const OfficeSalaryReportPage = () => {
         </tr>
       </thead><tbody>`;
     
-    reportData.forEach((row, i) => {
+    filteredData.forEach((row, i) => {
       html += `<tr>
         <td>${i+1}</td>
         <td>${row.name}<br/><span class="emp-details">Id: ${row.employeeCode} | UAN: ${row.uan}</span></td>
@@ -283,7 +295,7 @@ const OfficeSalaryReportPage = () => {
 
   const handleExport = (type) => {
     setIsDropdownOpen(false);
-    if (reportData.length === 0) {
+    if (filteredData.length === 0) {
       addToast({ type: 'error', message: 'No data to export!' });
       return;
     }
@@ -301,7 +313,7 @@ const OfficeSalaryReportPage = () => {
   };
 
   const totals = useMemo(() => {
-    return reportData.reduce((acc, row) => ({
+    return filteredData.reduce((acc, row) => ({
       daysWorked: acc.daysWorked + (parseInt(row.daysWorked) || 0),
       leaveWithPay: acc.leaveWithPay + (parseInt(row.leaveWithPay) || 0),
       absentDays: acc.absentDays + (parseInt(row.absentDays) || 0),
@@ -316,17 +328,17 @@ const OfficeSalaryReportPage = () => {
       daysWorked: 0, leaveWithPay: 0, absentDays: 0, addition: 0,
       basicSalary: 0, gross: 0, pf: 0, pt: 0, esic: 0, netWages: 0
     });
-  }, [reportData]);
+  }, [filteredData]);
 
   // Pagination bounds
-  const totalEntries = reportData.length;
+  const totalEntries = filteredData.length;
   const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalEntries);
 
   const paginatedData = useMemo(() => {
-    return reportData.slice(startIndex, endIndex);
-  }, [reportData, startIndex, endIndex]);
+    return filteredData.slice(startIndex, endIndex);
+  }, [filteredData, startIndex, endIndex]);
 
   const getPageNumbers = () => {
     const pages = [];
@@ -412,10 +424,27 @@ const OfficeSalaryReportPage = () => {
       ) : (
         <div className={styles.tableCard}>
           <div className={styles.tableCardHeader}>
-            <span className={styles.tableCardTitle}>
-              Office Salary Sheet — {reportData.length} Employee{reportData.length !== 1 ? 's' : ''}
-            </span>
-            <span className={styles.monthBadge}>{formatMonthLabel(activeMonth)}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span className={styles.tableCardTitle}>
+                Office Salary Sheet — {filteredData.length} Employee{filteredData.length !== 1 ? 's' : ''}
+              </span>
+              <span className={styles.monthBadge}>{formatMonthLabel(activeMonth)}</span>
+            </div>
+            {/* Search Input for columns */}
+            <div className={styles.tableSearch}>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginRight: '8px' }}>Search all columns:</label>
+              <input
+                type="text"
+                placeholder="Search name, UAN..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className={styles.searchInput}
+                style={{ padding: '6px 12px', border: '1px solid var(--border)', borderRadius: '6px', outline: 'none' }}
+              />
+            </div>
           </div>
 
           <div className={styles.tableContainer}>
