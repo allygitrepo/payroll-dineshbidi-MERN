@@ -126,6 +126,7 @@
 .filterRow {
   display: flex;
   align-items: flex-end;
+  justify-content: center;
   gap: 16px;
   flex-wrap: wrap;
 }

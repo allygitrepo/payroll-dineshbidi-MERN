@@ -26,32 +26,37 @@ const PaymentAdvicePage = () => {
   const dropdownRef = useRef(null);
   const addToast = useToast();
 
-  // Load contractors list
-  const contractorsList = useMemo(() => {
-    return getContractors() || [];
-  }, []);
+  const [contractorsList, setContractorsList] = useState([]);
+  const [companyInfo, setCompanyInfo] = useState({
+    name: 'BRIJBASHI TRADERS',
+    address: 'BANDHA GHAT, P.O. JHALDA, PURULIA, PIN - 723202'
+  });
+  const [resolvedRecords, setResolvedRecords] = useState([]);
 
-  // Fetch company details
-  const companyInfo = useMemo(() => {
-    const companies = getCompanies() || [];
-    if (companies.length > 0) {
-      const c = companies[0];
-      const name = c.estbName || 'BRIJBASHI TRADERS';
-      const addrParts = [
-        c.address,
-        c.postOffice ? `P.O. ${c.postOffice}` : '',
-        c.district,
-        c.pincode ? `PIN - ${c.pincode}` : ''
-      ].filter(Boolean);
-      return {
-        name,
-        address: addrParts.join(', ')
-      };
-    }
-    return {
-      name: 'BRIJBASHI TRADERS',
-      address: 'BANDHA GHAT, P.O. JHALDA, PURULIA, PIN - 723202'
+  useEffect(() => {
+    const fetchMasters = async () => {
+      try {
+        const companyId = localStorage.getItem('selectedCompany');
+        const cList = await getContractors(companyId) || [];
+        setContractorsList(cList);
+
+        const companies = await getCompanies() || [];
+        if (companies.length > 0) {
+          const c = companies[0];
+          const name = c.estbName || 'BRIJBASHI TRADERS';
+          const addrParts = [
+            c.address,
+            c.postOffice ? `P.O. ${c.postOffice}` : '',
+            c.district,
+            c.pincode ? `PIN - ${c.pincode}` : ''
+          ].filter(Boolean);
+          setCompanyInfo({ name, address: addrParts.join(', ') });
+        }
+      } catch (err) {
+        console.error(err);
+      }
     };
+    fetchMasters();
   }, []);
 
   // Get current date formatted like 23/6/2026
@@ -61,28 +66,36 @@ const PaymentAdvicePage = () => {
   }, []);
 
   // Resolve and filter list based on month, type, and contractor
-  const resolvedRecords = useMemo(() => {
-    if (!searchTriggeredMonth) return [];
-
-    let rawEntries = [];
-    if (searchTriggeredType === 'BIDI MAKER') {
-      rawEntries = getBidiRollerEntry(searchTriggeredMonth) || [];
-      // Filter Bidi makers by contractor if selected
-      if (searchTriggeredContractor !== 'ALL') {
-        rawEntries = rawEntries.filter(row => row.contractor === searchTriggeredContractor);
+  useEffect(() => {
+    const fetchRecords = async () => {
+      if (!searchTriggeredMonth) {
+        setResolvedRecords([]);
+        return;
       }
-    } 
-    else if (searchTriggeredType === 'OFFICE STAFF') {
-      rawEntries = getOfficeStaffEntry(searchTriggeredMonth) || [];
-    } 
-    else if (searchTriggeredType === 'PACKING STAFF') {
-      rawEntries = getPackersEntry(searchTriggeredMonth) || [];
-    }
 
-    const dbEmployees = getEmployees() || [];
+      const companyId = localStorage.getItem('selectedCompany');
+      let rawEntries = [];
+      try {
+        if (searchTriggeredType === 'BIDI MAKER') {
+          const res = await getBidiRollerEntry(searchTriggeredMonth, companyId);
+          rawEntries = res?.data || [];
+          if (searchTriggeredContractor !== 'ALL') {
+            rawEntries = rawEntries.filter(row => row.contractorId === searchTriggeredContractor || row.contractor === searchTriggeredContractor);
+          }
+        } 
+        else if (searchTriggeredType === 'OFFICE STAFF') {
+          const res = await getOfficeStaffEntry(searchTriggeredMonth, companyId);
+          rawEntries = res?.data || [];
+        } 
+        else if (searchTriggeredType === 'PACKING STAFF') {
+          const res = await getPackersEntry(searchTriggeredMonth, companyId);
+          rawEntries = res?.data || [];
+        }
 
-    // Map rows to retrieve bank account and IFSC from kycDetails
-    return rawEntries.map(row => {
+        const dbEmployees = await getEmployees(companyId) || [];
+
+        // Map rows to retrieve bank account and IFSC from kycDetails
+        const mapped = rawEntries.map(row => {
       const empName = row.employeeName;
       const empCode = row.employeeCode || '';
       const uan = row.accountNo || ''; // accountNo field in monthly entries contains the UAN
@@ -110,6 +123,12 @@ const PaymentAdvicePage = () => {
         amount: Math.round(row.netWages || 0)
       };
     });
+        setResolvedRecords(mapped);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchRecords();
   }, [searchTriggeredMonth, searchTriggeredType, searchTriggeredContractor]);
 
   // Local text filter

@@ -37,12 +37,17 @@ const ProfessionalTaxReportPage = () => {
     };
   }, [isDropdownOpen]);
 
-  // Compute month-wise professional tax slabs and counts
-  const resolvedMonths = useMemo(() => {
-    const yr = parseInt(searchTriggeredYear) || 2026;
-    const ptSlabs = getProfessionalTax() || [];
+  const [resolvedMonths, setResolvedMonths] = useState([]);
 
-    return monthNames.map((mName, idx) => {
+  // Compute month-wise professional tax slabs and counts
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const companyId = localStorage.getItem('selectedCompany');
+        const yr = parseInt(searchTriggeredYear) || 2026;
+        const ptSlabs = await getProfessionalTax(companyId) || [];
+
+        const mapped = await Promise.all(monthNames.map(async (mName, idx) => {
       let monthYearKey = '';
       if (idx < 9) {
         // April to December
@@ -55,9 +60,13 @@ const ProfessionalTaxReportPage = () => {
       }
 
       // Fetch active monthly entry lists for office staff, packers, and bidi rollers
-      const officeRows = getOfficeStaffEntry(monthYearKey) || [];
-      const packerRows = getPackersEntry(monthYearKey) || [];
-      const bidiRows = getBidiRollerEntry(monthYearKey) || [];
+      const officeRes = await getOfficeStaffEntry(monthYearKey, companyId);
+      const packerRes = await getPackersEntry(monthYearKey, companyId);
+      const bidiRes = await getBidiRollerEntry(monthYearKey, companyId);
+      
+      const officeRows = officeRes?.data || [];
+      const packerRows = packerRes?.data || [];
+      const bidiRows = bidiRes?.data || [];
 
       // Combine all gross salaries
       const grossSalaries = [];
@@ -101,7 +110,13 @@ const ProfessionalTaxReportPage = () => {
         slabs: slabsData,
         totalTax
       };
-    });
+    }));
+        setResolvedMonths(mapped);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
   }, [searchTriggeredYear]);
 
   // Local filtering

@@ -26,9 +26,15 @@ const PfChallanYearlyPage = () => {
     return dStr;
   };
 
+  const [yearlyRecords, setYearlyRecords] = useState([]);
+
   // Compile yearly financial challan records (April of selected year to March of following year)
-  const yearlyRecords = useMemo(() => {
-    if (!searchTriggeredYear) return [];
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!searchTriggeredYear) {
+        setYearlyRecords([]);
+        return;
+      }
 
     const startYearNum = parseInt(searchTriggeredYear);
     const endYearNum = startYearNum + 1;
@@ -50,9 +56,11 @@ const PfChallanYearlyPage = () => {
     ];
 
     // Load challans from database
-    const challanDb = getEpfChallans() || [];
+    try {
+      const companyId = localStorage.getItem('selectedCompany');
+      const challanDb = await getEpfChallans(companyId) || [];
 
-    return financialMonths.map(item => {
+      const mapped = financialMonths.map(item => {
       // Find matching challan record
       const match = challanDb.find(c => c.wageMonth === item.key);
       
@@ -83,6 +91,12 @@ const PfChallanYearlyPage = () => {
         actualDate
       };
     });
+      setYearlyRecords(mapped);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  fetchData();
   }, [searchTriggeredYear]);
 
   // Filter records based on local search term

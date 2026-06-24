@@ -30,9 +30,15 @@ const EsicChallanYearlyPage = () => {
     return dStr;
   };
 
+  const [yearlyRecords, setYearlyRecords] = useState([]);
+
   // Compile yearly financial challan records (April of selected year to March of following year)
-  const yearlyRecords = useMemo(() => {
-    if (!searchTriggeredYear) return [];
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!searchTriggeredYear) {
+        setYearlyRecords([]);
+        return;
+      }
 
     const startYearNum = parseInt(searchTriggeredYear);
     const endYearNum = startYearNum + 1;
@@ -54,11 +60,13 @@ const EsicChallanYearlyPage = () => {
     ];
 
     // Load static employees & resignations to calculate ESIC shares dynamically
-    const employees = getEmployees() || [];
-    const resignations = getResignations() || [];
-    const savedChallans = getEsicChallans() || [];
+    try {
+      const companyId = localStorage.getItem('selectedCompany');
+      const employees = await getEmployees(companyId) || [];
+      const resignations = await getResignations(companyId) || [];
+      const savedChallans = await getEsicChallans(companyId) || [];
 
-    return financialMonths.map(item => {
+      const mapped = financialMonths.map(item => {
       // 1. Calculate dynamic ESIC contributions for the month
       let totalMonthWages = 0;
       employees.forEach(emp => {
@@ -105,6 +113,12 @@ const EsicChallanYearlyPage = () => {
         actualDate
       };
     });
+      setYearlyRecords(mapped);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  fetchData();
   }, [searchTriggeredYear, refreshTrigger]);
 
   // Sync state rowInputs when yearlyRecords loads/re-runs

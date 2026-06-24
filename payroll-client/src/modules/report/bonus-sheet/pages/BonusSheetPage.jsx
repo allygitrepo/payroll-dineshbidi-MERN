@@ -125,11 +125,19 @@ const BonusSheetPage = () => {
     return getMonthRangeList(searchTriggeredFrom, searchTriggeredTo);
   }, [searchTriggeredFrom, searchTriggeredTo]);
 
-  // Aggregate monthly wages and compute bonuses
-  const bonusData = useMemo(() => {
-    if (activeMonths.length === 0) return [];
+  const [bonusData, setBonusData] = useState([]);
 
-    const dbEmployees = getEmployees() || [];
+  // Aggregate monthly wages and compute bonuses
+  useEffect(() => {
+    const fetchData = async () => {
+      if (activeMonths.length === 0) {
+        setBonusData([]);
+        return;
+      }
+
+      try {
+        const companyId = localStorage.getItem('selectedCompany');
+        const dbEmployees = await getEmployees(companyId) || [];
     let targetEmployees = [];
 
     // Filter employees based on type
@@ -173,14 +181,17 @@ const BonusSheetPage = () => {
     }
 
     // Now pull live local storage entry databases for each active month
-    activeMonths.forEach(m => {
+    for (const m of activeMonths) {
       let monthlyRows = [];
       if (searchTriggeredType === 'OFFICE STAFF') {
-        monthlyRows = getOfficeStaffEntry(m) || [];
+        const res = await getOfficeStaffEntry(m, companyId);
+        monthlyRows = res?.data || [];
       } else if (searchTriggeredType === 'PACKING STAFF') {
-        monthlyRows = getPackersEntry(m) || [];
+        const res = await getPackersEntry(m, companyId);
+        monthlyRows = res?.data || [];
       } else {
-        monthlyRows = getBidiRollerEntry(m) || [];
+        const res = await getBidiRollerEntry(m, companyId);
+        monthlyRows = res?.data || [];
       }
 
       monthlyRows.forEach(row => {
@@ -200,10 +211,10 @@ const BonusSheetPage = () => {
         const amount = row.netWages || row.gross || row.wages || 0;
         listMap[empName].monthlyWages[m] = amount;
       });
-    });
+    }
 
     // Compile rows list and calculate bonus variables
-    return Object.values(listMap).map(row => {
+    const mapped = Object.values(listMap).map(row => {
       const wages = {};
       let total = 0;
 
@@ -226,6 +237,12 @@ const BonusSheetPage = () => {
         totalPayment
       };
     });
+        setBonusData(mapped);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
   }, [activeMonths, searchTriggeredFrom, searchTriggeredTo, searchTriggeredType]);
 
   // Local Search Filter

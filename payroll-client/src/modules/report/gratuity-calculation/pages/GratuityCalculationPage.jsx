@@ -59,10 +59,20 @@ const GratuityCalculationPage = () => {
   const multiSelectRef = useRef(null);
   const addToast = useToast();
 
+  const [contractorsList, setContractorsList] = useState([]);
+
   // Load contractors list
-  const contractorsList = useMemo(() => {
-    const list = getContractors() || [];
-    return list.map(c => `${c.name} - ${c.ccode}`);
+  useEffect(() => {
+    const fetchData = async () => {
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const list = await getContractors(companyId) || [];
+        setContractorsList(list.map(c => `${c.name} - ${c.pfCode || c.ccode || ''}`));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
   }, []);
 
   // Sync click outside to close menus
@@ -92,12 +102,20 @@ const GratuityCalculationPage = () => {
     });
   };
 
-  // Compile employees and resolve gratuity values
-  const gratuityList = useMemo(() => {
-    if (!searchTriggeredDate) return [];
+  const [gratuityList, setGratuityList] = useState([]);
 
-    const dbEmployees = getEmployees() || [];
-    const dbResignations = getResignations() || [];
+  // Compile employees and resolve gratuity values
+  useEffect(() => {
+    const fetchGratuity = async () => {
+      if (!searchTriggeredDate) {
+        setGratuityList([]);
+        return;
+      }
+
+      try {
+        const companyId = localStorage.getItem('selectedCompany');
+        const dbEmployees = await getEmployees(companyId) || [];
+        const dbResignations = await getResignations(companyId) || [];
     
     // Filter database employees by type
     let targetEmployees = dbEmployees.filter(emp => {
@@ -177,7 +195,12 @@ const GratuityCalculationPage = () => {
       list = list.filter(row => searchTriggeredContractors.includes(row.contractor));
     }
 
-    return list;
+        setGratuityList(list);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchGratuity();
   }, [searchTriggeredDate, searchTriggeredType, searchTriggeredContractors]);
 
   // Local text filter
