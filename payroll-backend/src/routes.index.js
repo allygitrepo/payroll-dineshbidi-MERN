@@ -20,7 +20,7 @@ const resignationRoutes = require("./modules/Entry/Resignation/resignation.route
 const noteRoutes = require("./modules/Todo List/Note/note.routes");
 const attendanceRoutes = require("./modules/Attendance/attendance.routes");
 const leaveRequestRoutes = require("./modules/Attendance/Leave/leaveRequest.routes");
-
+const reportRoutes = require("./modules/Report/report.routes");
 router.get("/v1/test", (req, res) => {
     res.json({
         server: "Payroll",
@@ -51,5 +51,5 @@ router.use("/v1/resignations", resignationRoutes);
 router.use("/v1/notes", noteRoutes);
 router.use("/v1/attendance", attendanceRoutes);
 router.use("/v1/leaves", leaveRequestRoutes);
-
+router.use("/v1/reports", reportRoutes);
 module.exports = router;

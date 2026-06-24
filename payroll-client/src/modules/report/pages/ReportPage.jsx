@@ -1,5 +1,5 @@
 import React from 'react';
-import OfficeSalaryPage from '../salary-sheet/office-salary/pages/OfficeSalaryPage';
+import OfficeSalaryReportPage from '../salary-sheet/office-salary/pages/OfficeSalaryReportPage';
 import PackingSalaryPage from '../salary-sheet/packing-salary/pages/PackingSalaryPage';
 import ContractorSalaryPage from '../salary-sheet/contractor-salary/pages/ContractorSalaryPage';
 import Form2Page from '../forms/form-2/pages/Form2Page';
@@ -23,7 +23,7 @@ import ProfessionalTaxReportPage from '../professional-tax/pages/ProfessionalTax
 const ReportPage = ({ activeSubMenu }) => {
   switch (activeSubMenu) {
     case 'Office Salary':
-      return <OfficeSalaryPage />;
+      return <OfficeSalaryReportPage />;
     case 'Packing Salary':
       return <PackingSalaryPage />;
     case 'Contractor Salary':
