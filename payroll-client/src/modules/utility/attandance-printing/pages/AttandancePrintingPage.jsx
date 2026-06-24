@@ -3,6 +3,7 @@ import { Printer, Search, Calendar, ChevronLeft, ChevronRight } from 'lucide-rea
 import { useToast } from '../../../../shared/components';
 import { getContractors } from '../../../master/contractor/services/contractorService';
 import { getEmployees } from '../../../master/employee/services/employeeService';
+import { getCalender } from '../../calender/services/calenderService';
 import apiClient from '../../../../shared/services/apiClient';
 import styles from './AttandancePrintingPage.module.css';
 
@@ -15,10 +16,11 @@ const AttandancePrintingPage = () => {
   const [selectedMonth, setSelectedMonth] = useState(defaultMonth); // "YYYY-MM"
   const [selectedContractorId, setSelectedContractorId] = useState('');
 
-  // Data State
+    // Data State
   const [contractors, setContractors] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [calendarList, setCalendarList] = useState([]);
 
   // Search Results & Pagination
   const [hasSearched, setHasSearched] = useState(false);
@@ -100,11 +102,37 @@ const AttandancePrintingPage = () => {
     return Object.values(empAtt).filter(v => v === 'P').length;
   };
 
-  // Check if a day is Sunday
-  // Check if a day is Sunday (weekly off) - always 7th, 14th, 21st, 28th of the month
-  const isSunday = (dayStr) => {
-    const d = parseInt(dayStr, 10);
-    return d === 7 || d === 14 || d === 21 || d === 28;
+  // Check if a specific day of the selected month/year is a holiday
+  const isHoliday = (dayStr) => {
+    const dayNum = parseInt(dayStr, 10);
+    if (isNaN(dayNum) || dayNum < 1 || dayNum > daysInMonth) return false;
+
+    // 1. Check for Company Holidays (date matches exactly)
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const isCompanyHoliday = calendarList.some(item => 
+      item.holidayType === 'COMPANY' && item.holidayDate === dateStr
+    );
+    if (isCompanyHoliday) return true;
+
+    // 2. Check for Weekly Holidays (day of week matches)
+    const dateObj = new Date(year, month - 1, dayNum);
+    const dayOfWeekIndex = dateObj.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const dayOfWeekName = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday'
+    ][dayOfWeekIndex];
+
+    const isWeeklyHoliday = calendarList.some(item => 
+      item.holidayType === 'WEEKLY' && 
+      item.weekDay?.trim().toLowerCase() === dayOfWeekName.toLowerCase()
+    );
+
+    return isWeeklyHoliday;
   };
 
   // Search logic on Search Click
@@ -116,13 +144,19 @@ const AttandancePrintingPage = () => {
 
     const companyId = localStorage.getItem('selectedCompany');
     try {
-      // Fetch attendance logs for the selected month and year
-      const response = await apiClient.get(`attendance/company/${companyId}?month=${month}&year=${year}`);
-      if ((response.data?.status || response.data?.success) && response.data?.data) {
-        setAttendanceLogs(response.data.data);
+      // Fetch attendance logs and calendar list for the selected company/month/year
+      const [attResponse, calData] = await Promise.all([
+        apiClient.get(`attendance/company/${companyId}?month=${month}&year=${year}`),
+        getCalender(companyId)
+      ]);
+
+      if ((attResponse.data?.status || attResponse.data?.success) && attResponse.data?.data) {
+        setAttendanceLogs(attResponse.data.data);
       } else {
         setAttendanceLogs([]);
       }
+
+      setCalendarList(calData || []);
       setHasSearched(true);
       setCurrentPage(1);
       addToast({ type: 'success', message: 'Attendance fetched successfully!' });
@@ -159,7 +193,7 @@ const AttandancePrintingPage = () => {
         const presentDays = getPresentDaysCount(emp.id);
 
         const cellsHtml = daysArray.map(dayKey => {
-          const isSun = isSunday(dayKey);
+          const isSun = isHoliday(dayKey);
           if (isSun) {
             return `<td style="background-color: red !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: white; font-weight: bold; text-align: center;">*</td>`;
           } else {
@@ -323,10 +357,7 @@ const AttandancePrintingPage = () => {
     <div className={styles.pageContainer}>
       {/* Title Header */}
       <div className={styles.headerSection}>
-        <div className={styles.headerIcon}>
-          <Printer size={24} />
-        </div>
-        <h2 className={styles.pageTitle}>Attendance Sheet Printing</h2>
+        <h1 className={styles.title}>Attendance Sheet Printing</h1>
       </div>
 
       {/* Inputs Selector Card */}
@@ -423,7 +454,7 @@ const AttandancePrintingPage = () => {
                         <td>{srNo}</td>
                         <td style={{ fontWeight: 600 }}>{emp.memberName}</td>
                         {daysArray.map(dayKey => {
-                          const isSun = isSunday(dayKey);
+                          const isSun = isHoliday(dayKey);
                           if (isSun) {
                             return <td key={dayKey} className={styles.sundayCell}>*</td>;
                           } else {

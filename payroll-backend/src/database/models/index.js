@@ -277,15 +277,6 @@ db.Calender.belongsTo(db.Company, {
     as: "company",
 });
 
-db.Employee.hasMany(db.LeaveRequest, {
-    foreignKey: "employee_id",
-    as: "leaveRequests",
-    onDelete: "CASCADE",
-});
-db.LeaveRequest.belongsTo(db.Employee, {
-    foreignKey: "employee_id",
-    as: "employee",
-});
 // OfficeStaffEntry relationships
 db.Company.hasMany(db.OfficeStaffEntry, {
     foreignKey: "company_id",
@@ -308,7 +299,6 @@ db.OfficeStaffEntry.belongsTo(db.Employee, {
 });
 
 
-module.exports = db;
 // PackersEntry relationships
 db.Company.hasMany(db.PackersEntry, {
     foreignKey: "company_id",

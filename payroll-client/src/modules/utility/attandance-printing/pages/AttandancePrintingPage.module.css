@@ -13,27 +13,16 @@
 
 .headerSection {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 12px;
   border-bottom: 2px solid var(--border);
   padding-bottom: 16px;
-  margin-bottom: 8px;
 }
 
-.headerIcon {
-  color: var(--primary);
-  background-color: var(--primary-light);
-  padding: 10px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pageTitle {
-  font-size: 1.4rem;
+.title {
+  font-size: 1.75rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--primary);
   margin: 0;
 }
 
@@ -45,26 +34,21 @@
   border: 1px solid var(--border);
   box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.03);
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 20px;
 }
 
 .inputsGroup {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 24px;
-  flex: 1;
-  min-width: 280px;
-  flex-wrap: wrap;
+  width: 100%;
 }
 
 .field {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 1;
-  min-width: 200px;
 }
 
 .label {
@@ -90,12 +74,16 @@
   box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.1);
 }
 
-/* Stacked Buttons */
+/* Centered Horizontal Buttons Group */
 .buttonsGroup {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 180px;
+  flex-direction: row;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
 }
 
 .btn {
@@ -114,19 +102,19 @@
 }
 
 .btnSearch {
-  background-color: #2e7d32; /* Rich Green */
+  background-color: var(--primary);
 }
 
 .btnSearch:hover {
-  background-color: #1b5e20;
+  background-color: var(--primary-hover);
 }
 
 .btnPrint {
-  background-color: #2e7d32; /* Rich Green */
+  background-color: var(--primary);
 }
 
 .btnPrint:hover {
-  background-color: #1b5e20;
+  background-color: var(--primary-hover);
 }
 
 /* Results Section Table */
@@ -317,7 +305,17 @@
 }
 
 .activePageBtn {
-  background-color: #2e7d32 !important; /* Rich Green selected page */
+  background-color: var(--primary) !important;
   color: #ffffff !important;
-  border-color: #2e7d32 !important;
+  border-color: var(--primary) !important;
+}
+
+@media (max-width: 600px) {
+  .inputsGroup {
+    grid-template-columns: 1fr;
+  }
+  .buttonsGroup {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

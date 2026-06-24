@@ -191,7 +191,7 @@
 }
 
 .saveBtn {
-  background-color: #2e7d32; /* Green color from screenshot */
+  background-color: var(--primary);
   color: white;
   border: none;
   padding: 10px 28px;
@@ -202,12 +202,11 @@
 }
 
 .saveBtn:hover {
-  background-color: #1b5e20;
+  background-color: var(--primary-hover);
 }
 
 .cancelBtn {
-  background-color: #4e342e; /* Brownish dark green/cancel color from screenshot or #2e7d32 */
-  background-color: #2e7d32; /* Green cancel button from screenshot */
+  background-color: var(--text-muted);
   color: white;
   border: none;
   padding: 10px 28px;
@@ -218,7 +217,7 @@
 }
 
 .cancelBtn:hover {
-  background-color: #1b5e20;
+  background-color: var(--text-secondary);
 }
 
 .errorText {
@@ -353,7 +352,7 @@
 }
 
 .editBtn {
-  background-color: #2e7d32; /* Green edit button */
+  background-color: var(--primary);
   color: white;
   border: none;
   cursor: pointer;
@@ -362,11 +361,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .editBtn:hover {
-  opacity: 0.9;
+  background-color: var(--primary-hover);
 }
 
 .deleteBtn {
