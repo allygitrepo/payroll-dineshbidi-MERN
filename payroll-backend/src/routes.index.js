@@ -5,6 +5,8 @@ const companyRoutes = require("./modules/Masters/Company/company.routes");
 const addressRoutes = require("./modules/Masters/Address/address.routes");
 const contractorRoutes = require("./modules/Masters/Contractor/contractor.routes");
 const employeeRoutes = require("./modules/Masters/Employee/employee.routes");
+const attendanceRoutes = require("./modules/Attendance/attendance.routes");
+const leaveRequestRoutes = require("./modules/Attendance/Leave/leaveRequest.routes");
 const challanSetupRoutes = require("./modules/Setup/ChallanSetup/challanSetup.routes");
 const professionalTaxRoutes = require("./modules/Setup/ProfessionalTax/professionalTax.routes");
 const bidiRollerWageRoutes = require("./modules/Setup/BidiRollerWage/bidiRollerWage.routes");
@@ -21,6 +23,7 @@ const noteRoutes = require("./modules/Todo List/Note/note.routes");
 const attendanceRoutes = require("./modules/Attendance/attendance.routes");
 const leaveRequestRoutes = require("./modules/Attendance/Leave/leaveRequest.routes");
 const reportRoutes = require("./modules/Report/report.routes");
+
 router.get("/v1/test", (req, res) => {
     res.json({
         server: "Payroll",
@@ -36,6 +39,8 @@ router.use("/v1/companies", companyRoutes);
 router.use("/v1/addresses", addressRoutes);
 router.use("/v1/contractors", contractorRoutes);
 router.use("/v1/employees", employeeRoutes);
+router.use("/v1/attendance", attendanceRoutes);
+router.use("/v1/leaves", leaveRequestRoutes);
 router.use("/v1/challan-setups", challanSetupRoutes);
 router.use("/v1/professional-taxes", professionalTaxRoutes);
 router.use("/v1/bidi-roller-wages", bidiRollerWageRoutes);
@@ -52,4 +57,5 @@ router.use("/v1/notes", noteRoutes);
 router.use("/v1/attendance", attendanceRoutes);
 router.use("/v1/leaves", leaveRequestRoutes);
 router.use("/v1/reports", reportRoutes);
+
 module.exports = router;

@@ -17,6 +17,9 @@ const createCalenderSchema = Joi.object({
 });
 
 const updateCalenderSchema = Joi.object({
+    company_id: Joi.string().guid().optional().messages({
+        "string.guid": "Company ID must be a valid UUID.",
+    }),
     holiday_type: Joi.string().valid("COMPANY", "WEEKLY").optional().messages({
         "any.only": "Holiday Type must be either COMPANY or WEEKLY.",
     }),
