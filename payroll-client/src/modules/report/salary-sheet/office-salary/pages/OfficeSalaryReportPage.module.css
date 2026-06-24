@@ -457,3 +457,76 @@
   font-size: 0.82rem;
   font-weight: 600;
 }
+
+/* ===== Table Footer / Pagination ===== */
+.tableFooter {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footerLeft {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.limitControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.limitSelect {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.infoText {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.pagination {
+  display: flex;
+  gap: 4px;
+}
+
+.pageBtn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.activePageBtn {
+  background-color: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.pageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

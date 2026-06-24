@@ -38,6 +38,8 @@ const OfficeSalaryReportPage = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -67,6 +69,7 @@ const OfficeSalaryReportPage = () => {
         setReportData(response.data || []);
         setActiveMonth(selectedMonth);
         setHasSearched(true);
+        setCurrentPage(1); // Reset to first page on search
       } else {
         throw new Error(response.message || 'Failed to fetch report data.');
       }
@@ -99,6 +102,32 @@ const OfficeSalaryReportPage = () => {
       basicSalary: 0, gross: 0, pf: 0, pt: 0, esic: 0, netWages: 0
     });
   }, [reportData]);
+
+  // Pagination bounds
+  const totalEntries = reportData.length;
+  const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalEntries);
+
+  const paginatedData = useMemo(() => {
+    return reportData.slice(startIndex, endIndex);
+  }, [reportData, startIndex, endIndex]);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, 4, '...', totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
 
   return (
     <div className={styles.container}>
@@ -194,9 +223,9 @@ const OfficeSalaryReportPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {reportData.map((row, index) => (
+                {paginatedData.map((row, index) => (
                   <tr key={row.employeeId || row.id}>
-                    <td>{index + 1}</td>
+                    <td>{startIndex + index + 1}</td>
                     <td>
                       <div className={styles.empCell}>
                         <span className={styles.empName}>{row.name}</span>
@@ -238,6 +267,64 @@ const OfficeSalaryReportPage = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Footer controls: limit selector and pagination */}
+          {reportData.length > 0 && (
+            <div className={styles.tableFooter}>
+              <div className={styles.footerLeft}>
+                <div className={styles.limitControl}>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className={styles.limitSelect}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span>records per page</span>
+                </div>
+                <div className={styles.infoText}>
+                  Showing {totalEntries > 0 ? startIndex + 1 : 0} to {endIndex} of {totalEntries} entries
+                </div>
+              </div>
+
+              <div className={styles.pagination}>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={styles.pageBtn}
+                >
+                  Previous
+                </button>
+                
+                {getPageNumbers().map((pageNum, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      if (pageNum !== '...') setCurrentPage(pageNum);
+                    }}
+                    className={`${styles.pageBtn} ${pageNum === currentPage ? styles.activePageBtn : ''}`}
+                    disabled={pageNum === '...'}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className={styles.pageBtn}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
