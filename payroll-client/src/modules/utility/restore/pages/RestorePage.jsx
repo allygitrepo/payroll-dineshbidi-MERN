@@ -1,27 +1,27 @@
 import React, { useState, useRef } from 'react';
 import { RefreshCw, UploadCloud, ShieldAlert, FileText, CheckCircle2 } from 'lucide-react';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { uploadForPreview, executeRestore } from '../services/restoreService';
 import styles from '../components/RestorePage.module.css';
 
 const RestorePage = () => {
   const addToast = useToast();
   const fileInputRef = useRef(null);
 
-  // Loaded file states
+  // States
   const [selectedFile, setSelectedFile] = useState(null);
-  const [backupMetadata, setBackupMetadata] = useState(null);
-  const [parsedData, setParsedData] = useState(null);
-
-  // Modal confirm state
+  const [previewData, setPreviewData] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const handleZoneClick = () => {
-    if (fileInputRef.current) {
+    if (fileInputRef.current && !isUploading && !isRestoring) {
       fileInputRef.current.click();
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -35,116 +35,53 @@ const RestorePage = () => {
     }
 
     setSelectedFile(file);
+    setIsUploading(true);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target.result;
-        const lines = text.split('\n');
-
-        // Verify signature in the file
-        const hasSignature = lines.some(line => line.includes('-- SIGNATURE: payroll_dineshbidi_mern_v1'));
-        if (!hasSignature) {
-          addToast({
-            type: 'error',
-            message: 'Signature mismatch! This file is not a valid payroll database backup SQL dump.'
-          });
-          clearFile();
-          return;
-        }
-
-        // Parse dataset embedded in comments
-        const dataMap = {};
-        let foundKeys = 0;
-
-        lines.forEach(line => {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('-- DATA:')) {
-            try {
-              const jsonStr = trimmed.substring(8).trim();
-              const payload = JSON.parse(jsonStr);
-              if (payload && payload.key && payload.value) {
-                dataMap[payload.key] = payload.value;
-                foundKeys++;
-              }
-            } catch (err) {
-              console.error('Error parsing line:', err);
-            }
-          }
-        });
-
-        if (foundKeys === 0) {
-          addToast({
-            type: 'error',
-            message: 'No data tables discovered in the SQL file.'
-          });
-          clearFile();
-          return;
-        }
-
-        setParsedData(dataMap);
-
-        // Sum statistics
-        const stats = {
-          employeesCount: dataMap.payroll_employees ? dataMap.payroll_employees.length : 0,
-          companiesCount: dataMap.payroll_companies ? dataMap.payroll_companies.length : 0,
-          challansCount: dataMap.payroll_epf_challans ? dataMap.payroll_epf_challans.length : 0,
-          resignationsCount: dataMap.payroll_resignations ? dataMap.payroll_resignations.length : 0,
-          monthlyEntriesCount: Object.keys(dataMap).filter(
-            k => k.startsWith('payroll_packers_') || k.startsWith('payroll_bidi_') || k.startsWith('payroll_office_')
-          ).length
-        };
-
-        // Extract export timestamp from comments if possible
-        let exportedAt = 'Unknown';
-        const exportedLine = lines.find(line => line.includes('-- Exported on:'));
-        if (exportedLine) {
-          exportedAt = exportedLine.replace('-- Exported on:', '').trim();
-        }
-
-        setBackupMetadata({
+    try {
+      const result = await uploadForPreview(file);
+      if (result.status && result.data) {
+        setPreviewData({
           name: file.name,
           size: (file.size / 1024).toFixed(2) + ' KB',
-          exportedAt,
-          summary: stats
+          tempFilename: result.data.tempFilename,
+          summary: result.data.summary,
+          tables: result.data.tables
         });
-
         addToast({
           type: 'success',
           message: 'SQL database backup loaded successfully! Ready to import.'
         });
-      } catch (err) {
-        addToast({
-          type: 'error',
-          message: 'Failed to read SQL backup file.'
-        });
-        clearFile();
+      } else {
+        throw new Error(result.message || 'Unknown error during preview');
       }
-    };
-    reader.readAsText(file);
+    } catch (err) {
+      addToast({
+        type: 'error',
+        message: err.message || 'Failed to analyze SQL backup file.'
+      });
+      clearFile();
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const clearFile = () => {
     setSelectedFile(null);
-    setBackupMetadata(null);
-    setParsedData(null);
+    setPreviewData(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
   const handleImportClick = () => {
-    if (!parsedData) return;
+    if (!previewData) return;
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmImport = () => {
+  const handleConfirmImport = async () => {
     try {
-      // Overwrite corresponding LocalStorage items
-      Object.keys(parsedData).forEach(key => {
-        const val = parsedData[key];
-        localStorage.setItem(key, typeof val === 'object' ? JSON.stringify(val) : val);
-      });
+      setIsRestoring(true);
+      await executeRestore(previewData.tempFilename);
 
       addToast({
         type: 'success',
@@ -153,7 +90,7 @@ const RestorePage = () => {
 
       setIsConfirmOpen(false);
 
-      // Force a system reload to refresh local memory state
+      // Force a system reload to refresh state and reconnect
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -161,9 +98,11 @@ const RestorePage = () => {
     } catch (err) {
       addToast({
         type: 'error',
-        message: 'Failed to restore database from SQL backup.'
+        message: err.message || 'Failed to restore database from SQL backup.'
       });
       console.error(err);
+      setIsRestoring(false);
+      setIsConfirmOpen(false);
     }
   };
 
@@ -174,7 +113,7 @@ const RestorePage = () => {
         <div>
           <h2 className={styles.title}>Database Restore</h2>
           <p className={styles.subtitle}>
-            Upload or import SQL backup archives to roll back employee, company, or attendance logs.
+            Upload or import SQL backup archives to securely roll back all database records.
           </p>
         </div>
       </div>
@@ -188,9 +127,9 @@ const RestorePage = () => {
 
         {/* Dash zone wrapper */}
         {!selectedFile ? (
-          <div className={styles.uploadZone} onClick={handleZoneClick}>
+          <div className={styles.uploadZone} onClick={handleZoneClick} style={{ opacity: isUploading ? 0.6 : 1, cursor: isUploading ? 'wait' : 'pointer' }}>
             <UploadCloud size={48} className={styles.uploadIcon} />
-            <h4 className={styles.uploadTitle}>Choose an SQL database backup file</h4>
+            <h4 className={styles.uploadTitle}>{isUploading ? 'Analyzing File...' : 'Choose an SQL database backup file'}</h4>
             <p className={styles.uploadSubtitle}>Supported format: SQL database backup (.sql)</p>
             <input
               type="file"
@@ -198,6 +137,7 @@ const RestorePage = () => {
               onChange={handleFileChange}
               accept=".sql"
               className={styles.fileInput}
+              disabled={isUploading || isRestoring}
             />
           </div>
         ) : (
@@ -205,39 +145,41 @@ const RestorePage = () => {
           <div className={styles.fileDetailsCard}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)', marginBottom: '8px' }}>
               <CheckCircle2 size={18} />
-              <strong style={{ fontSize: '0.95rem' }}>SQL Backup Loaded Successfully</strong>
+              <strong style={{ fontSize: '0.95rem' }}>SQL Backup Analyzed Successfully</strong>
             </div>
 
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>File Name</span>
-              <span className={styles.detailValue}>{backupMetadata?.name}</span>
+              <span className={styles.detailValue}>{previewData?.name}</span>
             </div>
 
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>File Size</span>
-              <span className={styles.detailValue}>{backupMetadata?.size}</span>
+              <span className={styles.detailValue}>{previewData?.size}</span>
             </div>
 
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Exported On</span>
-              <span className={styles.detailValue}>{backupMetadata?.exportedAt}</span>
-            </div>
-
-            {backupMetadata?.summary && (
+            {previewData?.summary && (
               <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
                 <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                  RECORDS TO IMPORT:
+                  MYSQL DUMP PREVIEW:
                 </span>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', fontSize: '0.8rem' }}>
-                  <div>Employees: <strong>{backupMetadata.summary.employeesCount}</strong></div>
-                  <div>Companies: <strong>{backupMetadata.summary.companiesCount}</strong></div>
-                  <div>Challan Dates: <strong>{backupMetadata.summary.challansCount}</strong></div>
-                  <div>Resignations: <strong>{backupMetadata.summary.resignationsCount}</strong></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', fontSize: '0.9rem' }}>
+                  <div>Tables Found: <strong>{previewData.summary.tablesFound}</strong></div>
+                  <div>Rows To Restore: <strong>{previewData.summary.totalRows}</strong></div>
                 </div>
+                {previewData.tables && previewData.tables.length > 0 && (
+                  <div style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--text-tertiary)', maxHeight: '100px', overflowY: 'auto' }}>
+                    {previewData.tables.map((t, idx) => (
+                      <div key={idx} style={{ padding: '2px 0' }}>
+                        • `{t.tableName}` ({t.rowsCount} rows)
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            <button type="button" className={styles.clearFileLink} onClick={clearFile}>
+            <button type="button" className={styles.clearFileLink} onClick={clearFile} disabled={isRestoring}>
               Clear File
             </button>
           </div>
@@ -249,9 +191,7 @@ const RestorePage = () => {
           <div className={styles.warningContent}>
             <h4>Overwriting Pre-Existing Records</h4>
             <p>
-              Restoring a database will completely overwrite all current employee lists, company establishments, 
-              resignation records, and monthly attendance sheets. Ensure you have backed up any unsaved data 
-              before confirming this import.
+              Restoring a database will completely drop existing tables and overwrite all current records including employees, companies, and historical data. Ensure you have backed up any unsaved data before confirming this import.
             </p>
           </div>
         </div>
@@ -261,10 +201,11 @@ const RestorePage = () => {
             type="button"
             className={styles.importBtn}
             onClick={handleImportClick}
-            disabled={!parsedData}
+            disabled={!previewData || isRestoring}
+            style={{ opacity: (!previewData || isRestoring) ? 0.7 : 1, cursor: isRestoring ? 'wait' : 'pointer' }}
           >
             <FileText size={16} />
-            Import Database
+            {isRestoring ? 'Restoring Database...' : 'Proceed with Restore'}
           </button>
         </div>
       </div>
@@ -274,8 +215,8 @@ const RestorePage = () => {
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleConfirmImport}
-        title="Overwrite & Restore Database?"
-        message="Are you sure you want to restore the selected SQL database backup? This will overwrite all current employees, establishments, and attendance registers. The application will reload automatically upon completion."
+        title="Overwrite & Restore MySQL Database?"
+        message="Are you absolutely sure you want to execute this SQL dump? This will drop current tables and overwrite all data permanently. The system will reload automatically upon completion."
       />
     </div>
   );
