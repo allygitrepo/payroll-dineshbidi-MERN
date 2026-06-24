@@ -1,7 +1,7 @@
 const Joi = require("joi");
 
 const createBidiRollerWageSchema = Joi.object({
-    company_id: Joi.string().guid({ version: "uuidv4" }).required().messages({
+    company_id: Joi.string().guid().required().messages({
         "string.guid": "Company ID must be a valid UUID.",
         "any.required": "Company ID is required.",
     }),

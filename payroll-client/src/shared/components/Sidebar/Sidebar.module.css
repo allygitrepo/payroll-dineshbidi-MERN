@@ -57,6 +57,7 @@
   text-align: left;
   transition: all 0.2s ease;
   white-space: nowrap;
+  text-decoration: none;
 }
 
 .sidebarItem:hover {
@@ -131,6 +132,7 @@
   cursor: pointer;
   text-align: left;
   transition: all 0.2s ease;
+  text-decoration: none;
 }
 
 .subItem:hover {
@@ -197,6 +199,7 @@
   cursor: pointer;
   text-align: left;
   transition: all 0.2s ease;
+  text-decoration: none;
 }
 
 .nestedItem:hover {

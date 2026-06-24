@@ -62,7 +62,7 @@ class UsersService {
     /**
      * Authenticates a user and generates access & refresh tokens.
      */
-    static async loginUser({ user_id, password }) {
+    static async loginUser({ user_id, password, company_id }) {
         // Find the user
         const user = await User.findOne({ where: { user_id, status: true } });
         if (!user) {
@@ -85,13 +85,13 @@ class UsersService {
 
         // Generate tokens
         const accessToken = jwt.sign(
-            { id: user.id, user_id: user.user_id, role: user.role },
+            { id: user.id, user_id: user.user_id, role: user.role, company_id },
             process.env.JWT_ACCESS_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
         );
 
         const refreshToken = jwt.sign(
-            { id: user.id },
+            { id: user.id, company_id },
             process.env.JWT_REFRESH_SECRET,
             { expiresIn: process.env.REFRESH_EXPIRES_IN || "30d" }
         );
@@ -162,13 +162,13 @@ class UsersService {
 
             // Generate new pair (Refresh Token Rotation)
             const newAccessToken = jwt.sign(
-                { id: user.id, user_id: user.user_id, role: user.role },
+                { id: user.id, user_id: user.user_id, role: user.role, company_id: decoded.company_id },
                 process.env.JWT_ACCESS_SECRET,
                 { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
             );
 
             const newRefreshToken = jwt.sign(
-                { id: user.id },
+                { id: user.id, company_id: decoded.company_id },
                 process.env.JWT_REFRESH_SECRET,
                 { expiresIn: process.env.REFRESH_EXPIRES_IN || "30d" }
             );

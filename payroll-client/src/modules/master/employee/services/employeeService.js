@@ -106,12 +106,29 @@ const mapToFrontend = (e) => {
 };
 
 const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
-  const matchingAddress = addresses.find(a => a.address === e.address);
+  const safeStr = (str) => (str || '').toString().trim().toLowerCase();
+  
+  const matchingAddress = addresses.find(a => safeStr(a.address) === safeStr(e.address));
   const addressId = matchingAddress?.id || e.address_id || e.address;
+
+  // DEBUGGING: Remove this later
+  console.log("--- DEBUG ADDRESS MAPPING ---");
+  console.log("Input e.address:", e.address);
+  console.log("Input e.address_id:", e.address_id);
+  console.log("Available Addresses:", addresses);
+  console.log("Matching Address found:", matchingAddress);
+  console.log("Final Address ID resolved:", addressId);
+
+  // Ensure addressId is a valid UUID format before sending
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (addressId && !uuidRegex.test(addressId)) {
+    console.error("FATAL: Resolved addressId is not a valid UUID!", addressId);
+    throw new Error(`Frontend Validation Failed: Could not resolve Address ID. Got: ${addressId}. Please select the Address from the dropdown again.`);
+  }
 
   let contractorId = null;
   if (e.contractor && e.contractor !== 'SELF') {
-    const matchingContractor = contractors.find(c => c.name === e.contractor);
+    const matchingContractor = contractors.find(c => safeStr(c.name) === safeStr(e.contractor));
     contractorId = matchingContractor?.id || e.contractor_id || e.contractor;
   }
 
@@ -128,9 +145,22 @@ const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
     ifsc: ifsc
   };
 
-  const nomineesPayload = (e.nomineeDetails || []).map(n => {
-    const nAddress = addresses.find(a => a.address === n.address);
+  const familyMembersPayload = (e.familyDetails || e.familyMembers || []).map(f => ({
+    relation: f.relation,
+    name: f.name,
+    dob: f.dob || '2000-01-01',
+    aadhar: f.aadhaarNumber || f.aadhar
+  }));
+
+  const nomineesPayload = (e.nomineeDetails || e.nominees || []).map(n => {
+    const nAddress = addresses.find(a => safeStr(a.address) === safeStr(n.address));
     const nAddressId = nAddress?.id || n.address_id || n.address;
+    
+    if (nAddressId && !uuidRegex.test(nAddressId)) {
+      console.error("FATAL: Resolved Nominee Address ID is not a valid UUID!", nAddressId);
+      throw new Error(`Frontend Validation Failed: Could not resolve Nominee Address ID. Got: ${nAddressId}. Please check the Nominee's address.`);
+    }
+
     return {
       address_id: nAddressId,
       name: n.name,
@@ -142,13 +172,6 @@ const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
       guardian_address: n.guardianAddress || null
     };
   });
-
-  const familyMembersPayload = (e.familyDetails || []).map(f => ({
-    relation: f.relation,
-    name: f.name,
-    dob: f.dob || '2000-01-01',
-    aadhar: f.aadhaarNumber
-  }));
 
   const formatGender = (g) => {
     if (!g) return 'Male';

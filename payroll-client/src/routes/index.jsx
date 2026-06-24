@@ -3,6 +3,8 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import LoginPage from '../modules/auth/pages/LoginPage';
 import DashboardPage from '../modules/dashboard/pages/DashboardPage';
 import FaceAttendanceSelfPage from '../modules/attendance/self/pages/FaceAttendanceSelfPage';
+import DashboardHome from '../modules/dashboard/pages/DashboardHome';
+import ModulePageWrapper from './ModulePageWrapper';
 
 export const router = createBrowserRouter([
   {
@@ -10,8 +12,22 @@ export const router = createBrowserRouter([
     element: <LoginPage />
   },
   {
-    path: '/dashboard',
-    element: <DashboardPage />
+    path: '/',
+    element: <DashboardPage />,
+    children: [
+      {
+        path: 'dashboard',
+        element: <DashboardHome />
+      },
+      {
+        path: ':moduleName',
+        element: <ModulePageWrapper />
+      },
+      {
+        path: ':moduleName/:subMenuSlug',
+        element: <ModulePageWrapper />
+      }
+    ]
   },
   {
     path: '/trial-attendance',

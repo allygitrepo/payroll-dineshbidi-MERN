@@ -8,7 +8,7 @@ const GENDERS = ['MALE', 'FEMALE', 'OTHER'];
 const RELATIONS = ['FATHER', 'MOTHER', 'HUSBAND', 'WIFE', 'SON', 'DAUGHTER', 'BROTHER', 'SISTER', 'OTHER'];
 const MARITAL_STATUSES = ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED'];
 const QUALIFICATIONS = ['UNDER MATRIC', 'MATRIC', 'INTERMEDIATE', 'GRADUATE', 'POST GRADUATE', 'DIPLOMA'];
-const EMPLOYEE_TYPES = ['OFFICE STAFF', 'PACKING STAFF', 'BIDI ROLLER'];
+const EMPLOYEE_TYPES = ['BIDI PACKER', 'BIDI MAKER', 'OFFICE STAFF'];
 const DOC_TYPES = ['AADHAAR', 'PAN', 'UAN', 'BANK PASSBOOK', 'VOTER ID'];
 
 const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCancel }) => {
@@ -181,11 +181,9 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
       return !mobileRegex.test(value) ? 'Mobile must be exactly 10 digits' : '';
     }
     if (name === 'aadhaarCard') {
-      if (value && value.trim()) {
-        const aadhaarRegex = /^[0-9]{12}$/;
-        return !aadhaarRegex.test(value) ? 'Aadhar Card Number must be exactly 12 digits!' : '';
-      }
-      return '';
+      if (!value || !value.trim()) return 'Aadhar Card Number is required!';
+      const aadhaarRegex = /^[0-9]{12}$/;
+      return !aadhaarRegex.test(value) ? 'Aadhar Card Number must be exactly 12 digits!' : '';
     }
     return '';
   };
@@ -621,7 +619,9 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
             </div>
 
             <div className={styles.field}>
-              <label className={styles.label}>Aadhar Card Number</label>
+              <label className={styles.label}>
+                Aadhar Card Number <span className={styles.required}>*</span>
+              </label>
               <input
                 type="text"
                 name="aadhaarCard"

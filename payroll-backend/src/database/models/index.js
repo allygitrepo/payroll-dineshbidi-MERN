@@ -13,8 +13,15 @@ const LeaveRequest = require("../../modules/Attendance/Leave/leaveRequest.model"
 const ChallanSetup = require("../../modules/Setup/ChallanSetup/challanSetup.model");
 const ProfessionalTax = require("../../modules/Setup/ProfessionalTax/professionalTax.model");
 const BidiRollerWage = require("../../modules/Setup/BidiRollerWage/bidiRollerWage.model");
-const PackingWage = require("../../modules/Setup/PackingWage/packingWage.model");
 const OfficeStaffSalary = require("../../modules/Setup/OfficeStaffSalary/officeStaffSalary.model");
+const PackingWage = require("../../modules/Setup/PackingWage/packingWage.model");
+const Calender = require("../../modules/Setup/Calender/calender.model");
+const OfficeStaffEntry = require("../../modules/Entry/OfficeStaffEntry/officeStaffEntry.model");
+const PackersEntry = require("../../modules/Entry/PackersEntry/packersEntry.model");
+const BidiRollerEntry = require("../../modules/Entry/BidiRollerEntry/bidiRollerEntry.model");
+const ChallanDateEntry = require("../../modules/Entry/ChallanDateEntry/challanDateEntry.model");
+const Resignation = require("../../modules/Entry/Resignation/resignation.model");
+const Note = require("../../modules/Todo List/Note/note.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -39,6 +46,13 @@ db.ProfessionalTax = ProfessionalTax;
 db.BidiRollerWage = BidiRollerWage;
 db.PackingWage = PackingWage;
 db.OfficeStaffSalary = OfficeStaffSalary;
+db.Calender = Calender;
+db.OfficeStaffEntry = OfficeStaffEntry;
+db.PackersEntry = PackersEntry;
+db.BidiRollerEntry = BidiRollerEntry;
+db.ChallanDateEntry = ChallanDateEntry;
+db.Resignation = Resignation;
+db.Note = Note;
 
 // Model associations
 db.User.hasMany(db.RefreshToken, {
@@ -252,6 +266,101 @@ db.LeaveRequest.belongsTo(db.Employee, {
     foreignKey: "employee_id",
     as: "employee",
 });
+// Calender relationships
+db.Company.hasMany(db.Calender, {
+    foreignKey: "company_id",
+    as: "calenders",
+    onDelete: "CASCADE",
+});
+db.Calender.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
 
+db.Employee.hasMany(db.LeaveRequest, {
+    foreignKey: "employee_id",
+    as: "leaveRequests",
+    onDelete: "CASCADE",
+});
+db.LeaveRequest.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+// OfficeStaffEntry relationships
+db.Company.hasMany(db.OfficeStaffEntry, {
+    foreignKey: "company_id",
+    as: "officeStaffEntries",
+    onDelete: "CASCADE",
+});
+db.OfficeStaffEntry.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+db.Employee.hasMany(db.OfficeStaffEntry, {
+    foreignKey: "employee_id",
+    as: "officeStaffEntries",
+    onDelete: "CASCADE",
+});
+db.OfficeStaffEntry.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
+
+module.exports = db;
+// PackersEntry relationships
+db.Company.hasMany(db.PackersEntry, {
+    foreignKey: "company_id",
+    as: "packersEntries",
+    onDelete: "CASCADE",
+});
+db.PackersEntry.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+db.Employee.hasMany(db.PackersEntry, {
+    foreignKey: "employee_id",
+    as: "packersEntries",
+    onDelete: "CASCADE",
+});
+db.PackersEntry.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
+// ChallanDateEntry relationships
+db.Company.hasMany(db.ChallanDateEntry, {
+    foreignKey: "company_id",
+    as: "challanDateEntries",
+    onDelete: "CASCADE",
+});
+db.ChallanDateEntry.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+// Resignation relationships
+db.Company.hasMany(db.Resignation, {
+    foreignKey: "company_id",
+    as: "resignations",
+    onDelete: "CASCADE",
+});
+db.Resignation.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+// Note relationships
+db.Company.hasMany(db.Note, {
+    foreignKey: "company_id",
+    as: "notes",
+    onDelete: "CASCADE",
+});
+db.Note.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
 
 module.exports = db;

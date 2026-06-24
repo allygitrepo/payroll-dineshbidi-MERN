@@ -45,7 +45,7 @@ class AddressService {
 
         const addresses = await Address.findAll({
             where: { company_id: companyId, status: true },
-            order: [["created_at", "DESC"]],
+            order: [["createdAt", "DESC"]],
         });
         return addresses;
     }

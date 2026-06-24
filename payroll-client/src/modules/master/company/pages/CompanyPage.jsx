@@ -5,6 +5,7 @@ import CompanyForm from '../components/CompanyForm';
 import CompanyTable from '../components/CompanyTable';
 import { getCompanies, saveCompany, deleteCompany } from '../services/companyService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
 
 const CompanyPage = () => {
   const addToast = useToast();
@@ -133,9 +134,16 @@ const CompanyPage = () => {
   }, [companies, searchTerm]);
 
   // Export handlers at page level
-  const handleExportClick = (type) => {
-    addToast({ type: 'info', message: `${type} export started for ${filteredCompanies.length} records!` });
+  const handleExportClick = async (type) => {
     setIsDropdownOpen(false);
+    try {
+      addToast({ type: 'info', message: `${type} export started...` });
+      await exportModuleData('companies', type.toLowerCase());
+      addToast({ type: 'success', message: `${type} export completed successfully!` });
+    } catch (err) {
+      console.error(err);
+      addToast({ type: 'error', message: `Failed to export ${type} file.` });
+    }
   };
 
   const handleCopyClick = () => {

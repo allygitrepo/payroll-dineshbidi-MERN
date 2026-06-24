@@ -283,31 +283,49 @@
 }
 
 .editBtn {
-  color: var(--info);
-  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: var(--primary, #27d68a);
+  color: #ffffff !important;
   border: none;
+  border-radius: 6px;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .editBtn:hover {
-  background-color: var(--bg-secondary);
+  background-color: var(--primary-hover, #20b876);
+  transform: translateY(-1px);
+}
+
+.editBtn svg {
+  color: #ffffff !important;
 }
 
 .deleteBtn {
-  color: var(--danger);
-  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: var(--danger, #ef4444);
+  color: #ffffff !important;
   border: none;
+  border-radius: 6px;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .deleteBtn:hover {
-  background-color: var(--bg-secondary);
+  background-color: #dc2626; /* Darker red */
+  transform: translateY(-1px);
+}
+
+.deleteBtn svg {
+  color: #ffffff !important;
 }
 
 .tableFooter {

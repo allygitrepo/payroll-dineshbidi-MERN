@@ -50,7 +50,7 @@ const LoginPage = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const response = await authService.login(username, password);
+      const response = await authService.login(username, password, company);
       if ((response.status || response.success) && response.data) {
         const { user, accessToken } = response.data;
         localStorage.setItem('accessToken', accessToken);

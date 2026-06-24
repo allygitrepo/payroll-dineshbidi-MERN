@@ -7,6 +7,19 @@ const contractorRoutes = require("./modules/Masters/Contractor/contractor.routes
 const employeeRoutes = require("./modules/Masters/Employee/employee.routes");
 const attendanceRoutes = require("./modules/Attendance/attendance.routes");
 const leaveRequestRoutes = require("./modules/Attendance/Leave/leaveRequest.routes");
+const challanSetupRoutes = require("./modules/Setup/ChallanSetup/challanSetup.routes");
+const professionalTaxRoutes = require("./modules/Setup/ProfessionalTax/professionalTax.routes");
+const bidiRollerWageRoutes = require("./modules/Setup/BidiRollerWage/bidiRollerWage.routes");
+const packingWageRoutes = require("./modules/Setup/PackingWage/packingWage.routes");
+const officeStaffSalaryRoutes = require("./modules/Setup/OfficeStaffSalary/officeStaffSalary.routes");
+const exportRoutes = require("./modules/Export/export.routes");
+const calenderRoutes = require("./modules/Setup/Calender/calender.routes");
+const officeStaffEntryRoutes = require("./modules/Entry/OfficeStaffEntry/officeStaffEntry.routes");
+const packersEntryRoutes = require("./modules/Entry/PackersEntry/packersEntry.routes");
+const bidiRollerEntryRoutes = require("./modules/Entry/BidiRollerEntry/bidiRollerEntry.routes");
+const challanDateEntryRoutes = require("./modules/Entry/ChallanDateEntry/challanDateEntry.routes");
+const resignationRoutes = require("./modules/Entry/Resignation/resignation.routes");
+const noteRoutes = require("./modules/Todo List/Note/note.routes");
 
 router.get("/v1/test", (req, res) => {
     res.json({
@@ -25,5 +38,18 @@ router.use("/v1/contractors", contractorRoutes);
 router.use("/v1/employees", employeeRoutes);
 router.use("/v1/attendance", attendanceRoutes);
 router.use("/v1/leaves", leaveRequestRoutes);
+router.use("/v1/challan-setups", challanSetupRoutes);
+router.use("/v1/professional-taxes", professionalTaxRoutes);
+router.use("/v1/bidi-roller-wages", bidiRollerWageRoutes);
+router.use("/v1/packing-wages", packingWageRoutes);
+router.use("/v1/office-staff-salaries", officeStaffSalaryRoutes);
+router.use("/v1/export", exportRoutes);
+router.use("/v1/calenders", calenderRoutes);
+router.use("/v1/office-staff-entries", officeStaffEntryRoutes);
+router.use("/v1/packers-entries", packersEntryRoutes);
+router.use("/v1/bidi-roller-entries", bidiRollerEntryRoutes);
+router.use("/v1/challan-date-entries", challanDateEntryRoutes);
+router.use("/v1/resignations", resignationRoutes);
+router.use("/v1/notes", noteRoutes);
 
 module.exports = router;

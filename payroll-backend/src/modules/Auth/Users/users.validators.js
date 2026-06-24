@@ -38,6 +38,9 @@ const loginSchema = Joi.object({
         "string.empty": "Password is required.",
         "any.required": "Password is required.",
     }),
+    company_id: Joi.string().guid().optional().messages({
+        "string.guid": "Company ID must be a valid UUID.",
+    }),
 });
 
 // Update validation schema

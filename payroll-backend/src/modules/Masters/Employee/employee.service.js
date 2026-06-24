@@ -300,7 +300,7 @@ class EmployeeService {
                 { model: Address, as: "address" },
                 { model: Contractor, as: "contractor", required: false },
             ],
-            order: [["created_at", "DESC"]],
+            order: [["createdAt", "DESC"]],
         });
     }
 

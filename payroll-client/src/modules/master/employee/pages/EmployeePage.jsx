@@ -7,6 +7,7 @@ import { getEmployees, saveEmployee, deleteEmployee } from '../services/employee
 import { getAddresses } from '../../address/services/addressService';
 import { getContractors } from '../../contractor/services/contractorService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
 
 const EmployeePage = () => {
   const addToast = useToast();
@@ -18,6 +19,7 @@ const EmployeePage = () => {
 
   // Search filter and download dropdown states
   const [searchTerm, setSearchTerm] = useState('');
+  const [employeeTypeFilter, setEmployeeTypeFilter] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Confirm delete states
@@ -119,9 +121,27 @@ const EmployeePage = () => {
       console.error('Error saving employee:', err);
       addToast({
         type: 'error',
-        message: err.response?.data?.messageToShow || 'Failed to save employee.'
+        message: err.response?.data?.messageToShow || err.message || 'Failed to save employee.'
       });
     }
+  };
+
+  const handleToggleAbry = (employeeId) => {
+    const employee = employees.find(e => e.id === employeeId);
+    if (!employee) return;
+
+    const updatedEmployee = {
+      ...employee,
+      abryApplicable: !employee.abryApplicable
+    };
+
+    const updatedList = saveEmployee(updatedEmployee);
+    setEmployees(updatedList);
+
+    addToast({
+      type: 'success',
+      message: `ABRY Applicable status toggled for ${employee.memberName}!`
+    });
   };
 
   const handleCancel = () => {
@@ -132,6 +152,9 @@ const EmployeePage = () => {
   // Filtered employees listing
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
+      if (employeeTypeFilter && employee.employeeType !== employeeTypeFilter) {
+        return false;
+      }
       const search = searchTerm.toLowerCase();
       return (
         (employee.uan && employee.uan.toLowerCase().includes(search)) ||
@@ -146,12 +169,19 @@ const EmployeePage = () => {
         (employee.pincode && employee.pincode.toLowerCase().includes(search))
       );
     });
-  }, [employees, searchTerm]);
+  }, [employees, searchTerm, employeeTypeFilter]);
 
-  // Export alerts
-  const handleExportClick = (type) => {
-    addToast({ type: 'info', message: `${type} export started for ${filteredEmployees.length} employees!` });
+  // Export handlers
+  const handleExportClick = async (type) => {
     setIsDropdownOpen(false);
+    try {
+      addToast({ type: 'info', message: `${type} export started...` });
+      await exportModuleData('employees', type.toLowerCase());
+      addToast({ type: 'success', message: `${type} export completed successfully!` });
+    } catch (err) {
+      console.error(err);
+      addToast({ type: 'error', message: `Failed to export ${type} file.` });
+    }
   };
 
   const handleCopyClick = () => {
@@ -223,8 +253,11 @@ const EmployeePage = () => {
         data={filteredEmployees}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+        selectedType={employeeTypeFilter}
+        onTypeFilterChange={setEmployeeTypeFilter}
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
+        onToggleAbry={handleToggleAbry}
       />
 
       {/* Reusable Confirm Delete Modal */}
