@@ -1,32 +1,14 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer, ChevronDown, Check, X } from 'lucide-react';
-import { useToast } from '../../../../shared/components';
+import { useToast, YearPicker } from '../../../../shared/components';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { getContractors } from '../../../master/contractor/services/contractorService';
 import { getResignations } from '../../../entry/resignation/services/resignationService';
+import { getOfficeStaffEntry } from '../../../entry/office-staff/services/officeStaffEntryService';
+import { getPackersEntry } from '../../../entry/packers/services/packersEntryService';
+import { getBidiRollerEntry } from '../../../entry/bidi-roller/services/bidiRollerEntryService';
+import { getOfficeStaffSalaries } from '../../../setup/office-staff-salary/services/officeStaffSalaryService';
 import styles from '../components/GratuityCalculationPage.module.css';
-
-// Fallback mock eligible employees (5+ years of service) for demo purposes if DB list has 0 matches
-const MOCK_ELIGIBLE_EMPLOYEES = {
-  'BIDI MAKER': [
-    { name: 'NAGEN MAHATO', code: '0004648', dateOfJoining: '2012-04-15', wages: 10000, contractor: 'BISHNU PADA MAJHI - 176' },
-    { name: 'MINU MAHATO', code: '0015218', dateOfJoining: '2015-08-10', wages: 9500, contractor: 'BABLU KUMAR - 139' },
-    { name: 'KALABATI PRAMANIK', code: '0015219', dateOfJoining: '2010-11-20', wages: 10500, contractor: 'BISHNU PADA MAJHI - 176' },
-    { name: 'SUSHARI MAHATO', code: '0017462', dateOfJoining: '2014-03-05', wages: 10200, contractor: 'BISHNU PADA MAJHI - 176' },
-    { name: 'BINATA PARAMANIK', code: '0017463', dateOfJoining: '2013-07-22', wages: 11000, contractor: 'BABLU KUMAR - 139' },
-    { name: 'PABITA KUMAR', code: '0017289', dateOfJoining: '2011-09-12', wages: 9200, contractor: 'BISHNU PADA MAJHI - 176' },
-    { name: 'CHUMKI KUMAR', code: '0017290', dateOfJoining: '2016-01-30', wages: 9800, contractor: 'BISHNU PADA MAJHI - 176' }
-  ],
-  'OFFICE STAFF': [
-    { name: 'KANDAN KUMAR', code: '0004463', dateOfJoining: '2011-05-10', wages: 18000, contractor: 'SELF' },
-    { name: 'MEGHNATH MAHATA', code: '0004465', dateOfJoining: '2014-12-01', wages: 16500, contractor: 'SELF' },
-    { name: 'SRIHARI KUMAR', code: '0005868', dateOfJoining: '2013-08-15', wages: 15500, contractor: 'SELF' }
-  ],
-  'PACKING STAFF': [
-    { name: 'SAMIR MACHHIJAR', code: '0005872', dateOfJoining: '2015-02-20', wages: 12000, contractor: 'SELF' },
-    { name: 'NAHLESH BAGUI', code: '0005875', dateOfJoining: '2012-09-10', wages: 11500, contractor: 'SELF' }
-  ]
-};
 
 const formatDateDisplay = (dateStr) => {
   if (!dateStr) return '';
@@ -104,6 +86,11 @@ const GratuityCalculationPage = () => {
 
   const [gratuityList, setGratuityList] = useState([]);
 
+  const matrixYears = useMemo(() => {
+    const yr = parseInt(searchTriggeredYear) || new Date().getFullYear();
+    return [yr - 4, yr - 3, yr - 2, yr - 1, yr];
+  }, [searchTriggeredYear]);
+
   // Compile employees and resolve gratuity values
   useEffect(() => {
     const fetchGratuity = async () => {
@@ -114,86 +101,131 @@ const GratuityCalculationPage = () => {
 
       try {
         const companyId = localStorage.getItem('selectedCompany');
-        const dbEmployees = await getEmployees(companyId) || [];
-        const dbResignations = await getResignations(companyId) || [];
-    
-    // Filter database employees by type
-    let targetEmployees = dbEmployees.filter(emp => {
-      if (searchTriggeredType === 'BIDI MAKER') {
-        return emp.employeeType === 'BIDI MAKER' || emp.employeeType === 'BIDI ROLLER';
-      } else if (searchTriggeredType === 'OFFICE STAFF') {
-        return emp.employeeType === 'OFFICE STAFF';
-      } else {
-        return emp.employeeType === 'PACKING STAFF';
-      }
-    });
+        
+        // 1. Determine all months to fetch (60 months from matrix)
+        const monthsToFetch = new Set();
+        matrixYears.forEach(y => {
+          for (let m = 1; m <= 12; m++) {
+            monthsToFetch.add(`${y}-${String(m).padStart(2, '0')}`);
+          }
+        });
+        
+        // 2. Add 6 preceding months from searchTriggeredDate
+        const calcDate = new Date(searchTriggeredDate);
+        for (let i = 0; i < 6; i++) {
+          const d = new Date(calcDate.getFullYear(), calcDate.getMonth() - i, 1);
+          monthsToFetch.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
+        
+        const allMonths = Array.from(monthsToFetch);
 
-    // Map each matching employee
-    let list = targetEmployees.map(emp => {
-      const uan = emp.uan || '';
-      const name = emp.memberName;
-      const code = emp.memberId || emp.id || '';
-      const joinDate = emp.dateOfJoining || '2025-01-01';
+        const [dbEmployees, dbResignations, officeSalariesRes] = await Promise.all([
+          getEmployees(companyId).catch(() => []),
+          getResignations(companyId).catch(() => []),
+          searchTriggeredType === 'OFFICE STAFF' ? getOfficeStaffSalaries(companyId).catch(() => []) : Promise.resolve([])
+        ]);
+        
+        // Fetch entry tables for all needed months in parallel
+        const dataCache = {};
+        const fetchPromises = allMonths.map(async (m) => {
+          let res;
+          if (searchTriggeredType === 'OFFICE STAFF') {
+            res = await getOfficeStaffEntry(m, companyId).catch(() => ({ data: [] }));
+          } else if (searchTriggeredType === 'PACKING STAFF') {
+            res = await getPackersEntry(m, companyId).catch(() => ({ data: [] }));
+          } else {
+            res = await getBidiRollerEntry(m, companyId).catch(() => ({ data: [] }));
+          }
+          dataCache[m] = res?.data || [];
+        });
+        await Promise.all(fetchPromises);
 
-      // Find if they have resigned
-      const resignation = dbResignations.find(r => r.uan === uan || r.nameOfMember === name);
-      const exitDate = resignation ? resignation.dateOfLeaving : searchTriggeredDate;
+        // Filter database employees by type
+        let targetEmployees = dbEmployees.filter(emp => {
+          if (searchTriggeredType === 'BIDI MAKER') {
+            return emp.employeeType === 'BIDI MAKER' || emp.employeeType === 'BIDI ROLLER';
+          } else if (searchTriggeredType === 'OFFICE STAFF') {
+            return emp.employeeType === 'OFFICE STAFF';
+          } else {
+            return emp.employeeType === 'PACKING STAFF';
+          }
+        });
 
-      // Compute service days
-      const dJoin = new Date(joinDate);
-      const dExit = new Date(exitDate);
-      const serviceDays = Math.max(0, Math.floor((dExit - dJoin) / (1000 * 60 * 60 * 24)));
-      const completedYears = Math.floor(serviceDays / 365.25);
+        // Map each matching employee
+        let list = targetEmployees.map(emp => {
+          const uan = emp.uan || '';
+          const name = emp.memberName;
+          const code = emp.memberId || emp.id || '';
+          const joinDate = emp.dateOfJoining || '2025-01-01';
 
-      // Resolve last drawn basic wages
-      const wages = parseFloat(emp.basicSalary || emp.salary) || 12000;
+          // Find if they have resigned
+          const resignation = dbResignations.find(r => r.uan === uan || r.nameOfMember === name);
+          const exitDate = resignation ? resignation.dateOfLeaving : searchTriggeredDate;
 
-      // Formula: (Wages * 15 / 26) * CompletedYears
-      const gratuityAmount = Math.round(wages * (15 / 26) * completedYears);
+          // Compute service days
+          const dJoin = new Date(joinDate);
+          const dExit = new Date(exitDate);
+          const serviceDays = Math.max(0, Math.floor((dExit - dJoin) / (1000 * 60 * 60 * 24)));
+          const completedYears = Math.floor(serviceDays / 365.25);
 
-      return {
-        name,
-        code,
-        dateOfJoining: joinDate,
-        dateOfLeaving: resignation ? exitDate : 'Active',
-        wages,
-        yearsOfService: completedYears,
-        gratuityAmount,
-        contractor: emp.contractor || 'SELF'
-      };
-    });
+          // Calculate yearly days for the 5-year matrix
+          const yearlyDays = {};
+          matrixYears.forEach(y => {
+            yearlyDays[y] = 0;
+            for (let m = 1; m <= 12; m++) {
+              const mStr = `${y}-${String(m).padStart(2, '0')}`;
+              const rows = dataCache[mStr] || [];
+              const empRow = rows.find(r => r.employeeName === name || r.employeeId === emp.id || r.name === name);
+              if (empRow) {
+                 yearlyDays[y] += parseFloat(empRow.daysWorked || empRow.unit1 || 0) + parseFloat(empRow.unit2 || 0);
+              }
+            }
+          });
 
-    // Filter only eligible employees (5+ completed years)
-    list = list.filter(row => row.yearsOfService >= 5);
+          // Resolve reference wages
+          let wages = 12000;
+          if (searchTriggeredType === 'OFFICE STAFF') {
+             const salConfig = officeSalariesRes.find(s => s.employeeId === emp.id || s.employeeName === name);
+             wages = parseFloat(salConfig?.basicSalary || emp.basicSalary || emp.salary) || 12000;
+          } else {
+             // Average of last 6 months based on exitDate
+             const refD = new Date(exitDate);
+             let total6m = 0;
+             for (let i = 0; i < 6; i++) {
+               const d = new Date(refD.getFullYear(), refD.getMonth() - i, 1);
+               const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+               const rows = dataCache[mStr] || [];
+               const empRow = rows.find(r => r.employeeName === name || r.employeeId === emp.id || r.name === name);
+               if (empRow) {
+                  total6m += parseFloat(empRow.gross || empRow.wages || empRow.total || 0);
+               }
+             }
+             wages = Math.round(total6m / 6);
+             if (wages === 0) wages = parseFloat(emp.basicSalary || emp.salary) || 12000;
+          }
 
-    // If database list has 0 eligible employees, fallback to mock eligible employees to populate the page cleanly
-    if (list.length === 0) {
-      const mockList = MOCK_ELIGIBLE_EMPLOYEES[searchTriggeredType] || [];
-      list = mockList.map(mock => {
-        const joinDate = mock.dateOfJoining;
-        const dJoin = new Date(joinDate);
-        const dExit = new Date(searchTriggeredDate);
-        const serviceDays = Math.max(0, Math.floor((dExit - dJoin) / (1000 * 60 * 60 * 24)));
-        const completedYears = Math.floor(serviceDays / 365.25);
-        const gratuityAmount = Math.round(mock.wages * (15 / 26) * completedYears);
+          const gratuityAmount = Math.round(wages * (15 / 26) * completedYears);
 
-        return {
-          name: mock.name,
-          code: mock.code,
-          dateOfJoining: joinDate,
-          dateOfLeaving: 'Active',
-          wages: mock.wages,
-          yearsOfService: completedYears,
-          gratuityAmount,
-          contractor: mock.contractor
-        };
-      });
-    }
+          return {
+            name,
+            code,
+            dateOfJoining: joinDate,
+            dateOfLeaving: resignation ? exitDate : 'Active',
+            wages,
+            yearsOfService: completedYears,
+            gratuityAmount,
+            contractor: emp.contractor || 'SELF',
+            yearlyDays
+          };
+        });
 
-    // Apply Contractor multi-select filter (applicable for Bidi Makers only)
-    if (searchTriggeredType === 'BIDI MAKER' && searchTriggeredContractors.length > 0) {
-      list = list.filter(row => searchTriggeredContractors.includes(row.contractor));
-    }
+        // Filter only eligible employees (5+ completed years)
+        list = list.filter(row => row.yearsOfService >= 5);
+
+        // Apply Contractor multi-select filter (applicable for Bidi Makers only)
+        if (searchTriggeredType === 'BIDI MAKER' && searchTriggeredContractors.length > 0) {
+          list = list.filter(row => searchTriggeredContractors.includes(row.contractor));
+        }
 
         setGratuityList(list);
       } catch (err) {
@@ -201,7 +233,7 @@ const GratuityCalculationPage = () => {
       }
     };
     fetchGratuity();
-  }, [searchTriggeredDate, searchTriggeredType, searchTriggeredContractors]);
+  }, [searchTriggeredDate, searchTriggeredType, searchTriggeredContractors, searchTriggeredYear, matrixYears]);
 
   // Local text filter
   const filteredRecords = useMemo(() => {
@@ -219,14 +251,19 @@ const GratuityCalculationPage = () => {
 
   // Aggregate columns totals
   const totalsSum = useMemo(() => {
-    const sums = { wages: 0, years: 0, gratuity: 0 };
+    const sums = { wages: 0, years: 0, gratuity: 0, yearlyDays: {} };
+    matrixYears.forEach(y => { sums.yearlyDays[y] = 0; });
+
     filteredRecords.forEach(row => {
       sums.wages += row.wages;
       sums.years += row.yearsOfService;
       sums.gratuity += row.gratuityAmount;
+      matrixYears.forEach(y => {
+        sums.yearlyDays[y] += (row.yearlyDays[y] || 0);
+      });
     });
     return sums;
-  }, [filteredRecords]);
+  }, [filteredRecords, matrixYears]);
 
   // Pagination calculations
   const totalEntries = filteredRecords.length;
@@ -277,14 +314,24 @@ const GratuityCalculationPage = () => {
     const dateLabel = searchTriggeredDate ? searchTriggeredDate.replace(/-/g, '_') : 'all';
 
     if (type === 'Copy') {
-      const headers = ['Sr No.', 'Emp. Code', 'Beneficiary Name', 'Date of Joining', 'Date of Leaving', 'Wages (Basic + DA)', 'Years of Service', 'Gratuity Amount'];
+      let headerArr = ['Sr No.', 'Emp. Code', 'Beneficiary Name', 'Date of Joining', 'Date of Leaving'];
+      matrixYears.forEach(y => headerArr.push(`${y} Days`));
+      headerArr.push('Wages (Basic + DA)', 'Years of Service', 'Gratuity Amount');
+      
       let text = `Gratuity Calculation Statement - As of Date: ${searchTriggeredDate}\n\n`;
-      text += headers.join('\t') + '\n';
+      text += headerArr.join('\t') + '\n';
 
       filteredRecords.forEach((row, idx) => {
-        text += `${idx + 1}\t${row.code}\t${row.name}\t${row.dateOfJoining}\t${row.dateOfLeaving}\t${row.wages}\t${row.yearsOfService}\t${row.gratuityAmount}\n`;
+        let rowArr = [idx + 1, row.code, row.name, row.dateOfJoining, row.dateOfLeaving];
+        matrixYears.forEach(y => rowArr.push(row.yearlyDays[y] || 0));
+        rowArr.push(row.wages, row.yearsOfService, row.gratuityAmount);
+        text += rowArr.join('\t') + '\n';
       });
-      text += `Total\t\t\t\t\t${totalsSum.wages}\t${totalsSum.years}\t${totalsSum.gratuity}\n`;
+      
+      let totalArr = ['Total', '', '', '', ''];
+      matrixYears.forEach(y => totalArr.push(totalsSum.yearlyDays[y] || 0));
+      totalArr.push(totalsSum.wages, totalsSum.years, totalsSum.gratuity);
+      text += totalArr.join('\t') + '\n';
 
       navigator.clipboard.writeText(text).then(() => {
         addToast({
@@ -294,13 +341,23 @@ const GratuityCalculationPage = () => {
       });
     }
     else if (type === 'CSV' || type === 'Excel') {
-      const headers = ['Sr No.', 'Emp. Code', 'Beneficiary Name', 'Date of Joining', 'Date of Leaving', 'Wages (Basic + DA)', 'Years of Service', 'Gratuity Amount'];
-      let csv = headers.join(',') + '\n';
+      let headerArr = ['Sr No.', 'Emp. Code', 'Beneficiary Name', 'Date of Joining', 'Date of Leaving'];
+      matrixYears.forEach(y => headerArr.push(`${y} Days`));
+      headerArr.push('Wages (Basic + DA)', 'Years of Service', 'Gratuity Amount');
+      
+      let csv = headerArr.join(',') + '\n';
 
       filteredRecords.forEach((row, idx) => {
-        csv += `${idx + 1},${row.code},"${row.name}",${row.dateOfJoining},${row.dateOfLeaving},${row.wages},${row.yearsOfService},${row.gratuityAmount}\n`;
+        let rowArr = [idx + 1, row.code, `"${row.name}"`, row.dateOfJoining, row.dateOfLeaving];
+        matrixYears.forEach(y => rowArr.push(row.yearlyDays[y] || 0));
+        rowArr.push(row.wages, row.yearsOfService, row.gratuityAmount);
+        csv += rowArr.join(',') + '\n';
       });
-      csv += `Total,,,,,${totalsSum.wages},${totalsSum.years},${totalsSum.gratuity}\n`;
+      
+      let totalArr = ['Total', '', '', '', ''];
+      matrixYears.forEach(y => totalArr.push(totalsSum.yearlyDays[y] || 0));
+      totalArr.push(totalsSum.wages, totalsSum.years, totalsSum.gratuity);
+      csv += totalArr.join(',') + '\n';
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -373,11 +430,9 @@ const GratuityCalculationPage = () => {
           {/* Select Year */}
           <div className={styles.filterGroup}>
             <span className={styles.label}>Select Year</span>
-            <input
-              type="text"
+            <YearPicker
               value={selectYear}
-              onChange={(e) => setSelectYear(e.target.value)}
-              className={styles.textInput}
+              onChange={setSelectYear}
               placeholder="e.g. 2021"
             />
           </div>
@@ -503,6 +558,9 @@ const GratuityCalculationPage = () => {
                 <th>Beneficiary Name</th>
                 <th>Date of Joining</th>
                 <th>Date of Leaving</th>
+                {matrixYears.map(y => (
+                  <th key={y} style={{ textAlign: 'right' }}>{y} Days</th>
+                ))}
                 <th style={{ textAlign: 'right' }}>Wages (Basic + DA)</th>
                 <th style={{ textAlign: 'right' }}>Years of Service</th>
                 <th style={{ textAlign: 'right' }}>Gratuity Amount</th>
@@ -511,7 +569,7 @@ const GratuityCalculationPage = () => {
             <tbody>
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className={styles.noDataText}>
+                  <td colSpan={8 + matrixYears.length} className={styles.noDataText}>
                     {!searchTriggeredDate ? 'Select Date and query Gratuity Calculation records.' : 'No matching records found.'}
                   </td>
                 </tr>
@@ -524,6 +582,9 @@ const GratuityCalculationPage = () => {
                       <td style={{ fontWeight: '600' }}>{row.name}</td>
                       <td>{formatDateDisplay(row.dateOfJoining)}</td>
                       <td>{row.dateOfLeaving === 'Active' ? 'Active' : formatDateDisplay(row.dateOfLeaving)}</td>
+                      {matrixYears.map(y => (
+                        <td key={y} style={{ textAlign: 'right' }}>{row.yearlyDays[y] || 0}</td>
+                      ))}
                       <td style={{ textAlign: 'right' }}>{row.wages.toLocaleString()}</td>
                       <td style={{ textAlign: 'right', fontWeight: '500' }}>{row.yearsOfService}</td>
                       <td style={{ textAlign: 'right', fontWeight: '700', color: 'var(--primary)' }}>
@@ -535,6 +596,11 @@ const GratuityCalculationPage = () => {
                   {/* Totals Row */}
                   <tr className={styles.totalRow}>
                     <td colSpan={5} style={{ fontWeight: '700' }}>Total</td>
+                    {matrixYears.map(y => (
+                      <td key={y} style={{ textAlign: 'right', fontWeight: '700' }}>
+                        {totalsSum.yearlyDays[y] || 0}
+                      </td>
+                    ))}
                     <td style={{ textAlign: 'right', fontWeight: '700' }}>
                       {totalsSum.wages.toLocaleString()}
                     </td>
