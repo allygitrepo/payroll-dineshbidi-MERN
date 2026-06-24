@@ -21,10 +21,26 @@ const PackingSalaryPage = () => {
   const dropdownRef = useRef(null);
   const addToast = useToast();
 
+  const [dbEmployees, setDbEmployees] = useState([]);
+
+  useEffect(() => {
+    const fetchEmps = async () => {
+      const companyId = localStorage.getItem('selectedCompany');
+      if (companyId) {
+        try {
+          const list = await getEmployees(companyId);
+          setDbEmployees(list || []);
+        } catch(e) {
+          console.error('Error fetching employees:', e);
+        }
+      }
+    };
+    fetchEmps();
+  }, []);
+
   // Load database employees of type "PACKING STAFF" and calculate their salary values
   const salaryRecords = useMemo(() => {
-    const dbList = getEmployees() || [];
-    const dbPackingStaff = dbList.filter(emp => emp.employeeType === 'PACKING STAFF');
+    const dbPackingStaff = dbEmployees.filter(emp => emp.employeeType === 'PACKING STAFF');
 
     const mappedDbRecords = dbPackingStaff.map(emp => {
       // Default working days for simulated month: 23 worked, all unit outputs at 0

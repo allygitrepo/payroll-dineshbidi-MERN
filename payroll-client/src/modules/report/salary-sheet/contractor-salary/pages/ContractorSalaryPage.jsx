@@ -81,11 +81,27 @@ const ContractorSalaryPage = () => {
   const multiSelectRef = useRef(null);
   const addToast = useToast();
 
+  const [dbEmployees, setDbEmployees] = useState([]);
+
+  useEffect(() => {
+    const fetchEmps = async () => {
+      const companyId = localStorage.getItem('selectedCompany');
+      if (companyId) {
+        try {
+          const list = await getEmployees(companyId);
+          setDbEmployees(list || []);
+        } catch(e) {
+          console.error('Error fetching employees:', e);
+        }
+      }
+    };
+    fetchEmps();
+  }, []);
+
   // Load database employees who are matched with selected contractors
   const salaryRecords = useMemo(() => {
-    const dbList = getEmployees() || [];
     // Filter database employees where contractor matches searchTriggeredContractors
-    const dbContractorStaff = dbList.filter(emp => 
+    const dbContractorStaff = dbEmployees.filter(emp => 
       emp.contractor && emp.contractor !== 'SELF' && emp.contractor !== 'None'
     );
 
