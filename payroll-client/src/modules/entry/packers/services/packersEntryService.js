@@ -4,10 +4,11 @@ import apiClient from '../../../../shared/services/apiClient';
  * Fetch entry data for a given month (YYYY-MM).
  * @param {string} monthYear  - e.g. "2026-01"
  */
-export const getPackersEntry = async (monthYear) => {
+export const getPackersEntry = async (monthYear, companyId) => {
   try {
+    const cid = companyId || localStorage.getItem('selectedCompany');
     const response = await apiClient.get('/packers-entries/company', {
-      params: { month_year: monthYear }
+      params: { month_year: monthYear, company_id: cid }
     });
     return response.data; // Expected { status, data: [], config: {} }
   } catch (error) {
@@ -19,10 +20,12 @@ export const getPackersEntry = async (monthYear) => {
 /**
  * Save entry data for a given month
  */
-export const savePackersEntry = async (monthYear, rows) => {
+export const savePackersEntry = async (monthYear, rows, companyId) => {
   try {
+    const cid = companyId || localStorage.getItem('selectedCompany');
     const response = await apiClient.post('/packers-entries/company', {
       month_year: monthYear,
+      company_id: cid,
       entries: rows
     });
     return response.data;

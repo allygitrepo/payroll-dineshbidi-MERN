@@ -16,7 +16,7 @@ const calculatePTAmount = (grossSalary, slabs) => {
 
 exports.getEntries = async (req, res) => {
     try {
-        const company_id = req.user?.company_id || req.query.company_id;
+        const company_id = req.query.company_id || req.user?.company_id;
         const { month_year } = req.query; // format: "YYYY-MM"
 
         if (!company_id || !month_year) {
@@ -211,8 +211,8 @@ exports.getEntries = async (req, res) => {
 exports.saveEntries = async (req, res) => {
     const t = await db.sequelize.transaction();
     try {
-        const company_id = req.user?.company_id || req.body.company_id;
-        const { month_year, entries } = req.body;
+        const { company_id: bodyCompanyId, month_year, entries } = req.body;
+        const company_id = bodyCompanyId || req.user?.company_id;
 
         if (!company_id || !month_year || !Array.isArray(entries)) {
             return res.status(400).json({ status: false, message: "Invalid payload" });
