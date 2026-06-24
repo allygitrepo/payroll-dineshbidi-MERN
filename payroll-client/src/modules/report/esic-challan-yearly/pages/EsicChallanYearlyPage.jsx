@@ -1,10 +1,13 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
 import { useToast } from '../../../../shared/components';
-import { getEmployees } from '../../../master/employee/services/employeeService';
-import { getResignations } from '../../../entry/resignation/services/resignationService';
+import { getOfficeStaffEntry } from '../../../entry/office-staff/services/officeStaffEntryService';
+import { getPackersEntry } from '../../../entry/packers/services/packersEntryService';
+import { getBidiRollerEntry } from '../../../entry/bidi-roller/services/bidiRollerEntryService';
 import { getEsicChallans, saveEsicChallan } from '../services/esicChallanYearlyService';
 import YearPicker from '../../forms/form-3a/components/YearPicker';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import styles from '../components/EsicChallanYearlyPage.module.css';
 
 const EsicChallanYearlyPage = () => {
@@ -62,57 +65,68 @@ const EsicChallanYearlyPage = () => {
     // Load static employees & resignations to calculate ESIC shares dynamically
     try {
       const companyId = localStorage.getItem('selectedCompany');
-      const employees = await getEmployees(companyId) || [];
-      const resignations = await getResignations(companyId) || [];
       const savedChallans = await getEsicChallans(companyId) || [];
 
-      const mapped = financialMonths.map(item => {
-      // 1. Calculate dynamic ESIC contributions for the month
-      let totalMonthWages = 0;
-      employees.forEach(emp => {
-        // Parse joined date
-        if (emp.dateOfJoining) {
-          const [joinY, joinM] = emp.dateOfJoining.split('-').map(Number);
-          const joinVal = joinY * 12 + joinM;
-          const targetVal = item.year * 12 + item.month;
-          if (joinVal > targetVal) return; // Hasn't joined yet
-        }
-
-        // Parse resignation date
-        const resignation = resignations.find(res => 
-          (res.uan && res.uan === emp.uan) ||
-          (res.nameOfMember && res.nameOfMember.toUpperCase() === emp.memberName.toUpperCase())
-        );
-
-        if (resignation && resignation.dateOfLeaving) {
-          const [leaveY, leaveM] = resignation.dateOfLeaving.split('-').map(Number);
-          const leaveVal = leaveY * 12 + leaveM;
-          const targetVal = item.year * 12 + item.month;
-          if (targetVal > leaveVal) return; // Resigned in a past month
-        }
-
-        // Add to total month wages
-        totalMonthWages += emp.basicSalary || 8000;
+      const officePromises = financialMonths.map(m => {
+        const [mm, yyyy] = m.key.split('/');
+        const monthYear = `${yyyy}-${mm}`;
+        return getOfficeStaffEntry(monthYear, companyId).catch(() => ({ data: [] }));
+      });
+      const packersPromises = financialMonths.map(m => {
+        const [mm, yyyy] = m.key.split('/');
+        const monthYear = `${yyyy}-${mm}`;
+        return getPackersEntry(monthYear, companyId).catch(() => ({ data: [] }));
+      });
+      const bidiPromises = financialMonths.map(m => {
+        const [mm, yyyy] = m.key.split('/');
+        const monthYear = `${yyyy}-${mm}`;
+        return getBidiRollerEntry(monthYear, companyId).catch(() => ({ data: [] }));
       });
 
-      // Calculate shares based on rates: Employee 0.75%, Employer 3.25% (both rounded up)
-      const empShare = Math.ceil(totalMonthWages * 0.0075);
-      const erShare = Math.ceil(totalMonthWages * 0.0325);
+      const [officeResults, packersResults, bidiResults] = await Promise.all([
+        Promise.all(officePromises),
+        Promise.all(packersPromises),
+        Promise.all(bidiPromises)
+      ]);
 
-      // Find saved challan details
-      const match = savedChallans.find(c => c.wageMonth === item.key);
-      const challanNumber = match ? match.challanNumber : '';
-      const actualDate = match ? match.actualDate : '';
+      const mapped = financialMonths.map((item, index) => {
+        let totalMonthEsic = 0;
+        let totalMonthGross = 0;
 
-      return {
-        monthName: item.name,
-        monthKey: item.key,
-        empShare,
-        erShare,
-        challanNumber,
-        actualDate
-      };
-    });
+        const processRows = (rows) => {
+          (rows || []).forEach(row => {
+            totalMonthEsic += parseFloat(row.esic || row.esic_amount || 0);
+            totalMonthGross += parseFloat(row.gross || row.gross_wages || row.total || row.netWages || 0);
+          });
+        };
+
+        processRows(officeResults[index]?.data);
+        processRows(packersResults[index]?.data);
+        processRows(bidiResults[index]?.data);
+
+        const empShare = Math.round(totalMonthEsic);
+        const erShare = Math.round(totalMonthGross * 0.0325);
+
+        const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const altKey1 = `${shortMonths[item.month - 1]}-${String(item.year).slice(-2)}`;
+        const altKey2 = `${shortMonths[item.month - 1]}-${item.year}`;
+        const match = savedChallans.find(c => {
+          const dbM = String(c.wageMonth).trim();
+          return dbM === item.key || dbM === altKey1 || dbM === altKey2 || dbM === item.name;
+        });
+
+        const challanNumber = match ? match.challanNumber : '';
+        const actualDate = match ? match.actualDate : '';
+
+        return {
+          monthName: item.name,
+          monthKey: item.key,
+          empShare,
+          erShare,
+          challanNumber,
+          actualDate
+        };
+      });
       setYearlyRecords(mapped);
     } catch (err) {
       console.error(err);
@@ -309,6 +323,54 @@ const EsicChallanYearlyPage = () => {
       addToast({
         type: 'success',
         message: `ESIC Challan Yearly ${type} downloaded successfully!`
+      });
+    }
+    else if (type === 'PDF') {
+      const doc = new jsPDF('landscape');
+      doc.setFontSize(16);
+      const titleText = `ESIC Challan Yearly Report_${searchTriggeredYear}`;
+      doc.text(titleText, doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+
+      const tableColumn = [
+        "Month", "Employee Share", "Employer Share", "Challan Number", "Actual Date of Payment"
+      ];
+      const tableRows = [];
+
+      filteredRecords.forEach((rec) => {
+        const inputs = rowInputs[rec.monthKey] || {};
+        tableRows.push([
+          rec.monthName,
+          rec.empShare,
+          rec.erShare,
+          inputs.challanNumber || '',
+          inputs.actualDate || ''
+        ]);
+      });
+
+      const totalRow = [
+        "Total", totals.empShare, totals.erShare, "", ""
+      ];
+      tableRows.push(totalRow);
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 25,
+        theme: 'grid',
+        headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold', halign: 'center', fontSize: 8 },
+        bodyStyles: { textColor: [55, 65, 81], halign: 'center', valign: 'middle', fontSize: 8 },
+        didParseCell: function(data) {
+          if (data.row.index === tableRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [243, 244, 246];
+          }
+        }
+      });
+
+      doc.save(`ESIC_Challan_Yearly_${searchTriggeredYear}.pdf`);
+      addToast({
+        type: 'success',
+        message: `ESIC Challan Yearly PDF downloaded successfully!`
       });
     }
     else {
