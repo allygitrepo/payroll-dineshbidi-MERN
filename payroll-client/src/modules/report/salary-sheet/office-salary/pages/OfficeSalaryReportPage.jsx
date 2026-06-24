@@ -13,6 +13,8 @@ import {
 import styles from './OfficeSalaryReportPage.module.css';
 import { useToast, MonthYearPicker } from '../../../../../shared/components';
 import { fetchOfficeSalarySheet } from '../services/officeSalaryReportService';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const formatMonthLabel = (monthYear) => {
   if (!monthYear) return '';
@@ -80,9 +82,222 @@ const OfficeSalaryReportPage = () => {
     }
   };
 
+  const generatePDF = () => {
+    const doc = new jsPDF('landscape'); // use landscape to fit all columns
+    
+    // Title
+    doc.setFontSize(16);
+    const titleText = `Office Staff Salary Sheet_${activeMonth ? activeMonth.split('-')[1] + '/' + activeMonth.split('-')[0] : ''}`;
+    doc.text(titleText, doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+    
+    // Subtitle
+    doc.setFontSize(9);
+    doc.text(`COMPANY NAME : BRIJBASHI TRADERS , ADDRESS: BANDHA GHAT , POSTOFFICE: JHALDA , DISTRICT: PURULIA , PINCODE: 723202`, doc.internal.pageSize.getWidth() / 2, 22, { align: 'center' });
+
+    // Table Data
+    const tableColumn = [
+      "SR NO", "Employee Name", "Basic Salary", "NO.Of Days Worked", "Holiday", "Absent", 
+      "Additional", "Total Amount", "PT", "PF", "ESIC", "Net Amount Paid", "Signature of The Employee"
+    ];
+    const tableRows = [];
+
+    reportData.forEach((row, index) => {
+      const rowData = [
+        index + 1,
+        `${row.name}\nMember Id:${row.employeeCode}\nUAN:${row.uan}`,
+        Math.round(row.basicSalary),
+        row.daysWorked,
+        row.leaveWithPay,
+        row.absentDays,
+        Math.round(row.addition),
+        Math.round(row.grossWages),
+        Math.round(row.pt),
+        Math.round(row.pf),
+        Math.round(row.esic),
+        Math.round(row.netWages),
+        "" // Signature empty
+      ];
+      tableRows.push(rowData);
+    });
+
+    // Add total row
+    const totalsRow = [
+      "",
+      "Total",
+      Math.round(totals.basicSalary),
+      totals.daysWorked,
+      totals.leaveWithPay,
+      totals.absentDays,
+      Math.round(totals.addition),
+      Math.round(totals.gross),
+      Math.round(totals.pt),
+      Math.round(totals.pf),
+      Math.round(totals.esic),
+      Math.round(totals.netWages),
+      ""
+    ];
+    tableRows.push(totalsRow);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 28,
+      theme: 'grid',
+      headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold', halign: 'center' },
+      bodyStyles: { textColor: [55, 65, 81], halign: 'center', valign: 'middle' },
+      columnStyles: {
+        1: { halign: 'left', cellWidth: 40 }, // Employee name column slightly wider and left-aligned
+        12: { cellWidth: 35 } // Signature
+      },
+      didParseCell: function(data) {
+        // Style the Total row
+        if (data.row.index === tableRows.length - 1) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [243, 244, 246];
+        }
+      }
+    });
+
+    doc.save(`Office_Staff_Salary_Sheet_${activeMonth}.pdf`);
+  };
+
+  const handleCopy = () => {
+    const headers = ["SR NO", "Employee Name", "Member Id", "UAN", "Basic Salary", "NO.Of Days Worked", "Holiday", "Absent", "Additional", "Total Amount", "PT", "PF", "ESIC", "Net Amount Paid"].join("\t");
+    const rows = reportData.map((row, index) => [
+      index + 1,
+      row.name,
+      row.employeeCode,
+      row.uan,
+      Math.round(row.basicSalary),
+      row.daysWorked,
+      row.leaveWithPay,
+      row.absentDays,
+      Math.round(row.addition),
+      Math.round(row.grossWages),
+      Math.round(row.pt),
+      Math.round(row.pf),
+      Math.round(row.esic),
+      Math.round(row.netWages)
+    ].join("\t")).join("\n");
+    
+    navigator.clipboard.writeText(`${headers}\n${rows}`);
+    addToast({ type: 'success', message: 'Data copied to clipboard!' });
+  };
+
+  const handleCSV = (filename) => {
+    const headers = ["SR NO", "Employee Name", "Member Id", "UAN", "Basic Salary", "NO.Of Days Worked", "Holiday", "Absent", "Additional", "Total Amount", "PT", "PF", "ESIC", "Net Amount Paid"].join(",");
+    const rows = reportData.map((row, index) => [
+      index + 1,
+      `"${row.name}"`,
+      `"${row.employeeCode}"`,
+      `"${row.uan}"`,
+      Math.round(row.basicSalary),
+      row.daysWorked,
+      row.leaveWithPay,
+      row.absentDays,
+      Math.round(row.addition),
+      Math.round(row.grossWages),
+      Math.round(row.pt),
+      Math.round(row.pf),
+      Math.round(row.esic),
+      Math.round(row.netWages)
+    ].join(",")).join("\n");
+    
+    const blob = new Blob([`${headers}\n${rows}`], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    addToast({ type: 'success', message: 'Export downloaded successfully!' });
+  };
+
+  const handlePrint = () => {
+    const printWindow = window.open('', '', 'height=800,width=1200');
+    if (!printWindow) return;
+    
+    let html = `<html><head><title>Print Office Salary Sheet</title>`;
+    html += `<style>
+      body { font-family: sans-serif; padding: 20px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+      th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+      th { background-color: #f3f4f6; text-align: center; }
+      td:nth-child(2) { text-align: left; }
+      .emp-details { font-size: 10px; color: #666; display: block; }
+    </style></head><body>`;
+    html += `<h2 style="text-align:center;">Office Staff Salary Sheet_${activeMonth}</h2>`;
+    html += `<table>
+      <thead>
+        <tr>
+          <th>SR NO</th><th>Employee Name</th><th>Basic Salary</th><th>Days</th><th>Holiday</th><th>Absent</th>
+          <th>Addition</th><th>Total</th><th>PT</th><th>PF</th><th>ESIC</th><th>Net Paid</th>
+        </tr>
+      </thead><tbody>`;
+    
+    reportData.forEach((row, i) => {
+      html += `<tr>
+        <td>${i+1}</td>
+        <td>${row.name}<br/><span class="emp-details">Id: ${row.employeeCode} | UAN: ${row.uan}</span></td>
+        <td>${Math.round(row.basicSalary)}</td>
+        <td>${row.daysWorked}</td>
+        <td>${row.leaveWithPay}</td>
+        <td>${row.absentDays}</td>
+        <td>${Math.round(row.addition)}</td>
+        <td>${Math.round(row.grossWages)}</td>
+        <td>${Math.round(row.pt)}</td>
+        <td>${Math.round(row.pf)}</td>
+        <td>${Math.round(row.esic)}</td>
+        <td>${Math.round(row.netWages)}</td>
+      </tr>`;
+    });
+    
+    // Totals row for print
+    html += `<tr style="font-weight:bold; background-color:#f9fafb;">
+      <td></td>
+      <td>Total</td>
+      <td>${Math.round(totals.basicSalary)}</td>
+      <td>${totals.daysWorked}</td>
+      <td>${totals.leaveWithPay}</td>
+      <td>${totals.absentDays}</td>
+      <td>${Math.round(totals.addition)}</td>
+      <td>${Math.round(totals.gross)}</td>
+      <td>${Math.round(totals.pt)}</td>
+      <td>${Math.round(totals.pf)}</td>
+      <td>${Math.round(totals.esic)}</td>
+      <td>${Math.round(totals.netWages)}</td>
+    </tr>`;
+    
+    html += `</tbody></table></body></html>`;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    // Use timeout to allow styles to render
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
   const handleExport = (type) => {
     setIsDropdownOpen(false);
-    addToast({ type: 'info', message: `${type} export started for ${reportData.length} records!` });
+    if (reportData.length === 0) {
+      addToast({ type: 'error', message: 'No data to export!' });
+      return;
+    }
+
+    if (type === 'PDF') {
+      generatePDF();
+      addToast({ type: 'success', message: 'PDF generated successfully!' });
+    } else if (type === 'Copy') {
+      handleCopy();
+    } else if (type === 'CSV' || type === 'Excel') {
+      handleCSV(`Office_Salary_Sheet_${activeMonth}.csv`);
+    } else if (type === 'Print') {
+      handlePrint();
+    }
   };
 
   const totals = useMemo(() => {
