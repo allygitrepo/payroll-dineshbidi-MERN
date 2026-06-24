@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { FileUp, FileSpreadsheet, Download, Loader2, X, CheckCircle2 } from 'lucide-react';
 import { useToast } from '../../../../shared/components';
 import * as XLSX from 'xlsx';
-import { saveEmployee } from '../../../master/employee/services/employeeService';
+import { saveEmployee, getEmployees } from '../../../master/employee/services/employeeService';
 import { getContractors } from '../../../master/contractor/services/contractorService';
 import { getAddresses } from '../../../master/address/services/addressService';
 import styles from '../components/EmployeeDataImportPage.module.css';
@@ -15,6 +15,8 @@ const EmployeeDataImportPage = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [previewData, setPreviewData] = useState({ columns: [], rows: [] });
+  const [analysisSummary, setAnalysisSummary] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const fileInputRef = useRef(null);
   const addToast = useToast();
 
@@ -90,6 +92,7 @@ const EmployeeDataImportPage = () => {
     e.stopPropagation();
     setFile(null);
     setPreviewData({ columns: [], rows: [] });
+    setAnalysisSummary(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -105,17 +108,14 @@ const EmployeeDataImportPage = () => {
     }
   };
 
-  const handleImport = () => {
+  const handleAnalyze = () => {
     if (!file) {
-      addToast({
-        type: 'error',
-        message: 'Please choose or drag an Excel file first!'
-      });
+      addToast({ type: 'error', message: 'Please choose or drag an Excel file first!' });
       return;
     }
 
-    setIsImporting(true);
-    setProgress(0);
+    setIsAnalyzing(true);
+    setAnalysisSummary(null);
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -124,7 +124,18 @@ const EmployeeDataImportPage = () => {
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, dateNF: 'yyyy-mm-dd' });
+
+        const parseDate = (d) => {
+          if (!d) return '';
+          const str = String(d).trim();
+          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+          const parts = str.split(/[\/\-]/);
+          if (parts.length === 3 && parts[2].length === 4) {
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          }
+          return str;
+        };
 
         const companyId = localStorage.getItem('selectedCompany');
         if (!companyId) throw new Error("No active company context. Please select a company first.");
@@ -140,66 +151,108 @@ const EmployeeDataImportPage = () => {
           throw new Error("No addresses found for this company. Please create at least one address first.");
         }
 
-        let successCount = 0;
-        let failCount = 0;
+        const existingEmployees = await getEmployees(companyId);
+
+        const summary = { added: [], updated: [], failed: [] };
 
         for (let i = 0; i < totalRows; i++) {
           const row = jsonData[i];
-          try {
-            const employeeObj = {
-              memberName: row['Member Name'] || '',
-              uan: row['Universal Account Number'] || '',
-              ipNumber: row['IP Number'] || '',
-              memberId: row['Previous Member Id'] || '',
-              contractor: row['Contractor Name'] || 'SELF',
-              employeeType: row['Type Of Employee'] || 'BIDI MAKER',
-              gender: (row['Gender'] || 'MALE').toUpperCase(),
-              dob: row['Date Of Birth'] || '',
-              dateOfJoining: row['Date Of Joining'] || '',
-              fatherHusbandName: row['Father/Husband Name'] || '',
-              relation: row['Relationship'] || '',
-              maritalStatus: row['Marital Status'] || 'SINGLE',
-              mobile: row['Mobile Number'] || '',
-              email: row['Email Id'] || '',
-              aadhaarCard: row['Aadhaar Number'] || '',
-              nationality: row['Nationality'] || 'INDIAN',
-              pmrpy: (row['PMRPY'] || 'NO').toUpperCase(),
-              address_id: defaultAddressId,
-              kycDetails: [
-                { documentType: 'PAN', documentNumber: row['PAN'] || '' },
-                { documentType: 'BANK PASSBOOK', documentNumber: row['Bank Account Number'] || '', ifsc: row['Bank IFSC'] || '' }
-              ].filter(k => k.documentNumber), // filter out empty
-              nomineeDetails: [],
-              familyDetails: []
-            };
+          const uan = String(row['Universal Account Number'] || '').replace(/\D/g, '');
+          const memberName = String(row['Member Name'] || '');
+          const dob = parseDate(row['Date Of Birth']);
+          const doj = parseDate(row['Date Of Joining']);
 
-            await saveEmployee(employeeObj, companyId, addressesList, contractorsList);
-            successCount++;
-          } catch (err) {
-            console.error("Failed to import row", row, err);
-            failCount++;
+          if (!uan || uan.length !== 12 || !memberName || !dob || !doj) {
+            summary.failed.push({ rowNumber: i + 2, name: memberName || 'Unknown', reason: "Missing required fields (Name, 12-digit UAN, DOB, or DOJ)." });
+            continue;
           }
-          setProgress(Math.round(((i + 1) / totalRows) * 100));
+
+          const employeeObj = {
+            memberName,
+            uan,
+            ipNumber: String(row['IP Number'] || '').replace(/\D/g, ''),
+            memberId: String(row['Previous Member Id'] || ''),
+            contractor: String(row['Contractor Name'] || 'SELF'),
+            employeeType: String(row['Type Of Employee'] || 'BIDI MAKER'),
+            gender: String(row['Gender'] || 'MALE').toUpperCase(),
+            dob,
+            dateOfJoining: doj,
+            fatherHusbandName: String(row['Father/Husband Name'] || ''),
+            relation: String(row['Relationship'] || ''),
+            maritalStatus: String(row['Marital Status'] || 'SINGLE'),
+            mobile: String(row['Mobile Number'] || '').replace(/\D/g, ''),
+            email: String(row['Email Id'] || ''),
+            aadhaarCard: String(row['Aadhaar Number'] || '').replace(/\D/g, ''),
+            nationality: String(row['Nationality'] || 'INDIAN'),
+            pmrpy: (row['PMRPY'] || 'NO').toUpperCase(),
+            address_id: defaultAddressId,
+            kycDetails: [
+              { documentType: 'PAN', documentNumber: row['PAN'] || '' },
+              { documentType: 'BANK PASSBOOK', documentNumber: row['Bank Account Number'] || '', ifsc: row['Bank IFSC'] || '' }
+            ].filter(k => k.documentNumber),
+            nomineeDetails: [],
+            familyDetails: []
+          };
+
+          const existingMatch = existingEmployees.find(emp => emp.uan === uan);
+          if (existingMatch) {
+            employeeObj.id = existingMatch.id;
+            summary.updated.push(employeeObj);
+          } else {
+            summary.added.push(employeeObj);
+          }
         }
 
-        setIsImporting(false);
-        setFile(null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-
-        addToast({
-          type: 'success',
-          message: `Import complete! Successfully created ${successCount} employees. ${failCount > 0 ? `Failed: ${failCount}` : ''}`
-        });
+        setAnalysisSummary({ ...summary, contractorsList, addressesList, companyId });
+        setIsAnalyzing(false);
       } catch (error) {
-        setIsImporting(false);
-        setProgress(0);
-        addToast({
-          type: 'error',
-          message: 'Failed to parse Excel file: ' + error.message
-        });
+        setIsAnalyzing(false);
+        addToast({ type: 'error', message: 'Failed to analyze Excel file: ' + error.message });
       }
     };
     reader.readAsArrayBuffer(file);
+  };
+
+  const handleConfirmImport = async () => {
+    if (!analysisSummary) return;
+    
+    setIsImporting(true);
+    setProgress(0);
+
+    const totalToProcess = analysisSummary.added.length + analysisSummary.updated.length;
+    if (totalToProcess === 0) {
+      setIsImporting(false);
+      addToast({ type: 'info', message: 'No valid entries to process.' });
+      return;
+    }
+
+    let processed = 0;
+    let failCount = 0;
+    const { companyId, addressesList, contractorsList } = analysisSummary;
+
+    const processList = [...analysisSummary.added, ...analysisSummary.updated];
+
+    for (const emp of processList) {
+      try {
+        await saveEmployee(emp, companyId, addressesList, contractorsList);
+      } catch (err) {
+        console.error("Failed to save employee", emp, err?.response?.data || err);
+        failCount++;
+      }
+      processed++;
+      setProgress(Math.round((processed / totalToProcess) * 100));
+    }
+
+    setIsImporting(false);
+    setFile(null);
+    setAnalysisSummary(null);
+    setPreviewData({ columns: [], rows: [] });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    addToast({
+      type: 'success',
+      message: `Import complete! Processed ${processed - failCount} entries successfully. ${failCount > 0 ? `Failed to save: ${failCount}` : ''}`
+    });
   };
 
   const handleDownloadTemplate = () => {
@@ -353,32 +406,99 @@ const EmployeeDataImportPage = () => {
           </>
         )}
 
+        {/* Analysis Summary */}
+        {analysisSummary && !isImporting && (
+          <div className={styles.summaryContainer} style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#0f172a' }}>Import Analysis Summary</h3>
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '15px', flexWrap: 'wrap' }}>
+              <div style={{ padding: '10px 15px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '6px', fontWeight: '500' }}>
+                ✓ {analysisSummary.added.length} New Entries
+              </div>
+              <div style={{ padding: '10px 15px', backgroundColor: '#fef08a', color: '#854d0e', borderRadius: '6px', fontWeight: '500' }}>
+                ↻ {analysisSummary.updated.length} To Update (Existing UAN)
+              </div>
+              <div style={{ padding: '10px 15px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '6px', fontWeight: '500' }}>
+                ✕ {analysisSummary.failed.length} Invalid Entries
+              </div>
+            </div>
+            
+            {analysisSummary.failed.length > 0 && (
+              <div style={{ marginTop: '10px', fontSize: '13px', color: '#7f1d1d' }}>
+                <strong>Issues detected:</strong>
+                <ul style={{ margin: '5px 0 0 20px', padding: 0 }}>
+                  {analysisSummary.failed.slice(0, 3).map((f, i) => (
+                    <li key={i}>Row {f.rowNumber} ({f.name}): {f.reason}</li>
+                  ))}
+                  {analysisSummary.failed.length > 3 && (
+                    <li>...and {analysisSummary.failed.length - 3} more.</li>
+                  )}
+                </ul>
+              </div>
+            )}
+            
+            <p style={{ margin: '15px 0 0 0', fontWeight: '500', color: '#334155' }}>
+              Do you want to continue and store valid entries into the database?
+            </p>
+          </div>
+        )}
+
         {/* Action Button Group */}
         <div className={styles.buttonGroup}>
-          <button
-            type="button"
-            className={styles.importBtn}
-            onClick={handleImport}
-            disabled={!file || isImporting}
-          >
-            {isImporting ? (
-              <>
-                <Loader2 size={18} className={styles.spinner} />
-                Importing...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 size={18} />
-                Import Data
-              </>
-            )}
-          </button>
+          {!analysisSummary ? (
+            <button
+              type="button"
+              className={styles.importBtn}
+              onClick={handleAnalyze}
+              disabled={!file || isAnalyzing}
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 size={18} className={styles.spinner} />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 size={18} />
+                  Analyze Data
+                </>
+              )}
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className={styles.importBtn}
+                onClick={handleConfirmImport}
+                disabled={isImporting || (analysisSummary.added.length === 0 && analysisSummary.updated.length === 0)}
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 size={18} className={styles.spinner} />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <FileUp size={18} />
+                    Confirm & Save to DB
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAnalysisSummary(null)}
+                style={{ marginLeft: '10px', padding: '10px 20px', backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }}
+                disabled={isImporting}
+              >
+                Cancel
+              </button>
+            </>
+          )}
 
           <button
             type="button"
             className={styles.downloadBtn}
             onClick={handleDownloadTemplate}
-            disabled={isImporting}
+            disabled={isImporting || isAnalyzing}
           >
             <Download size={18} />
             Download Excel Format
