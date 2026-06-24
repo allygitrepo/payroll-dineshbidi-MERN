@@ -68,3 +68,71 @@ exports.getOfficeSalarySheet = async (req, res) => {
         res.status(500).json({ status: false, message: error.message });
     }
 };
+
+exports.getPackingSalarySheet = async (req, res) => {
+    try {
+        const company_id = req.user?.company_id || req.query.company_id;
+        const { month_year } = req.query; // format: "YYYY-MM"
+
+        if (!company_id || !month_year) {
+            return res.status(400).json({ status: false, message: "Company ID and month_year are required" });
+        }
+
+        const entries = await db.PackersEntry.findAll({
+            where: { company_id, month_year },
+            include: [{
+                model: Employee,
+                as: "employee",
+                attributes: ["member_id", "name", "uan", "gender"]
+            }],
+            order: [[{ model: Employee, as: "employee" }, "name", "ASC"]]
+        });
+
+        const activeWage = await db.PackingWage.findOne({
+            where: { company_id, status: true },
+            order: [['createdAt', 'DESC']]
+        });
+        
+        const rate1 = activeWage ? parseFloat(activeWage.rate_1 || 0) : 0;
+        const rate2 = activeWage ? parseFloat(activeWage.rate_2 || 0) : 0;
+        const rate3 = activeWage ? parseFloat(activeWage.rate_3 || 0) : 0;
+        const rate4 = activeWage ? parseFloat(activeWage.rate_4 || 0) : 0;
+
+        const reportData = entries.map(entry => {
+            const emp = entry.employee;
+            return {
+                id: entry.id,
+                employeeCode: emp?.member_id || "",
+                name: emp?.name || "Unknown",
+                uan: emp?.uan || "",
+                gender: emp?.gender || "",
+                daysWorked: parseFloat(entry.no_of_days_worked || 0),
+                unit1: parseInt(entry.unit_1 || 0),
+                rate1: rate1,
+                unit2: parseInt(entry.unit_2 || 0),
+                rate2: rate2,
+                unit3: parseInt(entry.unit_3 || 0),
+                rate3: rate3,
+                unit4: parseInt(entry.unit_4 || 0),
+                rate4: rate4,
+                totalWages: parseFloat(entry.wages || 0).toFixed(2),
+                extraPayment: parseFloat(entry.addition_if_any || 0).toFixed(2),
+                holidayPayment: parseFloat(entry.weekly_leave || 0).toFixed(2),
+                grossAmount: parseFloat(entry.gross_wages || 0).toFixed(2),
+                pt: parseFloat(entry.pt_amount || 0).toFixed(2),
+                pf: parseFloat(entry.epf_contri_remitted || 0).toFixed(2),
+                esic: parseFloat(entry.esic_amount || 0).toFixed(2),
+                netPayable: parseFloat(entry.net_wages || 0).toFixed(2)
+            };
+        });
+
+        res.status(200).json({
+            status: true,
+            data: reportData,
+            message: "Packing Salary Sheet fetched successfully"
+        });
+    } catch (error) {
+        console.error("Error generating Packing Salary Sheet:", error);
+        res.status(500).json({ status: false, message: error.message });
+    }
+};
