@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
-import { useToast } from '../../../../shared/components';
+import { useToast, YearPicker } from '../../../../shared/components';
 import { getProfessionalTax } from '../../../setup/professional-tax/services/professionalTaxService';
 import { getOfficeStaffEntry } from '../../../entry/office-staff/services/officeStaffEntryService';
 import { getPackersEntry } from '../../../entry/packers/services/packersEntryService';
@@ -59,14 +59,12 @@ const ProfessionalTaxReportPage = () => {
         monthYearKey = `${yr + 1}-${mStr}`;
       }
 
-      // Fetch active monthly entry lists for office staff, packers, and bidi rollers
-      const officeRes = await getOfficeStaffEntry(monthYearKey, companyId);
-      const packerRes = await getPackersEntry(monthYearKey, companyId);
-      const bidiRes = await getBidiRollerEntry(monthYearKey, companyId);
+      // Fetch active monthly entry lists for office staff, packers
+      const officeRes = await getOfficeStaffEntry(monthYearKey, companyId).catch(() => ({ data: [] }));
+      const packerRes = await getPackersEntry(monthYearKey, companyId).catch(() => ({ data: [] }));
       
       const officeRows = officeRes?.data || [];
       const packerRows = packerRes?.data || [];
-      const bidiRows = bidiRes?.data || [];
 
       // Combine all gross salaries
       const grossSalaries = [];
@@ -75,10 +73,6 @@ const ProfessionalTaxReportPage = () => {
         if (gross > 0) grossSalaries.push(gross);
       });
       packerRows.forEach(r => {
-        const gross = parseFloat(r.total) || 0;
-        if (gross > 0) grossSalaries.push(gross);
-      });
-      bidiRows.forEach(r => {
         const gross = parseFloat(r.total) || 0;
         if (gross > 0) grossSalaries.push(gross);
       });
@@ -272,11 +266,9 @@ const ProfessionalTaxReportPage = () => {
         <form onSubmit={handleSearch} className={styles.filterRow}>
           <div className={styles.filterGroup}>
             <span className={styles.label}>Select Year <span className={styles.required}>*</span></span>
-            <input
-              type="text"
+            <YearPicker
               value={selectYear}
-              onChange={(e) => setSelectYear(e.target.value)}
-              className={styles.textInput}
+              onChange={setSelectYear}
               placeholder="e.g. 2026"
             />
           </div>
