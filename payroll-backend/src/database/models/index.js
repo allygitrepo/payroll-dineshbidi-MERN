@@ -318,6 +318,27 @@ db.LeaveRequest.belongsTo(db.Employee, {
     as: "employee",
 });
 
+// BidiRollerEntry relationships
+db.Company.hasMany(db.BidiRollerEntry, {
+    foreignKey: "company_id",
+    as: "bidiRollerEntries",
+    onDelete: "CASCADE",
+});
+db.BidiRollerEntry.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+db.Employee.hasMany(db.BidiRollerEntry, {
+    foreignKey: "employee_id",
+    as: "bidiRollerEntries",
+    onDelete: "CASCADE",
+});
+db.BidiRollerEntry.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
 // ChallanDateEntry relationships
 db.Company.hasMany(db.ChallanDateEntry, {
     foreignKey: "company_id",

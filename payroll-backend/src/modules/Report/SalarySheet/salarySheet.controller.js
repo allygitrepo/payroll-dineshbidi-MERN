@@ -136,3 +136,60 @@ exports.getPackingSalarySheet = async (req, res) => {
         res.status(500).json({ status: false, message: error.message });
     }
 };
+
+exports.getContractorSalarySheet = async (req, res) => {
+    try {
+        const company_id = req.user?.company_id || req.query.company_id;
+        const { month_year } = req.query; // format: "YYYY-MM"
+
+        if (!company_id || !month_year) {
+            return res.status(400).json({ status: false, message: "Company ID and month_year are required" });
+        }
+
+        const entries = await db.BidiRollerEntry.findAll({
+            where: { company_id, month_year },
+            include: [{
+                model: db.Employee,
+                as: "employee",
+                attributes: ["member_id", "name", "uan", "pmrpy"],
+                include: [{
+                    model: db.Contractor,
+                    as: "contractor",
+                    attributes: ["name", "pf_code"]
+                }]
+            }],
+            order: [[{ model: db.Employee, as: "employee" }, "name", "ASC"]]
+        });
+
+        const reportData = entries.map(entry => {
+            const emp = entry.employee;
+            const contractorName = emp?.contractor ? `${emp.contractor.name} - ${emp.contractor.pf_code}` : "None";
+            
+            return {
+                id: entry.id,
+                employeeCode: emp?.member_id || "",
+                name: emp?.name || "Unknown",
+                uan: emp?.uan || "",
+                contractor: contractorName,
+                quantity: parseFloat(entry.unit_1_days || 0) + parseFloat(entry.unit_2_days || 0),
+                daysWorked: parseFloat(entry.no_of_days_worked || 0),
+                wages: parseFloat(entry.wages || 0).toFixed(2),
+                hra: parseFloat(entry.bonus || 0).toFixed(2),
+                total: parseFloat(entry.gross_wages || 0).toFixed(2),
+                pf: parseFloat(entry.epf_contri_remitted || 0).toFixed(2),
+                esic: parseFloat(entry.esic_amount || 0).toFixed(2),
+                abry: emp?.pmrpy ? "1" : "0", // Mapping ABRY to pmrpy flag based on UI logic
+                netPaid: parseFloat(entry.net_wages || 0).toFixed(2)
+            };
+        });
+
+        res.status(200).json({
+            status: true,
+            data: reportData,
+            message: "Contractor Salary Sheet fetched successfully"
+        });
+    } catch (error) {
+        console.error("Error generating Contractor Salary Sheet:", error);
+        res.status(500).json({ status: false, message: error.message });
+    }
+};
