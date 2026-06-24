@@ -28,59 +28,70 @@ const OfficeSalaryPage = () => {
   const dropdownRef = useRef(null);
   const addToast = useToast();
 
+  const [salaryRecords, setSalaryRecords] = useState([]);
+
   // Load database employees of type "OFFICE STAFF" and calculate their salary values
-  const salaryRecords = useMemo(() => {
-    const dbList = getEmployees() || [];
-    const dbOfficeStaff = dbList.filter(emp => emp.employeeType === 'OFFICE STAFF');
+  useEffect(() => {
+    const fetchData = async () => {
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const dbList = await getEmployees(companyId) || [];
+        const dbOfficeStaff = dbList.filter(emp => emp.employeeType === 'OFFICE STAFF');
 
-    const mappedDbRecords = dbOfficeStaff.map(emp => {
-      // Basic salary extraction or default
-      const basicSalary = emp.basicSalary || 8000;
-      // Default working days for simulated month: 24 worked, 7 holidays, 0 absent
-      const daysWorked = 24;
-      const holiday = 7;
-      const absent = 0;
-      const additional = 0;
+        const mappedDbRecords = dbOfficeStaff.map(emp => {
+          // Basic salary extraction or default
+          const basicSalary = emp.basicSalary || 8000;
+          // Default working days for simulated month: 24 worked, 7 holidays, 0 absent
+          const daysWorked = 24;
+          const holiday = 7;
+          const absent = 0;
+          const additional = 0;
 
-      return {
-        id: emp.id,
-        name: emp.memberName,
-        memberId: emp.memberId || '-',
-        uan: emp.uan,
-        basicSalary,
-        daysWorked,
-        holiday,
-        absent,
-        additional
-      };
-    });
+          return {
+            id: emp.id,
+            name: emp.memberName,
+            memberId: emp.memberId || '-',
+            uan: emp.uan,
+            basicSalary,
+            daysWorked,
+            holiday,
+            absent,
+            additional
+          };
+        });
 
-    // Merge database list and mockup records avoiding duplicates by UAN
-    const uniqueUans = new Set(mappedDbRecords.map(e => e.uan));
-    const uniqueMocks = MOCK_OFFICE_SALARY_RECORDS.filter(e => !uniqueUans.has(e.uan));
+        // Merge database list and mockup records avoiding duplicates by UAN
+        const uniqueUans = new Set(mappedDbRecords.map(e => e.uan));
+        const uniqueMocks = MOCK_OFFICE_SALARY_RECORDS.filter(e => !uniqueUans.has(e.uan));
 
-    const combinedList = [...mappedDbRecords, ...uniqueMocks];
+        const combinedList = [...mappedDbRecords, ...uniqueMocks];
 
-    // Compute derived payroll columns for each record
-    return combinedList.map(row => {
-      // Deduction divisor is 24 days. Total Amount = Basic - (Basic / 24) * Absent
-      const absentDeduction = row.absent > 0 ? Math.round((row.basicSalary / 24) * row.absent) : 0;
-      const totalAmount = Math.max(0, row.basicSalary - absentDeduction + row.additional);
-      
-      const pt = 0; // Professional tax
-      const pf = Math.round(totalAmount * 0.10); // 10% PF Rate
-      const esic = Math.ceil(totalAmount * 0.0075); // 0.75% ESIC Rate, rounded up
-      const netPaid = totalAmount - pt - pf - esic;
+        // Compute derived payroll columns for each record
+        const finalRecords = combinedList.map(row => {
+          // Deduction divisor is 24 days. Total Amount = Basic - (Basic / 24) * Absent
+          const absentDeduction = row.absent > 0 ? Math.round((row.basicSalary / 24) * row.absent) : 0;
+          const totalAmount = Math.max(0, row.basicSalary - absentDeduction + row.additional);
+          
+          const pt = 0; // Professional tax
+          const pf = Math.round(totalAmount * 0.10); // 10% PF Rate
+          const esic = Math.ceil(totalAmount * 0.0075); // 0.75% ESIC Rate, rounded up
+          const netPaid = totalAmount - pt - pf - esic;
 
-      return {
-        ...row,
-        totalAmount,
-        pt,
-        pf,
-        esic,
-        netPaid
-      };
-    });
+          return {
+            ...row,
+            totalAmount,
+            pt,
+            pf,
+            esic,
+            netPaid
+          };
+        });
+        setSalaryRecords(finalRecords);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      }
+    };
+    fetchData();
   }, []);
 
   // Filter list based on wage month (if applicable) and local search query

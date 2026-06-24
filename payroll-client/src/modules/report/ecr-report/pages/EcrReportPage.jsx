@@ -31,53 +31,64 @@ const EcrReportPage = () => {
   const dropdownRef = useRef(null);
   const addToast = useToast();
 
+  const [allRecords, setAllRecords] = useState([]);
+
   // Load database and mock records
-  const allRecords = useMemo(() => {
-    const dbList = getEmployees() || [];
-    
-    // Map active db employees to ECR columns
-    const mappedDb = dbList.map(emp => {
-      const grossWages = emp.basicSalary || 8000;
-      const epfWages = Math.min(grossWages, 15000);
-      const epsWages = Math.min(grossWages, 15000);
-      const edliWages = Math.min(grossWages, 15000);
-      const ncpDays = 0; // Default 0 NCP Days
-      const refundOfAdvances = 0;
-      const pmrpy = emp.pmrpy || 'NO';
+  useEffect(() => {
+    const fetchData = async () => {
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const dbList = await getEmployees(companyId) || [];
+        
+        // Map active db employees to ECR columns
+        const mappedDb = dbList.map(emp => {
+          const grossWages = emp.basicSalary || 8000;
+          const epfWages = Math.min(grossWages, 15000);
+          const epsWages = Math.min(grossWages, 15000);
+          const edliWages = Math.min(grossWages, 15000);
+          const ncpDays = 0; // Default 0 NCP Days
+          const refundOfAdvances = 0;
+          const pmrpy = emp.pmrpy ? 'YES' : 'NO';
 
-      return {
-        id: emp.id,
-        uan: emp.uan || 'N/A',
-        name: emp.memberName,
-        grossWages,
-        epfWages,
-        epsWages,
-        edliWages,
-        ncpDays,
-        refundOfAdvances,
-        pmrpy
-      };
-    });
+          return {
+            id: emp.id,
+            uan: emp.uan || 'N/A',
+            name: emp.memberName,
+            grossWages,
+            epfWages,
+            epsWages,
+            edliWages,
+            ncpDays,
+            refundOfAdvances,
+            pmrpy
+          };
+        });
 
-    // Merge database list and mock records avoiding duplicates by UAN
-    const uniqueUans = new Set(mappedDb.map(e => e.uan));
-    const uniqueMocks = MOCK_ECR_RECORDS.filter(e => !uniqueUans.has(e.uan));
+        // Merge database list and mock records avoiding duplicates by UAN
+        const uniqueUans = new Set(mappedDb.map(e => e.uan));
+        const uniqueMocks = MOCK_ECR_RECORDS.filter(e => !uniqueUans.has(e.uan));
 
-    const combinedList = [...mappedDb, ...uniqueMocks];
+        const combinedList = [...mappedDb, ...uniqueMocks];
 
-    // Compute EPF, EPS and Diff contributions
-    return combinedList.map(row => {
-      const epfContribution = Math.round(row.epfWages * 0.12);
-      const epsContribution = Math.round(row.epsWages * 0.0833);
-      const epfEpsDiff = epfContribution - epsContribution;
+        // Compute EPF, EPS and Diff contributions
+        const finalRecords = combinedList.map(row => {
+          const epfContribution = Math.round(row.epfWages * 0.12);
+          const epsContribution = Math.round(row.epsWages * 0.0833);
+          const epfEpsDiff = epfContribution - epsContribution;
 
-      return {
-        ...row,
-        epfContribution,
-        epsContribution,
-        epfEpsDiff
-      };
-    });
+          return {
+            ...row,
+            epfContribution,
+            epsContribution,
+            epfEpsDiff
+          };
+        });
+        setAllRecords(finalRecords);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      }
+    };
+    fetchData();
   }, []);
 
   // Filter records based on whether search was clicked, PMRPY filters, and local search term
