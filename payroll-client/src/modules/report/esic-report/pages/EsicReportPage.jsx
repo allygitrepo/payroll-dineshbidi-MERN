@@ -66,12 +66,13 @@ const EsicReportPage = () => {
         };
 
         const mapReasonToCode = (reason) => {
-          if (!reason) return 11;
+          if (!reason) return 2; // Default to Cessation if resigned but no reason provided
           const r = String(reason).trim().toUpperCase();
-          if (r === 'C') return 2;
-          if (r === 'S') return 3;
-          if (r === 'D') return 5;
-          return 11;
+          if (r.startsWith('C') || r.includes('RESIGNATION')) return 2;
+          if (r.startsWith('S')) return 3;
+          if (r.startsWith('D')) return 5;
+          // Fallback for any other recognized resignation reason
+          return 2;
         };
 
         // Process DB employee list
