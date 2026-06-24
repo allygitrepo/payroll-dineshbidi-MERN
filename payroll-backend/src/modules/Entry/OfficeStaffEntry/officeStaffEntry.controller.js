@@ -258,3 +258,27 @@ exports.saveEntries = async (req, res) => {
         res.status(500).json({ status: false, message: error.message });
     }
 };
+
+exports.deleteEntries = async (req, res) => {
+    try {
+        const company_id = req.user?.company_id || req.query.company_id;
+        const { month_year } = req.query;
+
+        if (!company_id || !month_year) {
+            return res.status(400).json({ status: false, message: "Company ID and month_year are required" });
+        }
+
+        const deletedCount = await OfficeStaffEntry.destroy({
+            where: { company_id, month_year }
+        });
+
+        res.status(200).json({ 
+            status: true, 
+            message: `Deleted ${deletedCount} Office Staff entries for ${month_year}`,
+            deletedCount
+        });
+    } catch (error) {
+        console.error("Delete Entries Error:", error);
+        res.status(500).json({ status: false, message: "Failed to delete entries." });
+    }
+};

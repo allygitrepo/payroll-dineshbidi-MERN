@@ -5,5 +5,6 @@ const authenticateJWT = require("../../../middlewares/auth.middleware");
 
 router.get("/", authenticateJWT, officeStaffEntryController.getEntries);
 router.post("/", authenticateJWT, officeStaffEntryController.saveEntries);
+router.delete("/", authenticateJWT, officeStaffEntryController.deleteEntries);
 
 module.exports = router;
