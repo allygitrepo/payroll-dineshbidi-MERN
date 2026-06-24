@@ -28,8 +28,8 @@ const mapToBackend = (data) => {
     ttrn: data.trrn,
     crn_no: data.crnNo,
     wage_month: data.wageMonth,
-    due_date: data.dueDate,
-    challan_date: data.challanDate,
+    due_date: data.dueDate || null,
+    challan_date: data.challanDate || null,
     ac1ee: data.ac1EE,
     ac1er: data.ac1ER,
     ac2: data.ac2,
@@ -37,7 +37,7 @@ const mapToBackend = (data) => {
     ac21: data.ac21,
     ac22: data.ac22,
     total_amount: data.totalAmount,
-    return_date: data.returnDate,
+    return_date: data.returnDate || null,
     company_id: company_id || null // Usually extracted from JWT by the backend
   };
 };

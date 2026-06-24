@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useToast, MonthYearPicker } from '../../../../shared/components';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { getResignations } from '../../../entry/resignation/services/resignationService';
@@ -325,8 +327,57 @@ const EsicReportPage = () => {
         message: `ESIC Report ${type} downloaded successfully for ${filteredRecords.length} records!`
       });
     }
+    else if (type === 'PDF') {
+      const doc = new jsPDF('landscape');
+      doc.setFontSize(16);
+      const titleText = `ESIC Report_${searchTriggeredMonth ? searchTriggeredMonth.split('-')[1] + '/' + searchTriggeredMonth.split('-')[0] : ''}`;
+      doc.text(titleText, doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+
+      const tableColumn = [
+        "SR NO.", "IP NUMBER", "IP NAME", "NO OF DAYS", "TOTAL MONTHLY WAGES", "REASON CODE", "LAST WORKING DAY"
+      ];
+      const tableRows = [];
+
+      filteredRecords.forEach((rec, idx) => {
+        tableRows.push([
+          idx + 1,
+          rec.ipNumber,
+          rec.name,
+          rec.daysWorked,
+          rec.totalWages,
+          rec.reasonCode,
+          rec.lastWorkingDay || ''
+        ]);
+      });
+
+      const totalRow = [
+        "", "", "Total", totals.daysWorked, totals.totalWages, "", ""
+      ];
+      tableRows.push(totalRow);
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 25,
+        theme: 'grid',
+        headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold', halign: 'center', fontSize: 8 },
+        bodyStyles: { textColor: [55, 65, 81], halign: 'center', valign: 'middle', fontSize: 8 },
+        didParseCell: function(data) {
+          if (data.row.index === tableRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [243, 244, 246];
+          }
+        }
+      });
+
+      doc.save(`ESIC_Report_${searchTriggeredMonth}.pdf`);
+      addToast({
+        type: 'success',
+        message: `ESIC Report PDF downloaded successfully!`
+      });
+    }
     else {
-      // PDF and Print simulator matching system behaviors
+      // Print simulator matching system behaviors
       addToast({
         type: 'info',
         message: `${type} generated for ESIC Report (${searchTriggeredMonth})!`
