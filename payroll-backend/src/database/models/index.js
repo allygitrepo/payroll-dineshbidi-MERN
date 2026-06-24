@@ -19,6 +19,7 @@ const PackersEntry = require("../../modules/Entry/PackersEntry/packersEntry.mode
 const BidiRollerEntry = require("../../modules/Entry/BidiRollerEntry/bidiRollerEntry.model");
 const ChallanDateEntry = require("../../modules/Entry/ChallanDateEntry/challanDateEntry.model");
 const Resignation = require("../../modules/Entry/Resignation/resignation.model");
+const Note = require("../../modules/Todo List/Note/note.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -47,6 +48,7 @@ db.PackersEntry = PackersEntry;
 db.BidiRollerEntry = BidiRollerEntry;
 db.ChallanDateEntry = ChallanDateEntry;
 db.Resignation = Resignation;
+db.Note = Note;
 
 // Model associations
 db.User.hasMany(db.RefreshToken, {
@@ -305,4 +307,15 @@ db.Resignation.belongsTo(db.Company, {
     as: "company",
 });
 
-module.exports = db;
+// Note relationships
+db.Company.hasMany(db.Note, {
+    foreignKey: "company_id",
+    as: "notes",
+    onDelete: "CASCADE",
+});
+db.Note.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+module.exports = db;

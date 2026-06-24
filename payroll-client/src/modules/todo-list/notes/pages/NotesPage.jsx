@@ -26,6 +26,7 @@ const NotesPage = () => {
   const [noteDate, setNoteDate] = useState(getTodayDateString());
   const [noteContent, setNoteContent] = useState('');
   const [editingId, setEditingId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Validation state
   const [formError, setFormError] = useState('');
@@ -40,9 +41,26 @@ const NotesPage = () => {
   const dropdownRef = useRef(null);
   const addToast = useToast();
 
+  const fetchNotes = async () => {
+    setIsLoading(true);
+    try {
+      const companyId = localStorage.getItem('selectedCompany');
+      if (companyId) {
+        const data = await getNotes(companyId);
+        setNotesList(data);
+      } else {
+        setNotesList([]);
+      }
+    } catch (err) {
+      addToast({ type: 'error', message: 'Failed to fetch notes.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load notes on mount
   useEffect(() => {
-    setNotesList(getNotes());
+    fetchNotes();
   }, []);
 
   // Handle Edit Action Click
@@ -60,23 +78,30 @@ const NotesPage = () => {
   };
 
   // Handle Delete Action Click
-  const handleDeleteClick = (id) => {
+  const handleDeleteClick = async (id) => {
     if (window.confirm('Are you sure you want to delete this note?')) {
-      const updatedNotes = deleteNote(id);
-      setNotesList(updatedNotes);
-      addToast({
-        type: 'success',
-        message: 'Note deleted successfully!'
-      });
-      // If we are currently editing the deleted note, clear the form
-      if (editingId === id) {
-        handleCancelEdit();
+      try {
+        await deleteNote(id);
+        addToast({
+          type: 'success',
+          message: 'Note deleted successfully!'
+        });
+        await fetchNotes(); // Refresh list after delete
+        // If we are currently editing the deleted note, clear the form
+        if (editingId === id) {
+          handleCancelEdit();
+        }
+      } catch (err) {
+        addToast({
+          type: 'error',
+          message: 'Failed to delete note.'
+        });
       }
     }
   };
 
   // Save/Update Note Submit
-  const handleSaveNote = (e) => {
+  const handleSaveNote = async (e) => {
     e.preventDefault();
     
     if (!noteDate) {
@@ -88,25 +113,38 @@ const NotesPage = () => {
       return;
     }
 
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'warning', message: 'Please select a company first.' });
+      return;
+    }
+
     setFormError('');
     const newNote = {
       id: editingId,
+      company_id: companyId,
       date: noteDate,
       content: noteContent.trim()
     };
 
-    const updatedNotes = saveNote(newNote);
-    setNotesList(updatedNotes);
-    
-    addToast({
-      type: 'success',
-      message: editingId ? 'Note updated successfully!' : 'New note saved successfully!'
-    });
+    try {
+      await saveNote(newNote);
+      addToast({
+        type: 'success',
+        message: editingId ? 'Note updated successfully!' : 'New note saved successfully!'
+      });
 
-    // Reset Form fields
-    setNoteDate(getTodayDateString());
-    setNoteContent('');
-    setEditingId(null);
+      // Reset Form fields
+      setNoteDate(getTodayDateString());
+      setNoteContent('');
+      setEditingId(null);
+      await fetchNotes(); // Refresh list
+    } catch (err) {
+      addToast({
+        type: 'error',
+        message: 'Failed to save note.'
+      });
+    }
   };
 
   const handleCancelEdit = () => {
@@ -302,7 +340,13 @@ const NotesPage = () => {
               </tr>
             </thead>
             <tbody>
-              {paginatedData.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                    Loading notes...
+                  </td>
+                </tr>
+              ) : paginatedData.length === 0 ? (
                 <tr>
                   <td colSpan={4} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                     No matching records found.
