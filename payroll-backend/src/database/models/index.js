@@ -277,15 +277,7 @@ db.OfficeStaffEntry.belongsTo(db.Employee, {
     as: "employee",
 });
 
-db.Employee.hasMany(db.Attendance, {
-    foreignKey: "employee_id",
-    as: "attendances",
-    onDelete: "CASCADE",
-});
-db.Attendance.belongsTo(db.Employee, {
-    foreignKey: "employee_id",
-    as: "employee",
-});
+
 
 // PackersEntry relationships
 db.Company.hasMany(db.PackersEntry, {
