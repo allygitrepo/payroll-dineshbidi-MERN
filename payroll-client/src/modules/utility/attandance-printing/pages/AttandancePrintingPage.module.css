@@ -1,0 +1,323 @@
+/* Attendance Sheet Printing Styles */
+.pageContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.headerSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 16px;
+  margin-bottom: 8px;
+}
+
+.headerIcon {
+  color: var(--primary);
+  background-color: var(--primary-light);
+  padding: 10px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pageTitle {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Controls Form Card */
+.formCard {
+  padding: 24px 30px;
+  background-color: var(--card-bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.03);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.inputsGroup {
+  display: flex;
+  gap: 24px;
+  flex: 1;
+  min-width: 280px;
+  flex-wrap: wrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.input, .select {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+  outline: none;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.input:focus, .select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.1);
+}
+
+/* Stacked Buttons */
+.buttonsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 180px;
+}
+
+.btn {
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  color: #ffffff;
+}
+
+.btnSearch {
+  background-color: #2e7d32; /* Rich Green */
+}
+
+.btnSearch:hover {
+  background-color: #1b5e20;
+}
+
+.btnPrint {
+  background-color: #2e7d32; /* Rich Green */
+}
+
+.btnPrint:hover {
+  background-color: #1b5e20;
+}
+
+/* Results Section Table */
+.resultsCard {
+  padding: 30px;
+  background-color: var(--card-bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.limitControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.limitSelect {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+  outline: none;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.searchWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 240px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.searchBarInput {
+  padding: 8px 12px 8px 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+  outline: none;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.searchBarInput:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.1);
+}
+
+/* Data Table Grid */
+.tableResponsive {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--card-bg);
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.dataTable th {
+  padding: 12px 8px;
+  background-color: var(--bg-main);
+  color: var(--text-secondary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.dataTable th:first-child, .dataTable th:nth-child(2) {
+  text-align: left;
+}
+
+.dataTable td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.dataTable td:first-child, .dataTable td:nth-child(2) {
+  text-align: left;
+}
+
+.groupRow {
+  background-color: #fee2e2 !important; /* Soft light red/pink group header */
+  color: #991b1b;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.groupCell {
+  padding: 8px 16px !important;
+  text-align: left !important;
+}
+
+.sundayCell {
+  background-color: #ef4444 !important; /* Bright Red Sunday marker */
+  color: #ffffff !important;
+  font-weight: bold;
+  text-align: center !important;
+}
+
+.emptyTable {
+  padding: 40px;
+  color: var(--text-muted);
+  text-align: center !important;
+  font-size: 0.9rem;
+}
+
+/* Pagination Footer */
+.tableFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 10px;
+}
+.footerLeft {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.infoText {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pageBtn {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background-color: var(--bg-main);
+  border-color: var(--text-secondary);
+}
+
+.pageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.activePageBtn {
+  background-color: #2e7d32 !important; /* Rich Green selected page */
+  color: #ffffff !important;
+  border-color: #2e7d32 !important;
+}
