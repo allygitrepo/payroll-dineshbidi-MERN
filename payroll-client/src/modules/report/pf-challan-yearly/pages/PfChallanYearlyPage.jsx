@@ -71,8 +71,14 @@ const PfChallanYearlyPage = () => {
 
       if (match) {
         empShare = Math.round(parseFloat(match.ac1EE) || 0);
-        // Employer share is AC-01 Employer + AC-10 Pension
-        erShare = Math.round((parseFloat(match.ac1ER) || 0) + (parseFloat(match.ac10) || 0));
+        // Total Challan Amount is AC1(ER) + AC2 + AC10 + AC21 + AC22
+        erShare = Math.round(
+          (parseFloat(match.ac1ER) || 0) +
+          (parseFloat(match.ac2) || 0) +
+          (parseFloat(match.ac10) || 0) +
+          (parseFloat(match.ac21) || 0) +
+          (parseFloat(match.ac22) || 0)
+        );
         dueDate = match.dueDate ? formatDateString(match.dueDate) : dueDate;
         actualDate = match.challanDate ? formatDateString(match.challanDate) : '';
       } else {
@@ -187,7 +193,7 @@ const PfChallanYearlyPage = () => {
     }
 
     if (type === 'Copy') {
-      const headers = ['Month', 'Employee Share', 'Employer Share', 'Due Date', 'Actual Date'];
+      const headers = ['Month', 'Employee Share', 'Total Challan Amount', 'Due Date', 'Actual Date'];
       let text = headers.join('\t') + '\n';
       filteredRecords.forEach(rec => {
         text += `${rec.monthName}\t${rec.empShare}\t${rec.erShare}\t${rec.dueDate}\t${rec.actualDate}\n`;
@@ -206,8 +212,29 @@ const PfChallanYearlyPage = () => {
         });
       });
     } 
+    else if (type === 'TXT (PF)') {
+      let txtContent = '';
+      filteredRecords.forEach(rec => {
+        txtContent += `${rec.monthName}####${rec.empShare}####${rec.erShare}####${rec.dueDate}####${rec.actualDate || ''}\n`;
+      });
+
+      const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `PF_Challan_Yearly_${searchTriggeredYear}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      addToast({
+        type: 'success',
+        message: `PF Challan Yearly TXT downloaded successfully!`
+      });
+    }
     else if (type === 'CSV' || type === 'Excel') {
-      const headers = ['Month', 'Employee Share', 'Employer Share', 'Due Date', 'Actual Date'];
+      const headers = ['Month', 'Employee Share', 'Total Challan Amount', 'Due Date', 'Actual Date'];
       let csvContent = headers.join(',') + '\n';
       filteredRecords.forEach(rec => {
         csvContent += `${rec.monthName},${rec.empShare},${rec.erShare},${rec.dueDate},${rec.actualDate}\n`;
@@ -261,6 +288,9 @@ const PfChallanYearlyPage = () => {
               <div className={styles.dropdownMenu}>
                 <button onClick={() => handleExport('Excel')}>
                   <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button onClick={() => handleExport('TXT (PF)')}>
+                  <FileText size={16} /> TXT (PF)
                 </button>
                 <button onClick={() => handleExport('Copy')}>
                   <Copy size={16} /> Copy
@@ -327,7 +357,7 @@ const PfChallanYearlyPage = () => {
               <tr>
                 <th>For The Month Of</th>
                 <th>Employee's Share Rs.</th>
-                <th>Employer Share Rs.</th>
+                <th>Total Challan Amount Rs.</th>
                 <th>Due date of Payment</th>
                 <th>Actual Date of Payment</th>
               </tr>
