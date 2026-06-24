@@ -1,21 +1,20 @@
 import React, { useState, useRef } from 'react';
 import { FileUp, FileSpreadsheet, Download, Loader2, X, CheckCircle2 } from 'lucide-react';
 import { useToast } from '../../../../shared/components';
+import * as XLSX from 'xlsx';
+import { saveEmployee } from '../../../master/employee/services/employeeService';
+import { getContractors } from '../../../master/contractor/services/contractorService';
+import { getAddresses } from '../../../master/address/services/addressService';
 import styles from '../components/EmployeeDataImportPage.module.css';
 
-const MOCK_PREVIEW_RECORDS = [
-  { srNo: 1, name: 'Dinesh Bidi', fatherName: 'Ramji Bidi', gender: 'MALE', uan: '100984728192', ipNo: '3128471928', dob: '15/08/1988', doj: '01/04/2018' },
-  { srNo: 2, name: 'Jenil Patel', fatherName: 'Arvind Patel', gender: 'MALE', uan: '101273849182', ipNo: '3147284910', dob: '23/11/1995', doj: '10/05/2021' },
-  { srNo: 3, name: 'Ramesh Sen', fatherName: 'Gopal Sen', gender: 'MALE', uan: '100482910482', ipNo: '3109384721', dob: '04/02/1985', doj: '15/06/2019' },
-  { srNo: 4, name: 'Pooja Sharma', fatherName: 'Vijay Sharma', gender: 'FEMALE', uan: '100582910492', ipNo: '3105739104', dob: '12/05/1992', doj: '01/01/2020' },
-  { srNo: 5, name: 'Amit Verma', fatherName: 'Sanjay Verma', gender: 'MALE', uan: '101293847201', ipNo: '3149281038', dob: '30/09/1990', doj: '01/10/2022' }
-];
+
 
 const EmployeeDataImportPage = () => {
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [previewData, setPreviewData] = useState({ columns: [], rows: [] });
   const fileInputRef = useRef(null);
   const addToast = useToast();
 
@@ -35,6 +34,30 @@ const EmployeeDataImportPage = () => {
     const fileExtension = selectedFile.name.split('.').pop().toLowerCase();
     if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       setFile(selectedFile);
+
+      // Parse for preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+          
+          if (jsonData.length > 0) {
+            const columns = Object.keys(jsonData[0]);
+            const rows = jsonData.slice(0, 5);
+            setPreviewData({ columns, rows });
+          } else {
+             setPreviewData({ columns: [], rows: [] });
+          }
+        } catch (err) {
+          console.error("Preview parsing failed", err);
+        }
+      };
+      reader.readAsArrayBuffer(selectedFile);
+
       addToast({
         type: 'info',
         message: `Selected file: ${selectedFile.name}`
@@ -66,6 +89,7 @@ const EmployeeDataImportPage = () => {
   const handleRemoveFile = (e) => {
     e.stopPropagation();
     setFile(null);
+    setPreviewData({ columns: [], rows: [] });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -93,34 +117,115 @@ const EmployeeDataImportPage = () => {
     setIsImporting(true);
     setProgress(0);
 
-    const duration = 2000; // 2 seconds total simulation
-    const intervalTime = 100;
-    const steps = duration / intervalTime;
-    let currentStep = 0;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-    const interval = setInterval(() => {
-      currentStep++;
-      const currentProgress = Math.min(Math.round((currentStep / steps) * 100), 100);
-      setProgress(currentProgress);
+        const companyId = localStorage.getItem('selectedCompany');
+        if (!companyId) throw new Error("No active company context. Please select a company first.");
 
-      if (currentStep >= steps) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setIsImporting(false);
-          setFile(null);
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
+        const totalRows = jsonData.length;
+        if (totalRows === 0) throw new Error("Excel file is empty");
+
+        const contractorsList = await getContractors(companyId);
+        const addressesList = await getAddresses(companyId);
+        const defaultAddressId = addressesList.length > 0 ? addressesList[0].id : undefined;
+
+        if (!defaultAddressId) {
+          throw new Error("No addresses found for this company. Please create at least one address first.");
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (let i = 0; i < totalRows; i++) {
+          const row = jsonData[i];
+          try {
+            const employeeObj = {
+              memberName: row['Member Name'] || '',
+              uan: row['Universal Account Number'] || '',
+              ipNumber: row['IP Number'] || '',
+              memberId: row['Previous Member Id'] || '',
+              contractor: row['Contractor Name'] || 'SELF',
+              employeeType: row['Type Of Employee'] || 'BIDI MAKER',
+              gender: (row['Gender'] || 'MALE').toUpperCase(),
+              dob: row['Date Of Birth'] || '',
+              dateOfJoining: row['Date Of Joining'] || '',
+              fatherHusbandName: row['Father/Husband Name'] || '',
+              relation: row['Relationship'] || '',
+              maritalStatus: row['Marital Status'] || 'SINGLE',
+              mobile: row['Mobile Number'] || '',
+              email: row['Email Id'] || '',
+              aadhaarCard: row['Aadhaar Number'] || '',
+              nationality: row['Nationality'] || 'INDIAN',
+              pmrpy: (row['PMRPY'] || 'NO').toUpperCase(),
+              address_id: defaultAddressId,
+              kycDetails: [
+                { documentType: 'PAN', documentNumber: row['PAN'] || '' },
+                { documentType: 'BANK PASSBOOK', documentNumber: row['Bank Account Number'] || '', ifsc: row['Bank IFSC'] || '' }
+              ].filter(k => k.documentNumber), // filter out empty
+              nomineeDetails: [],
+              familyDetails: []
+            };
+
+            await saveEmployee(employeeObj, companyId, addressesList, contractorsList);
+            successCount++;
+          } catch (err) {
+            console.error("Failed to import row", row, err);
+            failCount++;
           }
-          addToast({
-            type: 'success',
-            message: 'Database imported successfully! 15 employees created.'
-          });
-        }, 300);
+          setProgress(Math.round(((i + 1) / totalRows) * 100));
+        }
+
+        setIsImporting(false);
+        setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+
+        addToast({
+          type: 'success',
+          message: `Import complete! Successfully created ${successCount} employees. ${failCount > 0 ? `Failed: ${failCount}` : ''}`
+        });
+      } catch (error) {
+        setIsImporting(false);
+        setProgress(0);
+        addToast({
+          type: 'error',
+          message: 'Failed to parse Excel file: ' + error.message
+        });
       }
-    }, intervalTime);
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const handleDownloadTemplate = () => {
+    const ws_data = [
+      [
+        'Universal Account Number', 'IP Number', 'Previous Member Id', 'Contractor Name', 
+        'Type Of Employee', 'Member Name', 'Gender', 'Date Of Birth', 'Date Of Joining', 
+        'Father/Husband Name', 'Relationship', 'Marital Status', 'Mobile Number', 
+        'Email Id', 'Aadhaar Number', 'PAN', 'Bank Account Number', 'Nationality', 
+        'PMRPY', 'Bank IFSC'
+      ],
+      [
+        '100984728192', '3128471928', '', 'Self', 'BIDI MAKER', 'Dinesh Bidi', 'MALE', 
+        '1988-08-15', '2018-04-01', 'Ramji Bidi', 'FATHER', 'MARRIED', '9876543210', 
+        'test@example.com', '123456789012', 'ABCDE1234F', '123456789', 'INDIAN', 'NO', 'SBIN0001234'
+      ]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    
+    // Set some column widths
+    ws['!cols'] = Array(20).fill({ wch: 20 });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Employees");
+    XLSX.writeFile(wb, "Employee_Import_Template.xlsx");
+
     addToast({
       type: 'success',
       message: 'Excel import template format downloaded successfully.'
@@ -217,37 +322,29 @@ const EmployeeDataImportPage = () => {
         )}
 
         {/* Preview of file content before import */}
-        {file && !isImporting && (
+        {file && !isImporting && previewData.columns.length > 0 && (
           <>
             <div className={styles.previewTitle}>
               File Data Preview
-              <span className={styles.previewBadge}>First 5 rows found</span>
+              <span className={styles.previewBadge}>First {previewData.rows.length} rows found</span>
             </div>
-            <div className={styles.tableContainer}>
+            <div className={styles.tableContainer} style={{ overflowX: 'auto' }}>
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th style={{ width: '70px', textAlign: 'center' }}>Sr No.</th>
-                    <th>Member Name</th>
-                    <th>Father/Husband Name</th>
-                    <th>Gender</th>
-                    <th>UAN</th>
-                    <th>ESIC IP Number</th>
-                    <th>Date Of Birth</th>
-                    <th>Date Of Joining</th>
+                    <th style={{ width: '70px', textAlign: 'center', whiteSpace: 'nowrap' }}>Sr No.</th>
+                    {previewData.columns.map((col, idx) => (
+                      <th key={idx} style={{ whiteSpace: 'nowrap' }}>{col}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {MOCK_PREVIEW_RECORDS.map((row) => (
-                    <tr key={row.srNo}>
-                      <td style={{ textAlign: 'center', fontWeight: '500' }}>{row.srNo}</td>
-                      <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{row.name}</td>
-                      <td>{row.fatherName}</td>
-                      <td>{row.gender}</td>
-                      <td>{row.uan}</td>
-                      <td>{row.ipNo}</td>
-                      <td>{row.dob}</td>
-                      <td>{row.doj}</td>
+                  {previewData.rows.map((row, idx) => (
+                    <tr key={idx}>
+                      <td style={{ textAlign: 'center', fontWeight: '500' }}>{idx + 1}</td>
+                      {previewData.columns.map((col, colIdx) => (
+                        <td key={colIdx} style={{ whiteSpace: 'nowrap' }}>{row[col]}</td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
