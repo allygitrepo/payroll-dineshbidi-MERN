@@ -64,6 +64,17 @@ export const saveEpfChallan = async (challanData) => {
   }
 };
 
+export const saveBulkEpfChallans = async (challansDataArray) => {
+  try {
+    const payload = challansDataArray.map(mapToBackend);
+    const response = await apiClient.post('/challan-date-entries/bulk', { data: payload });
+    return response.data;
+  } catch (error) {
+    console.error('Error saving bulk EPF challans:', error);
+    throw error;
+  }
+};
+
 export const deleteEpfChallan = async (id) => {
   try {
     const response = await apiClient.delete(`/challan-date-entries/${id}`);

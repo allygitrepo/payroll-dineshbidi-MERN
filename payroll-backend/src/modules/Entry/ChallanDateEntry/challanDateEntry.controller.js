@@ -1,7 +1,6 @@
 const db = require("../../../database/models/index");
 const { ChallanDateEntry } = db;
-const { saveChallanDateEntrySchema } = require("./challanDateEntry.validator");
-
+const { saveChallanDateEntrySchema, saveBulkChallanDateEntrySchema } = require("./challanDateEntry.validator");
 exports.getEntries = async (req, res) => {
     try {
         const company_id = req.user?.company_id || req.query.company_id;
@@ -97,6 +96,43 @@ exports.deleteEntry = async (req, res) => {
         });
     } catch (error) {
         console.error("Error deleting challan date entry:", error);
+        return res.status(500).json({ status: false, message: "Internal server error" });
+    }
+};
+
+exports.saveBulkEntries = async (req, res) => {
+    try {
+        const company_id = req.user?.company_id || req.body.company_id;
+        
+        if (!company_id) {
+            return res.status(400).json({ status: false, message: "Company ID is required" });
+        }
+
+        // Add company_id to all entries
+        const payload = req.body.data.map(entry => ({ ...entry, company_id }));
+
+        // Validate
+        const { error, value } = saveBulkChallanDateEntrySchema.validate(payload, { abortEarly: false });
+        if (error) {
+            const errors = error.details.map((err) => ({
+                field: err.context.key,
+                message: err.message,
+            }));
+            return res.status(400).json({ status: false, message: "Validation failed", errors });
+        }
+
+        // Note: For bulk uploads without an 'id', we just use bulkCreate.
+        // If the user wants upsert behavior, bulkCreate with updateOnDuplicate could be used,
+        // but typically EPF challan bulk uploads are for new inserts.
+        const entries = await ChallanDateEntry.bulkCreate(value);
+
+        return res.status(200).json({
+            status: true,
+            message: `${entries.length} EPF Challan entries created successfully`,
+            data: entries,
+        });
+    } catch (error) {
+        console.error("Error saving bulk challan date entries:", error);
         return res.status(500).json({ status: false, message: "Internal server error" });
     }
 };

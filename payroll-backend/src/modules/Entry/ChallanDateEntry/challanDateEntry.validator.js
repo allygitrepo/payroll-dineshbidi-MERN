@@ -25,6 +25,11 @@ const saveChallanDateEntrySchema = Joi.object({
     return_date: Joi.date().iso().optional().allow(null, ""),
 });
 
+const saveBulkChallanDateEntrySchema = Joi.array().items(saveChallanDateEntrySchema).min(1).messages({
+    "array.min": "At least one entry is required for bulk upload.",
+});
+
 module.exports = {
     saveChallanDateEntrySchema,
+    saveBulkChallanDateEntrySchema,
 };
