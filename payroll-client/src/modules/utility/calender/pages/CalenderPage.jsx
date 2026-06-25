@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
 import styles from '../components/CalenderPage.module.css';
 import CalenderForm from '../components/CalenderForm';
 import CalenderTable from '../components/CalenderTable';
@@ -17,13 +18,33 @@ const CalenderPage = () => {
   const addToast = useToast();
 
   const [calenderList, setCalenderList] = useState([]);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
+
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   const fetchCalenders = async () => {
     const companyId = localStorage.getItem('selectedCompany');
@@ -49,8 +70,19 @@ const CalenderPage = () => {
     fetchCalenders();
   }, [addToast]);
 
+  const handleAddNew = () => {
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'warning', message: 'No company selected! Please select a company.' });
+      return;
+    }
+    setEditingEntry(null);
+    setIsFormOpen(true);
+  };
+
   const handleEdit = (entry) => {
     setEditingEntry(entry);
+    setIsFormOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -89,6 +121,7 @@ const CalenderPage = () => {
     try {
       const updated = await saveCalender(entryData, companyId);
       setCalenderList(updated);
+      setIsFormOpen(false);
       setEditingEntry(null);
       addToast({
         type: 'success',
@@ -106,6 +139,7 @@ const CalenderPage = () => {
   };
 
   const handleCancel = () => {
+    setIsFormOpen(false);
     setEditingEntry(null);
   };
 
@@ -129,17 +163,9 @@ const CalenderPage = () => {
     });
   }, [calenderList, searchTerm]);
 
-  // Export handlers
-  const handleExport = async (type) => {
-    if (type === 'Copy') {
-      const text = filteredCalenders.map((c, index) =>
-        `${index + 1}\t${c.holidayType === 'COMPANY' ? formatDateForExport(c.holidayDate) : '-'}\t${c.year || '-'}\t${c.holidayType}\t${c.holidayType === 'WEEKLY' ? c.weekDay : '-'}\t${c.remark || ''}`
-      ).join('\n');
-      navigator.clipboard.writeText(text);
-      addToast({ type: 'success', message: 'Copied filtered records to clipboard!' });
-      return;
-    }
-
+  // Export handlers at page level
+  const handleExportClick = async (type) => {
+    setIsDropdownOpen(false);
     try {
       addToast({ type: 'info', message: `${type} export started...` });
       await exportModuleData('calenders', type.toLowerCase());
@@ -150,19 +176,65 @@ const CalenderPage = () => {
     }
   };
 
+  const handleCopyClick = () => {
+    const text = filteredCalenders.map((c, index) =>
+      `${index + 1}\t${c.holidayType === 'COMPANY' ? formatDateForExport(c.holidayDate) : '-'}\t${c.year || '-'}\t${c.holidayType}\t${c.holidayType === 'WEEKLY' ? c.weekDay : '-'}\t${c.remark || ''}`
+    ).join('\n');
+    navigator.clipboard.writeText(text);
+    addToast({ type: 'success', message: 'Copied filtered records to clipboard!' });
+    setIsDropdownOpen(false);
+  };
+
   return (
     <div className={styles.container}>
-      {/* Header section with page heading */}
+      
+      {/* Header section with heading and actions */}
       <div className={styles.headerSection}>
-        <h1 className={styles.title}>Calender</h1>
+        <h1 className={styles.title}>Calendar</h1>
+        <div className={styles.headerActions}>
+          {!isFormOpen && (
+            <button onClick={handleAddNew} className={styles.addBtn}>
+              <Plus size={18} /> Holiday
+            </button>
+          )}
+          <div className={styles.dropdownContainer} ref={dropdownRef}>
+            <button 
+              className={styles.downloadBtn} 
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            >
+              <Download size={18} /> Download
+            </button>
+            {isDropdownOpen && (
+              <div className={styles.dropdownMenu}>
+                <button onClick={() => handleExportClick('Excel')}>
+                  <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button onClick={handleCopyClick}>
+                  <Copy size={16} /> Copy
+                </button>
+                <button onClick={() => handleExportClick('CSV')}>
+                  <FileText size={16} /> CSV
+                </button>
+                <button onClick={() => handleExportClick('PDF')}>
+                  <File size={16} /> PDF
+                </button>
+                <button onClick={() => handleExportClick('Print')}>
+                  <Printer size={16} /> Print
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Render form card */}
-      <CalenderForm
-        entry={editingEntry}
-        onSave={handleSave}
-        onCancel={handleCancel}
-      />
+      {/* Render form card if open */}
+      {isFormOpen && (
+        <CalenderForm
+          entry={editingEntry}
+          onSave={handleSave}
+          onCancel={handleCancel}
+        />
+      )}
 
       {/* Render table showing calendar list */}
       <CalenderTable
@@ -171,7 +243,6 @@ const CalenderPage = () => {
         onSearchChange={setSearchTerm}
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
-        onExport={handleExport}
       />
 
       {/* Delete Confirmation Modal */}

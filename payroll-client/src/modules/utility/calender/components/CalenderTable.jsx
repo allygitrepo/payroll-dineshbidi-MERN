@@ -11,7 +11,7 @@ const formatDate = (dateStr) => {
   return dateStr;
 };
 
-const CalenderTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete, onExport }) => {
+const CalenderTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -29,12 +29,8 @@ const CalenderTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete, onE
     <div className={styles.tableCard}>
       {/* Search and Export controls */}
       <div className={styles.tableControls}>
-        <div className={styles.exportButtons}>
-          <button onClick={() => onExport('Copy')} className={styles.exportBtn}>Copy</button>
-          <button onClick={() => onExport('CSV')} className={styles.exportBtn}>CSV</button>
-          <button onClick={() => onExport('Excel')} className={styles.exportBtn}>Excel</button>
-          <button onClick={() => onExport('PDF')} className={styles.exportBtn}>PDF</button>
-          <button onClick={() => onExport('Print')} className={styles.exportBtn}>Print</button>
+        <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+          Total Holiday Entries: {totalEntries}
         </div>
 
         <div className={styles.searchWrapper}>
@@ -43,7 +39,7 @@ const CalenderTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete, onE
             type="text"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search all columns:"
+            placeholder="Search..."
             className={styles.searchInput}
           />
         </div>
@@ -82,17 +78,17 @@ const CalenderTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete, onE
                   <td>{item.holidayType === 'WEEKLY' ? item.weekDay : '-'}</td>
                   <td>{item.remark || ''}</td>
                   <td>
-                    <div className={styles.actionCell} style={{ justifyContent: 'center' }}>
+                    <div className={styles.actionCell}>
                       <button
                         onClick={() => onEdit(item)}
-                        title="Edit Record"
+                        title="Edit Holiday"
                         className={styles.editBtn}
                       >
                         <Edit size={16} />
                       </button>
                       <button
                         onClick={() => onDelete(item.id)}
-                        title="Delete Record"
+                        title="Delete Holiday"
                         className={styles.deleteBtn}
                       >
                         <Trash2 size={16} />

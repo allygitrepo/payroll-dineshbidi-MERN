@@ -104,7 +104,7 @@ const CalenderForm = ({ entry, onSave, onCancel }) => {
   };
 
   return (
-    <div className={styles.formCard} style={{ marginBottom: '24px' }}>
+    <div className={styles.formCard}>
       <form onSubmit={handleSubmit} noValidate>
         <div className={styles.formGrid}>
           {/* Holiday Type */}
@@ -176,11 +176,11 @@ const CalenderForm = ({ entry, onSave, onCancel }) => {
         </div>
 
         <div className={styles.buttonGroup}>
-          <button type="submit" className={styles.saveBtn}>
-            Save
-          </button>
           <button type="button" onClick={handleCancelClick} className={styles.cancelBtn}>
             Cancel
+          </button>
+          <button type="submit" className={styles.saveBtn}>
+            Save
           </button>
         </div>
       </form>
