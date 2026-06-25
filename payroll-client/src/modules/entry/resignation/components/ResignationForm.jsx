@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './ResignationPage.module.css';
 import { fetchEmployeeByUan } from '../services/resignationService';
+import { DatePicker } from '../../../../shared/components';
 
 const REASON_OPTIONS = [
   'CESSATION (SHORT SERVICE)',
@@ -264,13 +265,11 @@ const ResignationForm = ({ resignation, onSave, onCancel }) => {
             <label className={styles.label}>
               Date of Leaving <span className={styles.required}>*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               name="dateOfLeaving"
               value={formData.dateOfLeaving}
               onChange={handleChange}
-              className={`${styles.input} ${errors.dateOfLeaving && touched.dateOfLeaving ? styles.inputError : ''}`}
-              onBlur={handleBlur}
+              className={errors.dateOfLeaving && touched.dateOfLeaving ? styles.inputError : ''}
             />
             {errors.dateOfLeaving && touched.dateOfLeaving && (
               <span className={styles.errorText}>{errors.dateOfLeaving}</span>

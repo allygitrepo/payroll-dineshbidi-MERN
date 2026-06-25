@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './EmployeePage.module.css';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 import { Plus, Trash2 } from 'lucide-react';
 import FaceEnroll from './FaceEnroll';
 
@@ -609,13 +609,11 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
             <div className={styles.field}>
               <label className={styles.label}>Date Of Birth As Per Aadhaar</label>
-              <input
-                type="date"
-                name="dob"
-                value={formData.dob}
-                onChange={handleChange}
-                className={styles.input}
-              />
+            <DatePicker
+              name="dob"
+              value={formData.dob}
+              onChange={handleChange}
+            />
             </div>
 
             <div className={styles.field}>
@@ -734,14 +732,10 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
               <label className={styles.label}>
                 Date of Joining <span className={styles.required}>*</span>
               </label>
-              <input
-                type="date"
+              <DatePicker
                 name="dateOfJoining"
                 value={formData.dateOfJoining}
                 onChange={handleChange}
-                onBlur={handleBlur}
-                className={styles.input}
-                required
               />
               {errors.dateOfJoining && <span className={styles.errorText}>{errors.dateOfJoining}</span>}
             </div>
@@ -1134,12 +1128,10 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
               <div className={styles.field}>
                 <label className={styles.label}>DOB (as Per Aadhar)</label>
-                <input
-                  type="date"
+                <DatePicker
                   name="dob"
                   value={nomineeInput.dob}
                   onChange={handleNomineeInputChange}
-                  className={styles.input}
                 />
               </div>
 
@@ -1282,12 +1274,10 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
               <div className={styles.inlineField}>
                 <label className={styles.label}>DOB (as Per Aadhar)</label>
-                <input
-                  type="date"
+                <DatePicker
                   name="dob"
                   value={familyInput.dob}
                   onChange={handleFamilyInputChange}
-                  className={styles.input}
                 />
               </div>
 

@@ -13,9 +13,10 @@ import {
   Copy,
   FileText,
   File,
-  Printer
+  Printer,
+  Camera
 } from 'lucide-react';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 import styles from './AttendanceListPage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { getCompanyAttendance } from '../../attendanceService';
@@ -45,6 +46,92 @@ const BiometricAvatar = ({ seed, className }) => {
       <circle cx="58" cy="45" r="5" stroke="#27D68A" strokeWidth="0.5" fill="none" strokeDasharray="1,1" />
       <rect x="24" y="18" width="52" height="60" rx="6" stroke="#27D68A" strokeWidth="0.75" fill="none" opacity="0.6" strokeDasharray="3,3" />
     </svg>
+  );
+};
+
+// Futuristic camera placeholder component for missing biometric images
+const CameraPlaceholder = ({ label }) => {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+      position: 'relative',
+      padding: '12px'
+    }}>
+      {/* Biometric scanning effect corner lines */}
+      <div style={{
+        position: 'absolute',
+        top: '8px',
+        left: '8px',
+        width: '12px',
+        height: '12px',
+        borderTop: '2px solid #27d68a',
+        borderLeft: '2px solid #27d68a',
+        opacity: 0.6
+      }} />
+      <div style={{
+        position: 'absolute',
+        top: '8px',
+        right: '8px',
+        width: '12px',
+        height: '12px',
+        borderTop: '2px solid #27d68a',
+        borderRight: '2px solid #27d68a',
+        opacity: 0.6
+      }} />
+      <div style={{
+        position: 'absolute',
+        bottom: '8px',
+        left: '8px',
+        width: '12px',
+        height: '12px',
+        borderBottom: '2px solid #27d68a',
+        borderLeft: '2px solid #27d68a',
+        opacity: 0.6
+      }} />
+      <div style={{
+        position: 'absolute',
+        bottom: '8px',
+        right: '8px',
+        width: '12px',
+        height: '12px',
+        borderBottom: '2px solid #27d68a',
+        borderRight: '2px solid #27d68a',
+        opacity: 0.6
+      }} />
+      
+      {/* Pulsing/glow wrapper for Camera icon */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '42px',
+        height: '42px',
+        borderRadius: '50%',
+        backgroundColor: 'rgba(39, 214, 138, 0.1)',
+        border: '1px dashed rgba(39, 214, 138, 0.4)',
+        marginBottom: '6px',
+        color: '#27d68a'
+      }}>
+        <Camera size={20} />
+      </div>
+      
+      {/* Label text */}
+      <span style={{ 
+        fontSize: '0.7rem', 
+        fontWeight: '600', 
+        color: '#94a3b8', 
+        textTransform: 'uppercase', 
+        letterSpacing: '0.05em' 
+      }}>
+        {label || 'No Image'}
+      </span>
+    </div>
   );
 };
 
@@ -551,8 +638,8 @@ const AttendanceListPage = () => {
                 Date Filter
               </span>
               <div className={styles.dateInputWrapper}>
-                <input
-                  type="date"
+                <DatePicker
+                  name="selectedDate"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className={styles.datePickerInput}
@@ -886,7 +973,7 @@ const AttendanceListPage = () => {
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                         />
                       ) : (
-                        <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-muted)' }}>—</div>
+                        <CameraPlaceholder label="No Sign-In" />
                       )}
                     </div>
                   </div>
@@ -902,7 +989,7 @@ const AttendanceListPage = () => {
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                         />
                       ) : (
-                        <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-muted)' }}>—</div>
+                        <CameraPlaceholder label="No Sign-Out" />
                       )}
                     </div>
                   </div>

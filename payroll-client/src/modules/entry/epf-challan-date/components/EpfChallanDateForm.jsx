@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './EpfChallanDatePage.module.css';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 
 const EpfChallanDateForm = ({ challan, onSave, onCancel }) => {
   const addToast = useToast();
@@ -195,12 +195,10 @@ const EpfChallanDateForm = ({ challan, onSave, onCancel }) => {
           {/* Due Date */}
           <div className={styles.field}>
             <label className={styles.label}>Due Date</label>
-            <input
-              type="date"
+            <DatePicker
               name="dueDate"
               value={formData.dueDate}
               onChange={handleChange}
-              className={styles.input}
             />
           </div>
 
@@ -209,13 +207,10 @@ const EpfChallanDateForm = ({ challan, onSave, onCancel }) => {
             <label className={styles.label}>
               EPF Challan Date <span className={styles.required}>*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               name="challanDate"
               value={formData.challanDate}
               onChange={handleChange}
-              onBlur={handleBlur}
-              className={styles.input}
             />
             {errors.challanDate && <span className={styles.errorText}>{errors.challanDate}</span>}
           </div>
@@ -313,12 +308,10 @@ const EpfChallanDateForm = ({ challan, onSave, onCancel }) => {
           {/* Return Date */}
           <div className={styles.field}>
             <label className={styles.label}>Return Date</label>
-            <input
-              type="date"
+            <DatePicker
               name="returnDate"
               value={formData.returnDate}
               onChange={handleChange}
-              className={styles.input}
             />
           </div>
         </div>

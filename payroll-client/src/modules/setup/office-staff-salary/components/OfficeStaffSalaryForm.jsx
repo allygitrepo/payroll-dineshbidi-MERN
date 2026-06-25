@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './OfficeStaffSalaryPage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 
 const OfficeStaffSalaryForm = ({ wages, onSave, onCancel }) => {
   const addToast = useToast();
@@ -148,13 +148,10 @@ const OfficeStaffSalaryForm = ({ wages, onSave, onCancel }) => {
             <label className={styles.label}>
               Start Date <span className={styles.required}>*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               name="startDate"
               value={formData.startDate}
               onChange={handleChange}
-              onBlur={handleBlur}
-              className={styles.input}
             />
             {errors.startDate && <span className={styles.errorText}>{errors.startDate}</span>}
           </div>
@@ -164,13 +161,10 @@ const OfficeStaffSalaryForm = ({ wages, onSave, onCancel }) => {
             <label className={styles.label}>
               End Date <span className={styles.required}>*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               name="endDate"
               value={formData.endDate}
               onChange={handleChange}
-              onBlur={handleBlur}
-              className={styles.input}
             />
             {errors.endDate && <span className={styles.errorText}>{errors.endDate}</span>}
           </div>

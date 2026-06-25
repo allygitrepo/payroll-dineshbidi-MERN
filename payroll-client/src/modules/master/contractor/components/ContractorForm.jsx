@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './ContractorPage.module.css';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 
 const ContractorForm = ({ contractor, addresses = [], onSave, onCancel }) => {
   const addToast = useToast();
@@ -361,13 +361,10 @@ const ContractorForm = ({ contractor, addresses = [], onSave, onCancel }) => {
             <label className={styles.label}>
               Date of Joining <span className={styles.required}>*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               name="dateOfJoining"
               value={formData.dateOfJoining}
               onChange={handleChange}
-              onBlur={handleBlur}
-              className={styles.input}
             />
             {errors.dateOfJoining && <span className={styles.errorText}>{errors.dateOfJoining}</span>}
           </div>

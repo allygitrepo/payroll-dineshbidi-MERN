@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 import Input from '../../../../shared/components/Input/Input';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import styles from '../components/KycExportPage.module.css';
@@ -344,8 +344,8 @@ const KycExportPage = () => {
         <div className={styles.filterRow}>
           <div className={styles.filterGroup}>
             <span className={styles.label}>From Date</span>
-            <Input
-              type="date"
+            <DatePicker
+              name="fromDate"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
               className={styles.dateInput}
@@ -353,8 +353,8 @@ const KycExportPage = () => {
           </div>
           <div className={styles.filterGroup}>
             <span className={styles.label}>To Date</span>
-            <Input
-              type="date"
+            <DatePicker
+              name="toDate"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
               className={styles.dateInput}

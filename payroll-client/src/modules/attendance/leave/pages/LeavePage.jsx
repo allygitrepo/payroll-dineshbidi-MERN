@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Check, X, FileCheck, Calendar, Users, AlertCircle, FileClock, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
 import styles from './LeavePage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, DatePicker } from '../../../../shared/components';
 import {
   getLeaveRequests,
   createLeaveRequest,
@@ -609,8 +609,7 @@ const LeavePage = () => {
               {newLeave.singleDay ? (
                 <div className={styles.field}>
                   <label className={styles.label}>Select Date *</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     name="fromDate"
                     value={newLeave.fromDate}
                     min={todayStr}
@@ -622,16 +621,13 @@ const LeavePage = () => {
                         toDate: val
                       }));
                     }}
-                    className={styles.input}
-                    required
                   />
                 </div>
               ) : (
                 <>
                   <div className={styles.field}>
                     <label className={styles.label}>From Date *</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       name="fromDate"
                       value={newLeave.fromDate}
                       min={todayStr}
@@ -643,21 +639,16 @@ const LeavePage = () => {
                           toDate: prev.toDate && prev.toDate >= val ? prev.toDate : val
                         }));
                       }}
-                      className={styles.input}
-                      required
                     />
                   </div>
 
                   <div className={styles.field}>
                     <label className={styles.label}>To Date *</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       name="toDate"
                       value={newLeave.toDate}
                       min={newLeave.fromDate || todayStr}
                       onChange={handleInputChange}
-                      className={styles.input}
-                      required
                     />
                   </div>
                 </>

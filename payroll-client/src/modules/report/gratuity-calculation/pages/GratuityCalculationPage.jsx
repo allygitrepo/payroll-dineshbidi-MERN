@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer, ChevronDown, Check, X } from 'lucide-react';
-import { useToast, YearPicker } from '../../../../shared/components';
+import { useToast, YearPicker, DatePicker } from '../../../../shared/components';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { getContractors } from '../../../master/contractor/services/contractorService';
 import { getResignations } from '../../../entry/resignation/services/resignationService';
@@ -440,8 +440,8 @@ const GratuityCalculationPage = () => {
           {/* Select Date */}
           <div className={styles.filterGroup}>
             <span className={styles.label}>Select Date <span className={styles.required}>*</span></span>
-            <input
-              type="date"
+            <DatePicker
+              name="selectDate"
               value={selectDate}
               onChange={(e) => setSelectDate(e.target.value)}
               className={styles.textInput}

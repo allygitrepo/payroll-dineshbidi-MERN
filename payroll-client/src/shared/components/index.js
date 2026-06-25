@@ -13,3 +13,4 @@ export { default as ToastProvider, useToast } from './Toast/Toast';
 export { default as ConfirmModal } from './ConfirmModal/ConfirmModal';
 export { default as MonthYearPicker } from './MonthYearPicker/MonthYearPicker';
 export { default as YearPicker } from './YearPicker/YearPicker';
+export { default as DatePicker } from './DatePicker/DatePicker';

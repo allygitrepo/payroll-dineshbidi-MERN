@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 import { getOfficeStaffEntry } from '../../../entry/office-staff/services/officeStaffEntryService';
 import { getPackersEntry } from '../../../entry/packers/services/packersEntryService';
 import { getBidiRollerEntry } from '../../../entry/bidi-roller/services/bidiRollerEntryService';
@@ -500,8 +500,8 @@ const EsicChallanYearlyPage = () => {
                         />
                       </td>
                       <td>
-                        <input
-                          type="date"
+                        <DatePicker
+                          name={`actualDate-${row.monthKey}`}
                           value={rowInputs[row.monthKey]?.actualDate || ''}
                           onChange={(e) => handleRowInputChange(row.monthKey, 'actualDate', e.target.value)}
                           className={styles.tableInput}

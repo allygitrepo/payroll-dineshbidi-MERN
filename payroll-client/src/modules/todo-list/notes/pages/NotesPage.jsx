@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer, Edit2, Trash2, Save, X, Notebook } from 'lucide-react';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 import { getNotes, saveNote, deleteNote } from '../services/notesService';
 import styles from '../components/NotesPage.module.css';
 
@@ -272,11 +272,11 @@ const NotesPage = () => {
             <label className={styles.label}>
               Select Date <span className={styles.required}>*</span>
             </label>
-            <input 
-              type="date"
+            <DatePicker
+              name="noteDate"
               value={noteDate}
               onChange={(e) => setNoteDate(e.target.value)}
-              className={`${styles.input} ${formError && !noteDate ? styles.inputError : ''}`}
+              className={formError && !noteDate ? styles.inputError : ''}
             />
           </div>
 

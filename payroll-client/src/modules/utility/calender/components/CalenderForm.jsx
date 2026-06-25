@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './CalenderPage.module.css';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 
 const defaultForm = {
   id: '',
@@ -150,13 +150,11 @@ const CalenderForm = ({ entry, onSave, onCancel }) => {
             <label className={styles.label}>
               Select Date {formData.holidayType === 'COMPANY' && <span className={styles.required}>*</span>}
             </label>
-            <input
-              type="date"
+            <DatePicker
               name="holidayDate"
               value={formData.holidayDate}
               onChange={handleChange}
               disabled={formData.holidayType !== 'COMPANY'}
-              className={styles.input}
             />
             {errors.holidayDate && <span className={styles.errorText}>{errors.holidayDate}</span>}
           </div>
