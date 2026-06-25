@@ -1,6 +1,7 @@
 const sequelize = require("../../config/database");
 const User = require("../../modules/Auth/Users/users.model");
 const RefreshToken = require("../../modules/Auth/RefreshTokens/refreshTokens.model");
+const Role = require("../../modules/Auth/Users/roles.model");
 const Company = require("../../modules/Masters/Company/company.model");
 const Address = require("../../modules/Masters/Address/address.model");
 const Contractor = require("../../modules/Masters/Contractor/contractor.model");
@@ -32,6 +33,7 @@ db.sequelize = sequelize;
 // Register models
 db.User = User;
 db.RefreshToken = RefreshToken;
+db.Role = Role;
 db.Company = Company;
 db.Address = Address;
 db.Contractor = Contractor;
@@ -55,6 +57,17 @@ db.Resignation = Resignation;
 db.Note = Note;
 
 // Model associations
+
+// Users <-> Roles
+db.Role.hasMany(db.User, {
+    foreignKey: "role_id",
+    as: "users",
+});
+db.User.belongsTo(db.Role, {
+    foreignKey: "role_id",
+    as: "role",
+});
+
 db.User.hasMany(db.RefreshToken, {
     foreignKey: "user_id",
     as: "refreshTokens",

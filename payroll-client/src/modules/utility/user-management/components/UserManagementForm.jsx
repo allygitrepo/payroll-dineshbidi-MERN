@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './UserManagementPage.module.css';
 
-const DESIGNATIONS = ['OWNER', 'DATA ENTRY OPERATOR'];
-
 const PERMISSION_GROUPS = [
   {
     title: 'Dashboard',
@@ -108,13 +106,15 @@ const ALL_PERMISSION_SLUGS = [
   'excel-to-text'
 ];
 
-const UserManagementForm = ({ user, onSave, onCancel }) => {
+const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
+  const [isCreatingRole, setIsCreatingRole] = useState(false);
   const [formData, setFormData] = useState({
     userName: '',
     userId: '',
     password: '',
-    designation: 'DATA ENTRY OPERATOR',
-    permissions: {}
+    designation: roles.length > 0 ? roles[0].name : '',
+    role_id: roles.length > 0 ? roles[0].id : null,
+    permissions: roles.length > 0 ? (roles[0].permissions || {}) : {}
   });
 
   const [errors, setErrors] = useState({});
@@ -126,7 +126,8 @@ const UserManagementForm = ({ user, onSave, onCancel }) => {
         userName: user.userName || '',
         userId: user.userId || '',
         password: user.password || '',
-        designation: user.designation || 'DATA ENTRY OPERATOR',
+        designation: user.designation || (roles[0]?.name || ''),
+        role_id: user.role_id || (roles[0]?.id || null),
         permissions: user.permissions || {}
       });
       setErrors({});
@@ -137,17 +138,21 @@ const UserManagementForm = ({ user, onSave, onCancel }) => {
       ALL_PERMISSION_SLUGS.forEach(slug => {
         initialPerms[slug] = false;
       });
+      
+      const defaultRole = roles.length > 0 ? roles[0] : null;
+
       setFormData({
         userName: '',
         userId: '',
         password: '',
-        designation: 'DATA ENTRY OPERATOR',
-        permissions: initialPerms
+        designation: defaultRole ? defaultRole.name : '',
+        role_id: defaultRole ? defaultRole.id : null,
+        permissions: defaultRole ? (defaultRole.permissions || initialPerms) : initialPerms
       });
       setErrors({});
       setTouched({});
     }
-  }, [user]);
+  }, [user, roles]);
 
   const validateField = (name, value) => {
     let error = '';
@@ -181,7 +186,26 @@ const UserManagementForm = ({ user, onSave, onCancel }) => {
       finalVal = value.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     }
 
-    setFormData(prev => ({ ...prev, [name]: finalVal }));
+    if (name === 'designation') {
+      const selectedRole = roles.find(r => r.name === value);
+      if (selectedRole) {
+        setFormData(prev => ({
+          ...prev,
+          designation: selectedRole.name,
+          role_id: selectedRole.id,
+          permissions: selectedRole.permissions || prev.permissions
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          designation: value,
+          role_id: null
+        }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: finalVal }));
+    }
+
     if (touched[name]) {
       const error = validateField(name, finalVal);
       setErrors(prev => ({ ...prev, [name]: error }));
@@ -195,6 +219,17 @@ const UserManagementForm = ({ user, onSave, onCancel }) => {
         ...prev.permissions,
         [slug]: !prev.permissions[slug]
       }
+    }));
+  };
+
+  const handleGroupToggle = (groupItems, checked) => {
+    const updated = { ...formData.permissions };
+    groupItems.forEach(item => {
+      updated[item.slug] = checked;
+    });
+    setFormData(prev => ({
+      ...prev,
+      permissions: updated
     }));
   };
 
@@ -303,19 +338,43 @@ const UserManagementForm = ({ user, onSave, onCancel }) => {
             <label className={styles.label}>
               Designation <span className={styles.required}>*</span>
             </label>
-            <select
-              name="designation"
-              value={formData.designation}
-              onChange={handleChange}
-              className={styles.input}
-              onBlur={handleBlur}
-            >
-              {DESIGNATIONS.map(role => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {isCreatingRole ? (
+                <input
+                  type="text"
+                  name="designation"
+                  value={formData.designation}
+                  onChange={handleChange}
+                  className={styles.input}
+                  placeholder="Enter new designation..."
+                  onBlur={handleBlur}
+                />
+              ) : (
+                <select
+                  name="designation"
+                  value={formData.designation}
+                  onChange={handleChange}
+                  className={styles.input}
+                  onBlur={handleBlur}
+                >
+                  <option value="" disabled>Select Designation</option>
+                  {roles.map(r => (
+                    <option key={r.id} value={r.name}>{r.name}</option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreatingRole(!isCreatingRole);
+                  setFormData(prev => ({ ...prev, designation: '', role_id: null }));
+                }}
+                className={styles.saveBtn}
+                style={{ padding: '8px 12px', whiteSpace: 'nowrap', minWidth: '100px' }}
+              >
+                {isCreatingRole ? 'Cancel New' : '+ Add New'}
+              </button>
+            </div>
           </div>
 
           {/* Permissions Grid */}
@@ -342,11 +401,24 @@ const UserManagementForm = ({ user, onSave, onCancel }) => {
             </div>
 
             <div className={styles.permissionsGrid}>
-              {PERMISSION_GROUPS.map(group => (
-                <div key={group.title} className={styles.permissionGroup}>
-                  <div className={styles.groupHeader}>{group.title}</div>
-                  <div className={styles.groupBody}>
-                    {group.items.map(item => (
+              {PERMISSION_GROUPS.map(group => {
+                const isAllSelected = group.items.every(item => formData.permissions[item.slug]);
+                const isSomeSelected = group.items.some(item => formData.permissions[item.slug]) && !isAllSelected;
+
+                return (
+                  <div key={group.title} className={styles.permissionGroup}>
+                    <div className={styles.groupHeader} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input 
+                        type="checkbox"
+                        checked={isAllSelected}
+                        ref={el => { if (el) el.indeterminate = isSomeSelected; }}
+                        onChange={(e) => handleGroupToggle(group.items, e.target.checked)}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                      />
+                      {group.title}
+                    </div>
+                    <div className={styles.groupBody}>
+                      {group.items.map(item => (
                       <label key={item.slug} className={styles.permissionLabel}>
                         <input
                           type="checkbox"
@@ -359,7 +431,8 @@ const UserManagementForm = ({ user, onSave, onCancel }) => {
                     ))}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

@@ -1,36 +1,23 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../../../config/database");
 
-const User = sequelize.define(
-    "User",
+const Role = sequelize.define(
+    "Role",
     {
         id: {
             type: DataTypes.UUID,
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
-        user_name: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-        user_id: {
+        name: {
             type: DataTypes.STRING,
             allowNull: false,
             unique: true,
         },
-        password: {
-            type: DataTypes.STRING,
+        permissions: {
+            type: DataTypes.JSON,
             allowNull: false,
-        },
-        role_id: {
-            type: DataTypes.UUID,
-            allowNull: true,
-            references: {
-                model: "Roles",
-                key: "id",
-            },
-            onDelete: "SET NULL",
-            onUpdate: "CASCADE",
+            defaultValue: {},
         },
         status: {
             type: DataTypes.BOOLEAN,
@@ -38,10 +25,10 @@ const User = sequelize.define(
         },
     },
     {
-        tableName: "Users",
+        tableName: "Roles",
         timestamps: true,
         underscored: true,
     }
 );
 
-module.exports = User;
+module.exports = Role;

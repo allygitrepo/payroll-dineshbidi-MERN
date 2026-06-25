@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const usersRoutes = require("./modules/Auth/Users/users.routes");
+const roleRoutes = require("./modules/Auth/Users/roles.routes");
 const companyRoutes = require("./modules/Masters/Company/company.routes");
 const addressRoutes = require("./modules/Masters/Address/address.routes");
 const contractorRoutes = require("./modules/Masters/Contractor/contractor.routes");
@@ -35,6 +36,7 @@ router.get("/v1/test", (req, res) => {
 
 // Register users routes under v1 version prefix
 router.use("/v1/users", usersRoutes);
+router.use("/v1/roles", roleRoutes);
 router.use("/v1/companies", companyRoutes);
 router.use("/v1/addresses", addressRoutes);
 router.use("/v1/contractors", contractorRoutes);
@@ -57,6 +59,7 @@ router.use("/v1/notes", noteRoutes);
 router.use("/v1/attendance", attendanceRoutes);
 router.use("/v1/leaves", leaveRequestRoutes);
 router.use("/v1/reports", reportRoutes);
+router.use("/v1/dashboard", require("./modules/Dashboard/dashboard.routes"));
 router.use("/v1/utility/backup", require("./modules/Utility/Backup/backup.routes"));
 router.use("/v1/utility/restore", require("./modules/Utility/Restore/restore.routes"));
 router.use("/v1/utility/uan-to-ip", require("./modules/Utility/UanToIp/uanToIp.routes"));

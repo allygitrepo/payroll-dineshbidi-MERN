@@ -29,7 +29,7 @@ class UsersController {
                 user_name: value.user_name,
                 user_id: value.user_id,
                 password: value.password,
-                role: value.role,
+                role_id: value.role_id,
             });
 
             return res.status(201).json(
@@ -207,6 +207,33 @@ class UsersController {
                     errorCode,
                     err.message,
                     err.messageToShow || "Failed to retrieve profile."
+                )
+            );
+        }
+    }
+
+    /**
+     * Get all users.
+     */
+    static async getAll(req, res) {
+        try {
+            const users = await UsersService.getAllUsers();
+            return res.status(200).json(
+                successResponse(
+                    "USERS_RETRIEVED",
+                    "Users retrieved successfully.",
+                    "Users retrieved.",
+                    users
+                )
+            );
+        } catch (err) {
+            const statusCode = err.statusCode || 500;
+            const errorCode = err.errorCode || "FETCH_FAILED";
+            return res.status(statusCode).json(
+                errorResponse(
+                    errorCode,
+                    err.message,
+                    err.messageToShow || "Failed to fetch users."
                 )
             );
         }

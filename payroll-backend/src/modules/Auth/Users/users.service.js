@@ -1,7 +1,6 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const User = require("./users.model");
-const RefreshToken = require("../RefreshTokens/refreshTokens.model");
+const { User, Role, RefreshToken } = require("../../../database/models");
 
 /**
  * Helper to calculate expiry date based on environment variable string (e.g., '30d', '7d')
@@ -30,7 +29,7 @@ class UsersService {
     /**
      * Registers a new user.
      */
-    static async registerUser({ user_name, user_id, password, role }) {
+    static async registerUser({ user_name, user_id, password, role_id }) {
         // Check if user already exists
         const existingUser = await User.findOne({ where: { user_id, status: true } });
         if (existingUser) {
@@ -50,7 +49,7 @@ class UsersService {
             user_name,
             user_id,
             password: hashedPassword,
-            role: role || "admin",
+            role_id: role_id || null,
         });
 
         // Return user details without password
@@ -64,7 +63,10 @@ class UsersService {
      */
     static async loginUser({ user_id, password, company_id }) {
         // Find the user
-        const user = await User.findOne({ where: { user_id, status: true } });
+        const user = await User.findOne({ 
+            where: { user_id, status: true },
+            include: [{ model: Role, as: 'role' }]
+        });
         if (!user) {
             const error = new Error("User does not exist.");
             error.statusCode = 404;
@@ -85,7 +87,7 @@ class UsersService {
 
         // Generate tokens
         const accessToken = jwt.sign(
-            { id: user.id, user_id: user.user_id, role: user.role, company_id },
+            { id: user.id, user_id: user.user_id, role_id: user.role_id, company_id },
             process.env.JWT_ACCESS_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
         );
@@ -225,6 +227,21 @@ class UsersService {
         const userJson = user.toJSON();
         delete userJson.password;
         return userJson;
+    }
+
+    /**
+     * Gets all users
+     */
+    static async getAllUsers() {
+        const users = await User.findAll({
+            where: { status: true },
+            include: [{ model: Role, as: 'role' }]
+        });
+        return users.map(user => {
+            const userJson = user.toJSON();
+            delete userJson.password;
+            return userJson;
+        });
     }
 
     /**
