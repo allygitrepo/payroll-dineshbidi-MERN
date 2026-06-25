@@ -6,7 +6,9 @@ import UserManagementTable from '../components/UserManagementTable';
 import {
   getUsers,
   saveUser,
-  deleteUser
+  deleteUser,
+  getRoles,
+  saveRole
 } from '../services/userManagementService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
 
@@ -26,9 +28,38 @@ const UserManagementPage = () => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
 
-  // Load initial data
+  const [roles, setRoles] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [fetchedUsers, fetchedRoles] = await Promise.all([
+        getUsers(),
+        getRoles()
+      ]);
+      // Map backend fields to frontend fields for backwards compatibility
+      const mappedUsers = fetchedUsers.map(u => ({
+        ...u,
+        id: u.id,
+        userName: u.user_name,
+        userId: u.user_id,
+        designation: u.role ? u.role.name : 'Unknown',
+        role_id: u.role_id,
+        permissions: u.role ? u.role.permissions : {}
+      }));
+      setUsers(mappedUsers);
+      setRoles(fetchedRoles);
+    } catch (err) {
+      console.error(err);
+      addToast({ type: 'error', message: 'Failed to load user management data.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setUsers(getUsers());
+    loadData();
   }, []);
 
   // Close dropdown on outside click
@@ -63,11 +94,15 @@ const UserManagementPage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deleteUser(deleteTargetId);
-      setUsers(updated);
-      addToast({ type: 'success', message: 'User account deleted successfully!' });
+      try {
+        await deleteUser(deleteTargetId);
+        await loadData();
+        addToast({ type: 'success', message: 'User account deleted successfully!' });
+      } catch (err) {
+        addToast({ type: 'error', message: 'Failed to delete user.' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -78,15 +113,35 @@ const UserManagementPage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (userData) => {
-    const updated = saveUser(userData);
-    setUsers(updated);
-    setIsFormOpen(false);
-    setEditingUser(null);
-    addToast({
-      type: 'success',
-      message: userData.id ? 'User account updated successfully!' : 'User account created successfully!'
-    });
+  const handleSave = async (userData) => {
+    try {
+      // Create or update Role first
+      const rolePayload = {
+        id: userData.role_id,
+        name: userData.designation,
+        permissions: userData.permissions
+      };
+      const updatedRole = await saveRole(rolePayload);
+
+      const payload = {
+        id: userData.id,
+        user_name: userData.userName,
+        user_id: userData.userId,
+        password: userData.password,
+        role_id: updatedRole.id
+      };
+      
+      await saveUser(payload);
+      await loadData();
+      setIsFormOpen(false);
+      setEditingUser(null);
+      addToast({
+        type: 'success',
+        message: userData.id ? 'User account updated successfully!' : 'User account created successfully!'
+      });
+    } catch (err) {
+      addToast({ type: 'error', message: err.response?.data?.messageToShow || 'Failed to save user.' });
+    }
   };
 
   const handleCancel = () => {
@@ -165,6 +220,7 @@ const UserManagementPage = () => {
       {isFormOpen && (
         <UserManagementForm
           user={editingUser}
+          roles={roles}
           onSave={handleSave}
           onCancel={handleCancel}
         />

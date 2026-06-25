@@ -225,11 +225,55 @@ const Sidebar = ({ sidebarCollapsed }) => {
     }
   }, [location.pathname, activeMenu, activeSubMenu]);
 
+  // Extract permissions from localStorage
+  const userStr = localStorage.getItem('user');
+  let permissions = {};
+  if (userStr) {
+    try {
+      const userObj = JSON.parse(userStr);
+      if (userObj.role && userObj.role.permissions) {
+        permissions = userObj.role.permissions;
+      } else if (userObj.permissions) {
+        // Fallback for old mock format if any
+        permissions = userObj.permissions;
+      }
+    } catch(e) {}
+  }
+
+  // Filter menuItems based on permissions
+  const filteredMenuItems = menuItems.map(item => {
+    let filteredSubItems = null;
+    if (item.subItems) {
+      filteredSubItems = item.subItems.map(sub => {
+        if (sub.nestedItems) {
+          // If the parent itself has permission (e.g., Salary Sheet), show it with all nested items
+          if (permissions[nameToSlug(sub.name)]) {
+            return sub;
+          }
+          // Otherwise, filter nested items individually (e.g., Forms -> Form 2)
+          const filteredNested = sub.nestedItems.filter(n => permissions[nameToSlug(n.name)]);
+          if (filteredNested.length > 0) {
+            return { ...sub, nestedItems: filteredNested };
+          }
+          return null;
+        } else {
+          return permissions[nameToSlug(sub.name)] ? sub : null;
+        }
+      }).filter(Boolean);
+      
+      if (filteredSubItems.length === 0) return null; // Hide parent if all children are hidden
+    } else {
+      if (!permissions[nameToSlug(item.name)]) return null;
+    }
+    
+    return { ...item, subItems: filteredSubItems };
+  }).filter(Boolean);
+
   return (
     <aside className={`${styles.sidebar} ${sidebarCollapsed ? styles.collapsed : ''}`}>
       <div className={styles.sidebarSectionTitle}>Main Navigation</div>
       <nav className={styles.sidebarNav}>
-        {menuItems.map(item => {
+        {filteredMenuItems.map(item => {
           const IconComp = item.icon;
           const hasSubItems = !!item.subItems;
           const isExpanded = expandedMenus[item.name];

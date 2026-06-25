@@ -23,8 +23,8 @@ const registerSchema = Joi.object({
         "string.min": "Password must be at least 6 characters long.",
         "any.required": "Password is required.",
     }),
-    role: Joi.string().valid("admin", "user").optional().messages({
-        "any.only": "Role must be either 'admin' or 'user'.",
+    role_id: Joi.string().guid({ version: ["uuidv4"] }).optional().messages({
+        "string.guid": "Role ID must be a valid UUID.",
     }),
 });
 
@@ -52,8 +52,8 @@ const updateSchema = Joi.object({
     password: Joi.string().min(6).optional().messages({
         "string.min": "Password must be at least 6 characters long.",
     }),
-    role: Joi.string().valid("admin", "user").optional().messages({
-        "any.only": "Role must be either 'admin' or 'user'.",
+    role_id: Joi.string().guid({ version: ["uuidv4"] }).optional().messages({
+        "string.guid": "Role ID must be a valid UUID.",
     }),
     status: Joi.boolean().optional(),
 });
