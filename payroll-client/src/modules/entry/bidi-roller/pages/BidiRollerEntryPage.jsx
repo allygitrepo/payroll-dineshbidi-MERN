@@ -1,25 +1,11 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
-  Search,
-  Save,
-  Download,
-  FileSpreadsheet,
-  Copy,
-  FileText,
-  File,
-  Printer,
-  User,
-  CalendarDays,
-  Briefcase
+  Search, Save, Download, FileSpreadsheet, Copy, FileText, File, Printer, Users, CalendarDays, ChevronDown, Check, X
 } from 'lucide-react';
-import styles from '../components/BidiRollerEntryPage.module.css';
+import styles from './BidiRollerEntryPage.module.css';
 import { useToast, MonthYearPicker } from '../../../../shared/components';
 import { getContractors } from '../../../master/contractor/services/contractorService';
-import {
-  getBidiRollerEntry,
-  saveBidiRollerEntry,
-  recalculateBidiRollerRow
-} from '../services/bidiRollerEntryService';
+import { getBidiRollerEntry, saveBidiRollerEntry, recalculateBidiRollerRow } from '../services/bidiRollerEntryService';
 
 /* ---- Helpers ---- */
 const formatMonthLabel = (monthYear) => {
@@ -36,135 +22,189 @@ const getCurrentMonth = () => {
   return `${y}-${m}`;
 };
 
+/* ================================================
+   BIDI ROLLER ENTRY PAGE
+   ================================================ */
 const BidiRollerEntryPage = () => {
   const addToast = useToast();
   const dropdownRef = useRef(null);
+  const companyId = localStorage.getItem('selectedCompany');
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
-  const [selectedContractor, setSelectedContractor] = useState('ALL');
+  const [selectedContractors, setSelectedContractors] = useState([]);
+  const [isMultiSelectOpen, setIsMultiSelectOpen] = useState(false);
+  const multiSelectRef = useRef(null);
   const [contractorsList, setContractorsList] = useState([]);
-  
+
   const [activeMonth, setActiveMonth] = useState('');
-  const [activeContractor, setActiveContractor] = useState('ALL');
   const [rows, setRows] = useState([]);
-  
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [localSearch, setLocalSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [config, setConfig] = useState(null);
 
   /* Load Contractors list on mount */
   useEffect(() => {
-    const list = getContractors();
-    setContractorsList(list);
-  }, []);
+    const loadContractors = async () => {
+      if (companyId) {
+        try {
+          const list = await getContractors(companyId);
+          const selfContractor = { id: 'SELF', name: 'SELF', pfCode: 'N/A' };
+          const extendedList = [selfContractor, ...list];
+          setContractorsList(extendedList);
+          setSelectedContractors(extendedList.map(c => c.id));
+        } catch (error) {
+          console.error("Failed to load contractors", error);
+        }
+      }
+    };
+    loadContractors();
+  }, [companyId]);
 
-  /* Close download dropdown on click outside */
+  /* Close dropdown outside click */
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsDropdownOpen(false);
       }
+      if (multiSelectRef.current && !multiSelectRef.current.contains(e.target)) {
+        setIsMultiSelectOpen(false);
+      }
     };
-    if (isDropdownOpen) document.addEventListener('mousedown', handleClickOutside);
+    if (isDropdownOpen || isMultiSelectOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isMultiSelectOpen]);
+
+  const toggleContractorOption = (id) => {
+    setSelectedContractors(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+  };
 
   /* ---- Search / Load ---- */
-  const handleSearch = useCallback(() => {
+  const handleSearch = useCallback(async () => {
     if (!selectedMonth) {
       addToast({ type: 'error', message: 'Please select a Month and Year.' });
       return;
     }
-    const data = getBidiRollerEntry(selectedMonth);
-    setRows(data);
-    setActiveMonth(selectedMonth);
-    setActiveContractor(selectedContractor);
-    setHasSearched(true);
-  }, [selectedMonth, selectedContractor, addToast]);
+    setLoading(true);
+    try {
+      const response = await getBidiRollerEntry(selectedMonth);
+      if (response && response.status) {
+        setRows(response.data || []);
+        setConfig(response.config || null);
+        setActiveMonth(selectedMonth);
+        setHasSearched(true);
+        if (response.data?.length === 0) {
+          addToast({ type: 'info', message: 'No Bidi Rollers found for this month' });
+        }
+      } else {
+        addToast({ type: 'error', message: response?.message || 'Failed to load data' });
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to load data from server' });
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedMonth, addToast]);
 
-  /* ---- Input field change handler ---- */
+  /* ---- Handle editable cell change ---- */
   const handleFieldChange = useCallback((employeeId, field, value) => {
-    setRows(prev =>
-      prev.map(row => {
+    setRows(prev => {
+      const updated = prev.map(row => {
         if (row.employeeId !== employeeId) return row;
-        const updatedRow = { ...row, [field]: value };
-        const editableFields = ['unit1', 'unit2', 'leaveWithPay'];
-        if (editableFields.includes(field)) {
-          return recalculateBidiRollerRow(updatedRow, activeMonth);
+        
+        let val = value;
+        if (val !== '') {
+            // Allow numbers and single decimal
+            val = val.replace(/[^0-9.]/g, '');
+            const parts = val.split('.');
+            if (parts.length > 2) {
+                val = parts[0] + '.' + parts.slice(1).join('');
+            }
+        }
+        
+        const updatedRow = { ...row, [field]: val };
+        
+        // Recalculate on any field change if config exists
+        if (config) {
+          return recalculateBidiRollerRow(updatedRow, config);
         }
         return updatedRow;
-      })
-    );
-  }, [activeMonth]);
+      });
+      return updated;
+    });
+  }, [config]);
 
-  /* ---- Save handler ---- */
-  const handleSave = useCallback(() => {
+  /* ---- Save ---- */
+  const handleSave = useCallback(async () => {
     if (!activeMonth || rows.length === 0) {
-      addToast({ type: 'error', message: 'No data to save.' });
+      addToast({ type: 'error', message: 'No data to save. Please search first.' });
       return;
     }
-    saveBidiRollerEntry(activeMonth, rows);
-    addToast({
-      type: 'success',
-      message: `Bidi Roller Entry for ${formatMonthLabel(activeMonth)} saved successfully!`
-    });
+    setLoading(true);
+    try {
+      const response = await saveBidiRollerEntry(activeMonth, rows);
+      if (response && response.status) {
+        addToast({ type: 'success', message: `Bidi Roller Entry for ${formatMonthLabel(activeMonth)} saved successfully!` });
+      } else {
+        addToast({ type: 'error', message: response?.message || 'Failed to save data' });
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to save data to server' });
+    } finally {
+      setLoading(false);
+    }
   }, [activeMonth, rows, addToast]);
 
-  /* ---- Filter rows by contractor selection and search text ---- */
-  const filteredRows = useMemo(() => {
-    return rows.filter(row => {
-      // 1. Contractor Filter
-      if (activeContractor !== 'ALL' && row.contractor !== activeContractor) {
-        return false;
-      }
-      // 2. Text Search Filter
-      const search = localSearch.toLowerCase();
-      return (
-        row.employeeName.toLowerCase().includes(search) ||
-        row.employeeCode.includes(search) ||
-        row.accountNo.includes(search)
-      );
-    });
-  }, [rows, activeContractor, localSearch]);
+  /* ---- Displayed Rows ---- */
+  const displayedRows = useMemo(() => {
+    return rows.filter(r => selectedContractors.includes(r.contractorId || 'SELF'));
+  }, [rows, selectedContractors]);
 
-  /* ---- Calculate Totals ---- */
-  const totals = useMemo(() => {
-    return filteredRows.reduce((acc, row) => ({
-      unit1:        acc.unit1        + (parseFloat(row.unit1)        || 0),
-      unit2:        acc.unit2        + (parseFloat(row.unit2)        || 0),
-      daysWorked:   acc.daysWorked   + (parseInt(row.daysWorked)     || 0),
-      leaveWithPay: acc.leaveWithPay + (parseFloat(row.leaveWithPay) || 0),
-      wages:        acc.wages        + (parseFloat(row.wages)        || 0),
-      bonus:        acc.bonus        + (parseFloat(row.bonus)        || 0),
-      total:        acc.total        + (parseFloat(row.total)        || 0),
-      pf:           acc.pf           + (parseFloat(row.pf)           || 0),
-      pt:           acc.pt           + (parseFloat(row.pt)           || 0),
-      esic:         acc.esic         + (parseFloat(row.esic)         || 0),
-      netWages:     acc.netWages     + (parseFloat(row.netWages)     || 0),
-    }), {
-      unit1: 0, unit2: 0, daysWorked: 0, leaveWithPay: 0,
-      wages: 0, bonus: 0, total: 0, pf: 0, pt: 0, esic: 0, netWages: 0
-    });
-  }, [filteredRows]);
-
-  /* ---- Export handler ---- */
+  /* ---- Export ---- */
   const handleExport = (type) => {
     if (type === 'Copy') {
-      const header = 'Employee Name\tUnit1 Worked\tUnit2 Worked\tDays Worked\tLeave With Pay\tWages\tBonus\tTotal\tPF\tPT\tESIC\tNet Wages';
-      const body = filteredRows.map(r =>
-        `${r.employeeName}\t${r.unit1}\t${r.unit2}\t${r.daysWorked}\t${r.leaveWithPay}\t${r.wages}\t${r.bonus}\t${r.total}\t${r.pf}\t${r.pt}\t${r.esic}\t${r.netWages}`
+      const header = 'Employee Name.\tNo. of days\tUnit-1\tUnit-2\tLeave with pay\tRate-1\tRate-2\tBonus-1\tBonus-2\tWages\tBonus\tTotal\tPF\tPT\tESIC\tNet Wages';
+      const body = displayedRows.map(r =>
+        `${r.employeeName}\t${r.daysWorked}\t${r.unit1}\t${r.unit2}\t${r.leaveWithPay}\t${config?.rate1 || 0}\t${config?.rate2 || 0}\t${config?.bonus1 || 0}\t${config?.bonus2 || 0}\t${r.wages}\t${r.bonus}\t${r.gross}\t${r.pf}\t${r.pt}\t${r.esic}\t${r.netWages}`
       ).join('\n');
       navigator.clipboard.writeText(`${header}\n${body}`);
-      addToast({ type: 'success', message: 'Copied filtered list to clipboard!' });
+      addToast({ type: 'success', message: 'Copied to clipboard!' });
     } else {
-      addToast({ type: 'info', message: `${type} export started for ${filteredRows.length} records!` });
+      addToast({ type: 'info', message: `${type} export started for ${displayedRows.length} records!` });
     }
     setIsDropdownOpen(false);
   };
 
+  /* ---- Totals ---- */
+  const totals = useMemo(() => {
+    return displayedRows.reduce((acc, row) => ({
+      daysWorked: acc.daysWorked + (parseFloat(row.daysWorked) || 0),
+      unit1: acc.unit1 + (parseFloat(row.unit1) || 0),
+      unit2: acc.unit2 + (parseFloat(row.unit2) || 0),
+      leaveWithPay: acc.leaveWithPay + (parseFloat(row.leaveWithPay) || 0),
+      rate1: acc.rate1 + (parseFloat(config?.rate1 || 0)),
+      rate2: acc.rate2 + (parseFloat(config?.rate2 || 0)),
+      bonus1: acc.bonus1 + (parseFloat(config?.bonus1 || 0)),
+      bonus2: acc.bonus2 + (parseFloat(config?.bonus2 || 0)),
+      wages: acc.wages + (parseFloat(row.wages) || 0),
+      bonus: acc.bonus + (parseFloat(row.bonus) || 0),
+      gross: acc.gross + (parseFloat(row.gross) || 0),
+      pf: acc.pf + (parseFloat(row.pf) || 0),
+      pt: acc.pt + (parseFloat(row.pt) || 0),
+      esic: acc.esic + (parseFloat(row.esic) || 0),
+      netWages: acc.netWages + (parseFloat(row.netWages) || 0),
+    }), {
+      daysWorked: 0, unit1: 0, unit2: 0, leaveWithPay: 0,
+      rate1: 0, rate2: 0, bonus1: 0, bonus2: 0,
+      wages: 0, bonus: 0, gross: 0, pf: 0, pt: 0, esic: 0, netWages: 0
+    });
+  }, [displayedRows, config]);
+
+  /* ================================================ */
   return (
     <div className={styles.container}>
-      {/* ---- Header Section ---- */}
+
+      {/* ---- Header ---- */}
       <div className={styles.headerSection}>
         <h1 className={styles.title}>Bidi Roller Entry</h1>
         <div className={styles.headerActions}>
@@ -198,110 +238,126 @@ const BidiRollerEntryPage = () => {
         </div>
       </div>
 
-      {/* ---- Filter Panel ---- */}
-      <div className={styles.searchCard}>
-        <div className={styles.searchRow}>
-          {/* Month & Year Selection */}
-          <div className={styles.formField}>
-            <span className={styles.formLabel}>
-              <CalendarDays size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
-              Month and Year
-            </span>
+      {/* ---- Search & Filter Card ---- */}
+      <div className={styles.card}>
+        <div className={styles.filterRow}>
+          <div className={styles.filterGroup}>
+            <span className={styles.label}>Month and Year</span>
             <MonthYearPicker
               value={selectedMonth}
               onChange={setSelectedMonth}
-              placeholder="Select Month & Year"
             />
           </div>
+          <div className={styles.filterGroup}>
+            <span className={styles.label}>Contractor Name - Pf Code</span>
+            <div className={styles.multiSelectWrapper} ref={multiSelectRef}>
+              <div 
+                className={styles.multiSelectBox}
+                onClick={() => setIsMultiSelectOpen(!isMultiSelectOpen)}
+              >
+                {selectedContractors.length === 0 ? (
+                  <span className={styles.placeholderText}>Select Contractors</span>
+                ) : selectedContractors.length > 2 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: '600' }}>
+                      {selectedContractors.length === contractorsList.length ? 'All Contractors Selected' : `${selectedContractors.length} Contractors Selected`}
+                    </span>
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); setSelectedContractors([]); }}
+                      style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', padding: 0 }}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className={styles.tagsList}>
+                    {selectedContractors.map(id => {
+                      const c = contractorsList.find(x => x.id === id);
+                      if (!c) return null;
+                      return (
+                        <span key={id} className={styles.tag}>
+                          {c.name.split(' ')[0]}
+                          <button type="button" className={styles.tagRemove} onClick={(e) => { e.stopPropagation(); toggleContractorOption(id); }}>
+                            <X size={12} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                <ChevronDown size={16} className={styles.dropdownIndicator} />
+              </div>
 
-          {/* Contractor Selection */}
-          <div className={styles.formField}>
-            <span className={styles.formLabel}>
-              <Briefcase size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
-              Contractor Name - Pf Code
-            </span>
-            <select
-              value={selectedContractor}
-              onChange={e => setSelectedContractor(e.target.value)}
-              className={styles.selectInput}
-            >
-              <option value="ALL">ALL</option>
-              {contractorsList.map(c => (
-                <option key={c.id} value={`${c.name} - ${c.pfCode}`}>
-                  {c.name} - {c.pfCode}
-                </option>
-              ))}
-            </select>
+              {isMultiSelectOpen && (
+                <div className={styles.selectMenu}>
+                  {contractorsList.map(c => {
+                    const isSelected = selectedContractors.includes(c.id);
+                    return (
+                      <div 
+                        key={c.id}
+                        onClick={() => toggleContractorOption(c.id)}
+                        className={`${styles.selectOption} ${isSelected ? styles.selectOptionActive : ''}`}
+                      >
+                        <span>{`${c.name} - ${c.pfCode}`}</span>
+                        {isSelected && <Check size={14} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* Search Trigger */}
-          <button className={styles.searchBtn} onClick={handleSearch}>
-            <Search size={16} /> Search
+          
+          <button type="button" className={styles.searchBtn} onClick={handleSearch} disabled={loading}>
+            <Search size={16} /> {loading ? 'Loading...' : 'Search'}
           </button>
         </div>
       </div>
 
-      {/* ---- Data Entry Table ---- */}
+      {/* ---- Entry Table ---- */}
       {!hasSearched ? (
         <div className={styles.tableCard}>
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>
-              <User size={56} />
+              <Users size={56} />
             </div>
             <h3>No Data Loaded</h3>
-            <p>Select Month/Year and Contractor above and click Search to load roller records.</p>
+            <p>Select a Month &amp; Year above and click Search to load employee data.</p>
           </div>
         </div>
       ) : (
         <div className={styles.tableCard}>
-          {/* Table Header Controls */}
+          {/* Table Card Header */}
           <div className={styles.tableCardHeader}>
             <span className={styles.tableCardTitle}>
-              Bidi Roller Entries — {filteredRows.length} Employee{filteredRows.length !== 1 ? 's' : ''}
+              Bidi Roller Wages Entry — {displayedRows.length} Employee{displayedRows.length !== 1 ? 's' : ''}
             </span>
             <span className={styles.monthBadge}>{formatMonthLabel(activeMonth)}</span>
           </div>
 
-          {/* Table Controls (Search filter & count display) */}
-          <div className={styles.tableControls}>
-            <div className={styles.entriesInfo}>
-              Showing 1 to {filteredRows.length} of {filteredRows.length} entries
-            </div>
-            <div className={styles.searchWrapper}>
-              <Search size={14} className={styles.searchIcon} />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={localSearch}
-                onChange={e => setLocalSearch(e.target.value)}
-                className={styles.localSearchInput}
-              />
-            </div>
-          </div>
-
-          {/* Core Table Grid */}
           <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th style={{ width: 220 }}>Employee Name.</th>
-                  <th style={{ textAlign: 'right' }}>No. of Unit worked</th>
-                  <th style={{ textAlign: 'right' }}>No. of Unit worked</th>
-                  <th style={{ textAlign: 'right' }}>No. of Days worked</th>
-                  <th style={{ textAlign: 'right' }}>Leave With Pay</th>
-                  <th style={{ textAlign: 'right' }}>Wages</th>
-                  <th style={{ textAlign: 'right' }}>Bonus</th>
-                  <th style={{ textAlign: 'right' }}>Total</th>
-                  <th style={{ textAlign: 'right' }}>PF</th>
-                  <th style={{ textAlign: 'right' }}>PT</th>
-                  <th style={{ textAlign: 'right' }}>ESIC</th>
-                  <th style={{ textAlign: 'right' }}>Net Wages</th>
+                  <th style={{ width: 180 }}>Employee Name.</th>
+                  <th style={{ textAlign: 'center' }}>No. of Unit worked</th>
+                  <th style={{ textAlign: 'center' }}>No. of Unit worked</th>
+                  <th style={{ textAlign: 'center' }}>No. of Days worked</th>
+                  <th style={{ textAlign: 'center', width: 100 }}>Leave With Pay</th>
+                  <th style={{ textAlign: 'center' }}>Wages</th>
+                  <th style={{ textAlign: 'center' }}>Bonus</th>
+                  <th style={{ textAlign: 'center' }}>Total</th>
+                  <th style={{ textAlign: 'center' }}>PF</th>
+                  <th style={{ textAlign: 'center' }}>PT</th>
+                  <th style={{ textAlign: 'center' }}>ESIC</th>
+                  <th style={{ textAlign: 'center' }}>Net Wages</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map(row => (
+                {displayedRows.map(row => (
                   <tr key={row.employeeId}>
-                    {/* Employee Info Block */}
+                    {/* Employee info */}
                     <td>
                       <div className={styles.empCell}>
                         <span className={styles.empName}>{row.employeeName}</span>
@@ -310,86 +366,69 @@ const BidiRollerEntryPage = () => {
                       </div>
                     </td>
 
-                    {/* Editable: Unit Worked 1 */}
-                    <td style={{ textAlign: 'right' }}>
-                      <input
-                        type="number" min={0}
-                        value={row.unit1}
-                        onChange={e => handleFieldChange(row.employeeId, 'unit1', e.target.value)}
-                        className={styles.tableInput}
-                      />
+                    {/* Units */}
+                    <td style={{ textAlign: 'center', minWidth: 70 }}>
+                      <input type="text" value={row.unit1} onChange={e => handleFieldChange(row.employeeId, 'unit1', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center' }} />
+                    </td>
+                    <td style={{ textAlign: 'center', minWidth: 70 }}>
+                      <input type="text" value={row.unit2} onChange={e => handleFieldChange(row.employeeId, 'unit2', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center' }} />
                     </td>
 
-                    {/* Editable: Unit Worked 2 */}
-                    <td style={{ textAlign: 'right' }}>
-                      <input
-                        type="number" min={0}
-                        value={row.unit2}
-                        onChange={e => handleFieldChange(row.employeeId, 'unit2', e.target.value)}
-                        className={styles.tableInput}
-                      />
+                    {/* Days Worked */}
+                    <td style={{ textAlign: 'center', minWidth: 70 }}>
+                      <input type="text" value={row.daysWorked} onChange={e => handleFieldChange(row.employeeId, 'daysWorked', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center', backgroundColor: '#f0f4f8' }} />
                     </td>
 
-                    {/* Read-only Computed Days worked */}
-                    <td style={{ textAlign: 'right' }}>
-                      <input
-                        type="text"
-                        value={row.daysWorked}
-                        disabled
-                        className={styles.tableInput}
-                      />
+                    {/* Leave With Pay */}
+                    <td style={{ textAlign: 'center', minWidth: 70 }}>
+                      <input type="text" value={row.leaveWithPay} onChange={e => handleFieldChange(row.employeeId, 'leaveWithPay', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center' }} />
                     </td>
 
-                    {/* Editable: Leave with Pay */}
-                    <td style={{ textAlign: 'right' }}>
-                      <input
-                        type="number" min={0}
-                        value={row.leaveWithPay}
-                        onChange={e => handleFieldChange(row.employeeId, 'leaveWithPay', e.target.value)}
-                        className={styles.tableInput}
-                      />
-                    </td>
-
-                    {/* Calculated Columns */}
-                    <td style={{ textAlign: 'right' }}>{row.wages}</td>
-                    <td style={{ textAlign: 'right' }}>{row.bonus}</td>
-                    <td style={{ textAlign: 'right' }}>{row.total}</td>
-                    <td style={{ textAlign: 'right' }}>{row.pf}</td>
-                    <td style={{ textAlign: 'right' }}>{row.pt}</td>
-                    <td style={{ textAlign: 'right' }}>{row.esic}</td>
-                    <td style={{ textAlign: 'right' }}>{row.netWages}</td>
+                    {/* Calculated fields */}
+                    <td style={{ textAlign: 'center' }}>{Math.round(row.wages)}</td>
+                    <td style={{ textAlign: 'center' }}>{Math.round(row.bonus)}</td>
+                    <td style={{ textAlign: 'center' }}>{row.gross?.toLocaleString('en-IN')}</td>
+                    <td style={{ textAlign: 'center' }} className={styles.deductCol}>{row.pf}</td>
+                    <td style={{ textAlign: 'center' }} className={styles.deductCol}>{row.pt}</td>
+                    <td style={{ textAlign: 'center' }} className={styles.deductCol}>{row.esic}</td>
+                    <td style={{ textAlign: 'center' }} className={styles.netCol}>{row.netWages?.toLocaleString('en-IN')}</td>
                   </tr>
                 ))}
-
+                
                 {/* Totals Row */}
-                {filteredRows.length > 0 && (
+                {displayedRows.length > 0 && (
                   <tr className={styles.totalRow}>
                     <td><strong>Total</strong></td>
-                    <td style={{ textAlign: 'right' }}><strong>{totals.unit1}</strong></td>
-                    <td style={{ textAlign: 'right' }}><strong>{totals.unit2}</strong></td>
-                    <td style={{ textAlign: 'right' }}><strong>{totals.daysWorked}</strong></td>
-                    <td style={{ textAlign: 'right' }}><strong>{totals.leaveWithPay}</strong></td>
-                    <td style={{ textAlign: 'right' }}><strong>{Math.round(totals.wages)}</strong></td>
-                    <td style={{ textAlign: 'right' }}><strong>{Math.round(totals.bonus)}</strong></td>
-                    <td style={{ textAlign: 'right' }}><strong>{Math.round(totals.total)}</strong></td>
-                    <td style={{ textAlign: 'right' }}><strong>{totals.pf}</strong></td>
-                    <td style={{ textAlign: 'right' }}><strong>{totals.pt}</strong></td>
-                    <td style={{ textAlign: 'right' }}><strong>{totals.esic}</strong></td>
-                    <td style={{ textAlign: 'right' }}><strong>{Math.round(totals.netWages)}</strong></td>
+                    <td style={{ textAlign: 'center' }}><strong>{totals.unit1}</strong></td>
+                    <td style={{ textAlign: 'center' }}><strong>{totals.unit2}</strong></td>
+                    <td style={{ textAlign: 'center' }}><strong>{totals.daysWorked}</strong></td>
+                    <td style={{ textAlign: 'center' }}><strong>{totals.leaveWithPay}</strong></td>
+                    <td style={{ textAlign: 'center' }}>
+                      <strong>{Math.round(totals.wages).toLocaleString('en-IN')}</strong>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <strong>{Math.round(totals.bonus).toLocaleString('en-IN')}</strong>
+                    </td>
+                    <td style={{ textAlign: 'center' }}><strong>{Math.round(totals.gross).toLocaleString('en-IN')}</strong></td>
+                    <td style={{ textAlign: 'center' }}><strong className={styles.deductCol}>{totals.pf}</strong></td>
+                    <td style={{ textAlign: 'center' }}><strong className={styles.deductCol}>{totals.pt}</strong></td>
+                    <td style={{ textAlign: 'center' }}><strong className={styles.deductCol}>{totals.esic}</strong></td>
+                    <td style={{ textAlign: 'center' }}><strong className={styles.netCol}>{Math.round(totals.netWages).toLocaleString('en-IN')}</strong></td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          {/* Centered Save Action Button */}
-          <div className={styles.saveSection} style={{ justifyContent: 'center' }}>
-            <button className={styles.saveBtn} onClick={handleSave}>
-              Save
+          {/* Save Button */}
+          <div className={styles.saveSection}>
+            <button className={styles.saveBtn} onClick={handleSave} disabled={loading}>
+              <Save size={18} /> {loading ? 'Saving...' : 'Save'}
             </button>
           </div>
         </div>
       )}
+
     </div>
   );
 };

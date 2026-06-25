@@ -16,7 +16,7 @@ const kycSchema = Joi.object({
 });
 
 const nomineeSchema = Joi.object({
-    address_id: Joi.string().guid({ version: "uuidv4" }).required().messages({
+    address_id: Joi.string().guid().required().messages({
         "string.guid": "Nominee Address ID must be a valid UUID.",
         "any.required": "Nominee Address is required.",
     }),
@@ -63,16 +63,16 @@ const familyMemberSchema = Joi.object({
 });
 
 const createEmployeeSchema = Joi.object({
-    company_id: Joi.string().guid({ version: "uuidv4" }).required().messages({
+    company_id: Joi.string().guid().required().messages({
         "string.guid": "Company ID must be a valid UUID.",
         "any.required": "Company ID is required.",
     }),
-    contractor_id: Joi.string().guid({ version: "uuidv4" }).optional().allow(null, ""),
-    address_id: Joi.string().guid({ version: "uuidv4" }).required().messages({
+    contractor_id: Joi.string().guid().optional().allow(null, ""),
+    address_id: Joi.string().guid().required().messages({
         "string.guid": "Address ID must be a valid UUID.",
         "any.required": "Address ID is required.",
     }),
-    image_path: Joi.string().max(500).optional().allow(null, ""),
+    image_path: Joi.string().optional().allow(null, ""),
     uan: Joi.string().pattern(/^[0-9]{12}$/).required().messages({
         "string.pattern.base": "UAN must be exactly 12 digits.",
         "any.required": "UAN is required.",
@@ -130,11 +130,11 @@ const createEmployeeSchema = Joi.object({
 });
 
 const updateEmployeeSchema = Joi.object({
-    contractor_id: Joi.string().guid({ version: "uuidv4" }).optional().allow(null, ""),
-    address_id: Joi.string().guid({ version: "uuidv4" }).optional().messages({
+    contractor_id: Joi.string().guid().optional().allow(null, ""),
+    address_id: Joi.string().guid().optional().messages({
         "string.guid": "Address ID must be a valid UUID.",
     }),
-    image_path: Joi.string().max(500).optional().allow(null, ""),
+    image_path: Joi.string().optional().allow(null, ""),
     uan: Joi.string().pattern(/^[0-9]{12}$/).optional().messages({
         "string.pattern.base": "UAN must be exactly 12 digits.",
     }),

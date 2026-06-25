@@ -1,41 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import styles from './EmployeePage.module.css';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 import { Plus, Trash2 } from 'lucide-react';
+import FaceEnroll from './FaceEnroll';
 
 const GENDERS = ['MALE', 'FEMALE', 'OTHER'];
 const RELATIONS = ['FATHER', 'MOTHER', 'HUSBAND', 'WIFE', 'SON', 'DAUGHTER', 'BROTHER', 'SISTER', 'OTHER'];
 const MARITAL_STATUSES = ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED'];
 const QUALIFICATIONS = ['UNDER MATRIC', 'MATRIC', 'INTERMEDIATE', 'GRADUATE', 'POST GRADUATE', 'DIPLOMA'];
-const EMPLOYEE_TYPES = ['OFFICE STAFF', 'PACKING STAFF', 'BIDI ROLLER'];
-const CONTRACTORS = ['SELF', 'CONTRACTOR A', 'CONTRACTOR B', 'CONTRACTOR C'];
+const EMPLOYEE_TYPES = ['BIDI PACKER', 'BIDI MAKER', 'OFFICE STAFF'];
 const DOC_TYPES = ['AADHAAR', 'PAN', 'UAN', 'BANK PASSBOOK', 'VOTER ID'];
 
-const ADDRESS_TEMPLATES = [
-  {
-    value: 'BANDHA GHAT',
-    label: 'BANDHA GHAT',
-    postOffice: 'JHALDA',
-    district: 'PURULIA',
-    pincode: '723202'
-  },
-  {
-    value: 'DURGAPUR INDUSTRIAL AREA',
-    label: 'DURGAPUR INDUSTRIAL AREA',
-    postOffice: 'DURGAPUR HQ',
-    district: 'PASCHIM BARDHAMAN',
-    pincode: '713216'
-  },
-  {
-    value: 'SALT LAKE SECTOR V',
-    label: 'SALT LAKE SECTOR V',
-    postOffice: 'BIDHANNAGAR',
-    district: 'NORTH 24 PARGANAS',
-    pincode: '700091'
-  }
-];
-
-const EmployeeForm = ({ employee, onSave, onCancel }) => {
+const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCancel }) => {
   const addToast = useToast();
   const [activeTab, setActiveTab] = useState('Personal Info');
   const [errors, setErrors] = useState({});
@@ -71,7 +47,9 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
     employeeImage: '',
     kycDetails: [],
     nomineeDetails: [],
-    familyDetails: []
+    familyDetails: [],
+    faceDescriptorPath: null,
+    tempFaceDescriptors: null
   });
 
   // Local Inputs State for nested records addition
@@ -112,7 +90,9 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
         ...employee,
         kycDetails: employee.kycDetails || [],
         nomineeDetails: employee.nomineeDetails || [],
-        familyDetails: employee.familyDetails || []
+        familyDetails: employee.familyDetails || [],
+        faceDescriptorPath: employee.faceDescriptorPath || null,
+        tempFaceDescriptors: null
       });
     } else {
       setFormData({
@@ -145,7 +125,9 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
         employeeImage: '',
         kycDetails: [],
         nomineeDetails: [],
-        familyDetails: []
+        familyDetails: [],
+        faceDescriptorPath: null,
+        tempFaceDescriptors: null
       });
     }
   }, [employee]);
@@ -245,7 +227,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
 
   const handleAddressChange = (e) => {
     const val = e.target.value;
-    const template = ADDRESS_TEMPLATES.find((t) => t.value === val);
+    const template = addresses.find((t) => t.address === val);
     if (template) {
       setFormData((prev) => ({
         ...prev,
@@ -272,11 +254,36 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        employeeImage: e.target.files[0].name
-      }));
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({
+          ...prev,
+          employeeImage: reader.result
+        }));
+      };
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData((prev) => ({
+      ...prev,
+      employeeImage: ''
+    }));
+    const fileInput = document.getElementById('employeeImageInput');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
+  const getPhotoUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('data:')) return path;
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/payroll/v1/';
+    const host = baseUrl.replace('/payroll/v1/', '');
+    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+    return `${host}/payroll/${cleanPath}`;
   };
 
   // KYC Helpers
@@ -343,7 +350,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
 
   const handleNomineeAddressChange = (e) => {
     const val = e.target.value;
-    const template = ADDRESS_TEMPLATES.find((t) => t.value === val);
+    const template = addresses.find((t) => t.address === val);
     if (template) {
       setNomineeInput((prev) => ({
         ...prev,
@@ -491,7 +498,7 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
     <div className={styles.formCard}>
       {/* Tabs Menu */}
       <div className={styles.tabsList}>
-        {['Personal Info', 'KYC Detail', 'Nominee Details', 'Family Members Details'].map((tab) => (
+        {['Personal Info', 'KYC Detail', 'Nominee Details', 'Family Members Details', 'Face Registration'].map((tab) => (
           <button
             key={tab}
             type="button"
@@ -510,15 +517,28 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
             <div className={styles.field}>
               <label className={styles.label}>Select Employee Image:</label>
               <input
+                id="employeeImageInput"
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
                 className={styles.input}
               />
               {formData.employeeImage && (
-                <span style={{ fontSize: '0.8rem', color: 'var(--primary)' }}>
-                  Selected: {formData.employeeImage}
-                </span>
+                <div className={styles.imagePreviewContainer}>
+                  <img
+                    src={getPhotoUrl(formData.employeeImage)}
+                    alt="Employee"
+                    className={styles.previewImage}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className={styles.removeImageBtn}
+                    title="Remove Image"
+                  >
+                    ✕
+                  </button>
+                </div>
               )}
             </div>
 
@@ -589,13 +609,11 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
 
             <div className={styles.field}>
               <label className={styles.label}>Date Of Birth As Per Aadhaar</label>
-              <input
-                type="date"
-                name="dob"
-                value={formData.dob}
-                onChange={handleChange}
-                className={styles.input}
-              />
+            <DatePicker
+              name="dob"
+              value={formData.dob}
+              onChange={handleChange}
+            />
             </div>
 
             <div className={styles.field}>
@@ -714,14 +732,10 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
               <label className={styles.label}>
                 Date of Joining <span className={styles.required}>*</span>
               </label>
-              <input
-                type="date"
+              <DatePicker
                 name="dateOfJoining"
                 value={formData.dateOfJoining}
                 onChange={handleChange}
-                onBlur={handleBlur}
-                className={styles.input}
-                required
               />
               {errors.dateOfJoining && <span className={styles.errorText}>{errors.dateOfJoining}</span>}
             </div>
@@ -754,9 +768,9 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 onChange={handleChange}
                 className={styles.select}
               >
-                <option value="">SELECT CONTRACTOR</option>
-                {CONTRACTORS.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                <option value="SELF">SELF</option>
+                {contractors.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>
             </div>
@@ -774,8 +788,8 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                 required
               >
                 <option value="" disabled>SELECT ADDRESS</option>
-                {ADDRESS_TEMPLATES.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                {addresses.map((opt) => (
+                  <option key={opt.id} value={opt.address}>{opt.address}</option>
                 ))}
               </select>
               {errors.address && <span className={styles.errorText}>{errors.address}</span>}
@@ -1042,8 +1056,8 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
                   className={styles.select}
                 >
                   <option value="">SELECT ADDRESS</option>
-                  {ADDRESS_TEMPLATES.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  {addresses.map((opt) => (
+                    <option key={opt.id} value={opt.address}>{opt.address}</option>
                   ))}
                 </select>
               </div>
@@ -1114,12 +1128,10 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
 
               <div className={styles.field}>
                 <label className={styles.label}>DOB (as Per Aadhar)</label>
-                <input
-                  type="date"
+                <DatePicker
                   name="dob"
                   value={nomineeInput.dob}
                   onChange={handleNomineeInputChange}
-                  className={styles.input}
                 />
               </div>
 
@@ -1262,12 +1274,10 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
 
               <div className={styles.inlineField}>
                 <label className={styles.label}>DOB (as Per Aadhar)</label>
-                <input
-                  type="date"
+                <DatePicker
                   name="dob"
                   value={familyInput.dob}
                   onChange={handleFamilyInputChange}
-                  className={styles.input}
                 />
               </div>
 
@@ -1335,6 +1345,22 @@ const EmployeeForm = ({ employee, onSave, onCancel }) => {
               </table>
             </div>
           </div>
+        )}
+
+        {/* TAB 5: Face Registration */}
+        {activeTab === 'Face Registration' && (
+          <FaceEnroll
+            employeeId={formData.id}
+            name={formData.memberName}
+            faceDescriptorPath={formData.faceDescriptorPath}
+            onDescriptorsCaptured={(descriptors) => {
+              setFormData((prev) => ({
+                ...prev,
+                tempFaceDescriptors: descriptors
+              }));
+              addToast({ type: 'success', message: 'Face descriptors captured in form state. Click Save to complete enrollment.' });
+            }}
+          />
         )}
 
         {/* Buttons right-aligned */}

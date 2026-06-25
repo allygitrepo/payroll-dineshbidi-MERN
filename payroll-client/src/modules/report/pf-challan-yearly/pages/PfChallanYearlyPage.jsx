@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useToast } from '../../../../shared/components';
 import { getEpfChallans } from '../../../entry/epf-challan-date/services/epfChallanDateService';
 import YearPicker from '../../forms/form-3a/components/YearPicker';
@@ -26,9 +28,15 @@ const PfChallanYearlyPage = () => {
     return dStr;
   };
 
+  const [yearlyRecords, setYearlyRecords] = useState([]);
+
   // Compile yearly financial challan records (April of selected year to March of following year)
-  const yearlyRecords = useMemo(() => {
-    if (!searchTriggeredYear) return [];
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!searchTriggeredYear) {
+        setYearlyRecords([]);
+        return;
+      }
 
     const startYearNum = parseInt(searchTriggeredYear);
     const endYearNum = startYearNum + 1;
@@ -50,11 +58,18 @@ const PfChallanYearlyPage = () => {
     ];
 
     // Load challans from database
-    const challanDb = getEpfChallans() || [];
-
-    return financialMonths.map(item => {
-      // Find matching challan record
-      const match = challanDb.find(c => c.wageMonth === item.key);
+    try {
+      const companyId = localStorage.getItem('selectedCompany');
+      const challanDb = await getEpfChallans(companyId) || [];
+      const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const mapped = financialMonths.map(item => {
+      // Find matching challan record. Support MM/YYYY, Mon-YY, and Mon-YYYY
+      const altKey1 = `${shortMonths[item.month - 1]}-${String(item.year).slice(-2)}`; // Sep-21
+      const altKey2 = `${shortMonths[item.month - 1]}-${item.year}`; // Sep-2021
+      const match = challanDb.find(c => {
+        const dbM = String(c.wageMonth).trim();
+        return dbM === item.key || dbM === altKey1 || dbM === altKey2 || dbM === item.name || dbM === item.key.replace('/', '-');
+      });
       
       let empShare = 0;
       let erShare = 0;
@@ -63,8 +78,14 @@ const PfChallanYearlyPage = () => {
 
       if (match) {
         empShare = Math.round(parseFloat(match.ac1EE) || 0);
-        // Employer share is AC-01 Employer + AC-10 Pension
-        erShare = Math.round((parseFloat(match.ac1ER) || 0) + (parseFloat(match.ac10) || 0));
+        // Total Challan Amount is AC1(ER) + AC2 + AC10 + AC21 + AC22
+        erShare = Math.round(
+          (parseFloat(match.ac1ER) || 0) +
+          (parseFloat(match.ac2) || 0) +
+          (parseFloat(match.ac10) || 0) +
+          (parseFloat(match.ac21) || 0) +
+          (parseFloat(match.ac22) || 0)
+        );
         dueDate = match.dueDate ? formatDateString(match.dueDate) : dueDate;
         actualDate = match.challanDate ? formatDateString(match.challanDate) : '';
       } else {
@@ -83,6 +104,12 @@ const PfChallanYearlyPage = () => {
         actualDate
       };
     });
+      setYearlyRecords(mapped);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  fetchData();
   }, [searchTriggeredYear]);
 
   // Filter records based on local search term
@@ -173,7 +200,7 @@ const PfChallanYearlyPage = () => {
     }
 
     if (type === 'Copy') {
-      const headers = ['Month', 'Employee Share', 'Employer Share', 'Due Date', 'Actual Date'];
+      const headers = ['Month', 'Employee Share', 'Total Challan Amount', 'Due Date', 'Actual Date'];
       let text = headers.join('\t') + '\n';
       filteredRecords.forEach(rec => {
         text += `${rec.monthName}\t${rec.empShare}\t${rec.erShare}\t${rec.dueDate}\t${rec.actualDate}\n`;
@@ -192,8 +219,29 @@ const PfChallanYearlyPage = () => {
         });
       });
     } 
+    else if (type === 'TXT (PF)') {
+      let txtContent = '';
+      filteredRecords.forEach(rec => {
+        txtContent += `${rec.monthName}####${rec.empShare}####${rec.erShare}####${rec.dueDate}####${rec.actualDate || ''}\n`;
+      });
+
+      const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `PF_Challan_Yearly_${searchTriggeredYear}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      addToast({
+        type: 'success',
+        message: `PF Challan Yearly TXT downloaded successfully!`
+      });
+    }
     else if (type === 'CSV' || type === 'Excel') {
-      const headers = ['Month', 'Employee Share', 'Employer Share', 'Due Date', 'Actual Date'];
+      const headers = ['Month', 'Employee Share', 'Total Challan Amount', 'Due Date', 'Actual Date'];
       let csvContent = headers.join(',') + '\n';
       filteredRecords.forEach(rec => {
         csvContent += `${rec.monthName},${rec.empShare},${rec.erShare},${rec.dueDate},${rec.actualDate}\n`;
@@ -215,8 +263,55 @@ const PfChallanYearlyPage = () => {
         message: `PF Challan Yearly ${type} downloaded successfully!`
       });
     }
+    else if (type === 'PDF') {
+      const doc = new jsPDF('landscape');
+      doc.setFontSize(16);
+      const titleText = `PF Challan Yearly Report_${searchTriggeredYear}`;
+      doc.text(titleText, doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+
+      const tableColumn = [
+        "Month", "Employee Share", "Total Challan Amount", "Due Date", "Actual Date"
+      ];
+      const tableRows = [];
+
+      filteredRecords.forEach((rec) => {
+        tableRows.push([
+          rec.monthName,
+          rec.empShare,
+          rec.erShare,
+          rec.dueDate,
+          rec.actualDate || ''
+        ]);
+      });
+
+      const totalRow = [
+        "Total", totals.empShare, totals.erShare, "", ""
+      ];
+      tableRows.push(totalRow);
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 25,
+        theme: 'grid',
+        headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold', halign: 'center', fontSize: 8 },
+        bodyStyles: { textColor: [55, 65, 81], halign: 'center', valign: 'middle', fontSize: 8 },
+        didParseCell: function(data) {
+          if (data.row.index === tableRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [243, 244, 246];
+          }
+        }
+      });
+
+      doc.save(`PF_Challan_Yearly_${searchTriggeredYear}.pdf`);
+      addToast({
+        type: 'success',
+        message: `PF Challan Yearly PDF downloaded successfully!`
+      });
+    }
     else {
-      // PDF and Print simulator matching system behaviors
+      // Print simulator matching system behaviors
       addToast({
         type: 'info',
         message: `${type} generated for PF Challan Yearly Report (${searchTriggeredYear})!`
@@ -247,6 +342,9 @@ const PfChallanYearlyPage = () => {
               <div className={styles.dropdownMenu}>
                 <button onClick={() => handleExport('Excel')}>
                   <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button onClick={() => handleExport('TXT (PF)')}>
+                  <FileText size={16} /> TXT (PF)
                 </button>
                 <button onClick={() => handleExport('Copy')}>
                   <Copy size={16} /> Copy
@@ -313,7 +411,7 @@ const PfChallanYearlyPage = () => {
               <tr>
                 <th>For The Month Of</th>
                 <th>Employee's Share Rs.</th>
-                <th>Employer Share Rs.</th>
+                <th>Total Challan Amount Rs.</th>
                 <th>Due date of Payment</th>
                 <th>Actual Date of Payment</th>
               </tr>

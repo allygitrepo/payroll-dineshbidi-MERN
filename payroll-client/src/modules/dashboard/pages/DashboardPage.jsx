@@ -8,13 +8,11 @@ const DashboardPage = () => {
 
   return (
     <div className={styles.appContainer}>
-      {/* Top Navbar */}
       <Header
         sidebarCollapsed={sidebarCollapsed}
         setSidebarCollapsed={setSidebarCollapsed}
       />
 
-      {/* Main Body */}
       <div className={styles.mainBody}>
         {/* Sidebar */}
         <Sidebar sidebarCollapsed={sidebarCollapsed} />
@@ -22,6 +20,7 @@ const DashboardPage = () => {
         {/* Content Pane */}
         <main className={styles.contentPane}>
           <Outlet />
+          {/* Footer */}
           <Footer />
         </main>
       </div>

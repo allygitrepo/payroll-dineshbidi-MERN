@@ -24,10 +24,15 @@ const PmrpyReportPage = () => {
   const dropdownRef = useRef(null);
   const addToast = useToast();
 
+  const [allRecords, setAllRecords] = useState([]);
+
   // Load database employees whose PMRPY status is YES, and combine with mock records
-  const allRecords = useMemo(() => {
-    const dbList = getEmployees() || [];
-    const dbPmrpy = dbList.filter(emp => emp.pmrpy === 'YES');
+  useEffect(() => {
+    const fetchData = async () => {
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const dbList = await getEmployees(companyId) || [];
+        const dbPmrpy = dbList.filter(emp => emp.pmrpy === 'YES');
 
     const mappedDb = dbPmrpy.map(emp => {
       const grossWages = emp.basicSalary || 8000;
@@ -51,7 +56,12 @@ const PmrpyReportPage = () => {
     const uniqueUans = new Set(mappedDb.map(e => e.uan));
     const uniqueMocks = MOCK_PMRPY_RECORDS.filter(e => !uniqueUans.has(e.uan));
 
-    return [...mappedDb, ...uniqueMocks];
+    setAllRecords([...mappedDb, ...uniqueMocks]);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      }
+    };
+    fetchData();
   }, []);
 
   // Filter records based on whether search was clicked and local search term

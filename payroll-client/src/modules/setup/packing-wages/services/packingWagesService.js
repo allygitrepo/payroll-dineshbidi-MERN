@@ -1,88 +1,49 @@
-const STORAGE_KEY = 'payroll_packing_wages';
+import apiClient from '../../../../shared/services/apiClient';
 
-const defaultPackingWages = [
-  {
-    id: '1',
-    startDate: '2018-02-01',
-    endDate: '2021-11-30',
-    rate1: '72.00',
-    rate2: '110.00',
-    rate3: '95.00',
-    rate4: '12.00',
-    bonus: '8.33'
-  },
-  {
-    id: '2',
-    startDate: '2016-04-01',
-    endDate: '2018-01-31',
-    rate1: '65.00',
-    rate2: '115.00',
-    rate3: '0.00',
-    rate4: '0.00',
-    bonus: '8.33'
-  },
-  {
-    id: '3',
-    startDate: '2021-12-01',
-    endDate: '2023-03-31',
-    rate1: '90.00',
-    rate2: '135.00',
-    rate3: '115.00',
-    rate4: '15.00',
-    bonus: '8.33'
-  },
-  {
-    id: '4',
-    startDate: '2023-04-01',
-    endDate: '2025-03-31',
-    rate1: '99.00',
-    rate2: '149.00',
-    rate3: '127.00',
-    rate4: '214.00',
-    bonus: '8.33'
-  },
-  {
-    id: '5',
-    startDate: '2025-04-01',
-    endDate: '2027-03-31',
-    rate1: '109.00',
-    rate2: '165.00',
-    rate3: '149.00',
-    rate4: '235.00',
-    bonus: '8.33'
-  }
-];
+const mapToFrontend = (w) => ({
+  id: w.id,
+  startDate: w.start_date,
+  endDate: w.end_date,
+  rate1: w.rate_1 ? String(w.rate_1) : '0.00',
+  rate2: w.rate_2 ? String(w.rate_2) : '0.00',
+  rate3: w.rate_3 ? String(w.rate_3) : '0.00',
+  rate4: w.rate_4 ? String(w.rate_4) : '0.00',
+  bonus: w.bonus ? String(w.bonus) : '0.00'
+});
 
-export const getPackingWages = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultPackingWages));
-    return defaultPackingWages;
+const mapToBackend = (w, companyId) => ({
+  company_id: companyId,
+  start_date: w.startDate,
+  end_date: w.endDate,
+  rate_1: parseFloat(w.rate1) || 0.00,
+  rate_2: parseFloat(w.rate2) || 0.00,
+  rate_3: parseFloat(w.rate3) || 0.00,
+  rate_4: parseFloat(w.rate4) || 0.00,
+  bonus: parseFloat(w.bonus) || 0.00
+});
+
+export const getPackingWages = async (companyId) => {
+  if (!companyId) return [];
+  const response = await apiClient.get(`packing-wages/company/${companyId}`);
+  if ((response.data?.status || response.data?.success) && response.data?.data) {
+    return response.data.data.map(mapToFrontend);
   }
-  return JSON.parse(data);
+  return [];
 };
 
-export const savePackingWages = (wages) => {
-  const list = getPackingWages();
+export const savePackingWages = async (wages, companyId) => {
+  const payload = mapToBackend(wages, companyId);
   if (wages.id) {
-    // Update existing
-    const index = list.findIndex(w => w.id === wages.id);
-    if (index !== -1) {
-      list[index] = wages;
-    }
+    // Update
+    await apiClient.put(`packing-wages/${wages.id}`, payload);
   } else {
-    // Create new
-    const nextId = String(list.length > 0 ? Math.max(...list.map(w => parseInt(w.id))) + 1 : 1);
-    const newWages = { ...wages, id: nextId };
-    list.push(newWages);
+    // Create
+    await apiClient.post('packing-wages', payload);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  return list;
+  return await getPackingWages(companyId);
 };
 
-export const deletePackingWages = (id) => {
-  const list = getPackingWages();
-  const filtered = list.filter(w => w.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  return filtered;
+export const deletePackingWages = async (id, companyId) => {
+  await apiClient.delete(`packing-wages/${id}`);
+  return await getPackingWages(companyId);
 };

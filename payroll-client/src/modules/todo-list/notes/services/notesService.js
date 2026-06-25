@@ -1,51 +1,46 @@
-const STORAGE_KEY = 'payroll_notes';
+import apiClient from '../../../../shared/services/apiClient';
 
-const defaultNotes = [
-  {
-    id: 'n1',
-    date: '2026-06-20',
-    content: 'Verify EPF Challan date submission with the accounting department.'
-  },
-  {
-    id: 'n2',
-    date: '2026-06-22',
-    content: "Follow up on Kandan Kumar's AADHAAR KYC verification document status."
-  },
-  {
-    id: 'n3',
-    date: '2026-06-23',
-    content: 'Convert monthly payroll Excel sheets to standard bank formats for salary disbursement.'
+export const getNotes = async (companyId) => {
+  if (!companyId) return [];
+  try {
+    const response = await apiClient.get(`/notes/company/${companyId}`);
+    return response.data?.data || [];
+  } catch (error) {
+    console.error('Failed to fetch notes:', error);
+    throw error;
   }
-];
-
-export const getNotes = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultNotes));
-    return defaultNotes;
-  }
-  return JSON.parse(data);
 };
 
-export const saveNote = (note) => {
-  const notes = getNotes();
-  if (note.id) {
-    const index = notes.findIndex(item => item.id === note.id);
-    if (index !== -1) {
-      notes[index] = note;
+export const saveNote = async (note) => {
+  try {
+    if (note.id) {
+      // Update existing
+      const { id, company_id, ...updatePayload } = note;
+      const response = await apiClient.put(`/notes/${note.id}`, updatePayload, {
+        headers: { 'company-id': company_id }
+      });
+      return response.data?.data;
+    } else {
+      // Create new
+      const { id, ...createPayload } = note;
+      const response = await apiClient.post(`/notes`, createPayload);
+      return response.data?.data;
     }
-  } else {
-    const nextId = String(notes.length > 0 ? Math.max(...notes.map(item => parseInt(item.id.replace('n', '')) || 0)) + 1 : 1);
-    const newNote = { ...note, id: `n${nextId}` };
-    notes.unshift(newNote); // Put new notes at the top
+  } catch (error) {
+    console.error('Failed to save note:', error);
+    throw error;
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-  return notes;
 };
 
-export const deleteNote = (id) => {
-  const notes = getNotes();
-  const filtered = notes.filter(item => item.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  return filtered;
+export const deleteNote = async (id) => {
+  try {
+    const companyId = localStorage.getItem('selectedCompany');
+    const response = await apiClient.delete(`/notes/${id}`, {
+      headers: { 'company-id': companyId }
+    });
+    return response.data?.data;
+  } catch (error) {
+    console.error('Failed to delete note:', error);
+    throw error;
+  }
 };

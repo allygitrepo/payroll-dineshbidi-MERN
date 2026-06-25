@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './BidiRollerWagesPage.module.css';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 
 const BidiRollerWagesForm = ({ wages, onSave, onCancel }) => {
   const addToast = useToast();
@@ -10,10 +10,11 @@ const BidiRollerWagesForm = ({ wages, onSave, onCancel }) => {
     startDate: '',
     endDate: '',
     rate1: '',
+    hra1: '',
+    bonus1: '',
     rate2: '',
-    rate3: '',
-    rate4: '',
-    bonus: ''
+    hra2: '',
+    bonus2: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -28,10 +29,11 @@ const BidiRollerWagesForm = ({ wages, onSave, onCancel }) => {
         startDate: '',
         endDate: '',
         rate1: '',
+        hra1: '',
+        bonus1: '',
         rate2: '',
-        rate3: '',
-        rate4: '',
-        bonus: ''
+        hra2: '',
+        bonus2: ''
       });
     }
   }, [wages]);
@@ -43,7 +45,7 @@ const BidiRollerWagesForm = ({ wages, onSave, onCancel }) => {
     if (name === 'endDate') {
       return !value ? 'End Date is required!' : '';
     }
-    if (name === 'bonus') {
+    if (name === 'bonus1' || name === 'bonus2') {
       return !value || !value.trim() ? 'Bonus is required!' : '';
     }
     return '';
@@ -53,7 +55,7 @@ const BidiRollerWagesForm = ({ wages, onSave, onCancel }) => {
     const { name, value } = e.target;
     let finalValue = value;
 
-    if (['rate1', 'rate2', 'rate3', 'rate4', 'bonus'].includes(name)) {
+    if (['rate1', 'hra1', 'bonus1', 'rate2', 'hra2', 'bonus2'].includes(name)) {
       // Allow only numbers and a single decimal point
       let cleaned = value.replace(/[^0-9.]/g, '');
       const parts = cleaned.split('.');
@@ -91,7 +93,7 @@ const BidiRollerWagesForm = ({ wages, onSave, onCancel }) => {
     e.preventDefault();
 
     const tempErrors = {};
-    const keysToValidate = ['startDate', 'endDate', 'bonus'];
+    const keysToValidate = ['startDate', 'endDate', 'bonus1', 'bonus2'];
 
     keysToValidate.forEach((key) => {
       const error = validateField(key, formData[key] || '');
@@ -110,10 +112,11 @@ const BidiRollerWagesForm = ({ wages, onSave, onCancel }) => {
     const formattedData = {
       ...formData,
       rate1: formData.rate1 ? Number(formData.rate1).toFixed(2) : '0.00',
+      hra1: formData.hra1 ? Number(formData.hra1).toFixed(2) : '0.00',
+      bonus1: formData.bonus1 ? Number(formData.bonus1).toFixed(2) : '0.00',
       rate2: formData.rate2 ? Number(formData.rate2).toFixed(2) : '0.00',
-      rate3: formData.rate3 ? Number(formData.rate3).toFixed(2) : '0.00',
-      rate4: formData.rate4 ? Number(formData.rate4).toFixed(2) : '0.00',
-      bonus: Number(formData.bonus).toFixed(2)
+      hra2: formData.hra2 ? Number(formData.hra2).toFixed(2) : '0.00',
+      bonus2: formData.bonus2 ? Number(formData.bonus2).toFixed(2) : '0.00'
     };
 
     onSave(formattedData);
@@ -128,13 +131,10 @@ const BidiRollerWagesForm = ({ wages, onSave, onCancel }) => {
             <label className={styles.label}>
               Start Date <span className={styles.required}>*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               name="startDate"
               value={formData.startDate}
               onChange={handleChange}
-              onBlur={handleBlur}
-              className={styles.input}
             />
             {errors.startDate && <span className={styles.errorText}>{errors.startDate}</span>}
           </div>
@@ -144,13 +144,10 @@ const BidiRollerWagesForm = ({ wages, onSave, onCancel }) => {
             <label className={styles.label}>
               End Date <span className={styles.required}>*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               name="endDate"
               value={formData.endDate}
               onChange={handleChange}
-              onBlur={handleBlur}
-              className={styles.input}
             />
             {errors.endDate && <span className={styles.errorText}>{errors.endDate}</span>}
           </div>
@@ -170,6 +167,38 @@ const BidiRollerWagesForm = ({ wages, onSave, onCancel }) => {
             />
           </div>
 
+          {/* HRA 1 */}
+          <div className={styles.field}>
+            <label className={styles.label}>HRA 1</label>
+            <input
+              type="text"
+              name="hra1"
+              value={formData.hra1}
+              onChange={handleChange}
+              placeholder="ENTER HRA1"
+              className={styles.input}
+            />
+          </div>
+
+          {/* Bonus 1 */}
+          <div className={styles.field}>
+            <label className={styles.label}>
+              Bonus 1 <span className={styles.required}>*</span>
+            </label>
+            <input
+              type="text"
+              name="bonus1"
+              value={formData.bonus1}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="ENTER BONUS1"
+              className={styles.input}
+            />
+            {errors.bonus1 && <span className={styles.errorText}>{errors.bonus1}</span>}
+          </div>
+        </div>
+
+        <div className={styles.formGrid} style={{ marginTop: '20px' }}>
           {/* Rate 2 */}
           <div className={styles.field}>
             <label className={styles.label}>Rate 2</label>
@@ -183,49 +212,34 @@ const BidiRollerWagesForm = ({ wages, onSave, onCancel }) => {
             />
           </div>
 
-          {/* Rate 3 */}
+          {/* HRA 2 */}
           <div className={styles.field}>
-            <label className={styles.label}>Rate 3</label>
+            <label className={styles.label}>HRA 2</label>
             <input
               type="text"
-              name="rate3"
-              value={formData.rate3}
+              name="hra2"
+              value={formData.hra2}
               onChange={handleChange}
-              placeholder="ENTER RATE3"
+              placeholder="ENTER HRA2"
               className={styles.input}
             />
           </div>
 
-          {/* Rate 4 */}
-          <div className={styles.field}>
-            <label className={styles.label}>Rate 4</label>
-            <input
-              type="text"
-              name="rate4"
-              value={formData.rate4}
-              onChange={handleChange}
-              placeholder="ENTER RATE4"
-              className={styles.input}
-            />
-          </div>
-        </div>
-
-        <div className={styles.formGrid} style={{ marginTop: '20px' }}>
-          {/* Bonus */}
+          {/* Bonus 2 */}
           <div className={styles.field}>
             <label className={styles.label}>
-              Bonus <span className={styles.required}>*</span>
+              Bonus 2 <span className={styles.required}>*</span>
             </label>
             <input
               type="text"
-              name="bonus"
-              value={formData.bonus}
+              name="bonus2"
+              value={formData.bonus2}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="ENTER BONUS"
+              placeholder="ENTER BONUS2"
               className={styles.input}
             />
-            {errors.bonus && <span className={styles.errorText}>{errors.bonus}</span>}
+            {errors.bonus2 && <span className={styles.errorText}>{errors.bonus2}</span>}
           </div>
         </div>
 

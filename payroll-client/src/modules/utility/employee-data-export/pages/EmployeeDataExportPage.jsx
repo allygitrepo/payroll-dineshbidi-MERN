@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
 import { useToast, MonthYearPicker } from '../../../../shared/components';
 import { getEmployees } from '../../../master/employee/services/employeeService';
@@ -6,18 +6,20 @@ import styles from '../components/EmployeeDataExportPage.module.css';
 
 // Extra mock database to match the screenshot style values
 const EXTRA_MOCK_EMPLOYEES = [
-  { id: 'm1', uan: '100030547463', ipNumber: '7431095090', memberId: '16729', memberName: 'ASWINI KUMAR', dob: '1993-08-24', dateOfJoining: '2025-04-01', gender: 'MALE', fatherHusbandName: 'MADHUSUDAN KUMAR', relation: 'FATHER' },
-  { id: 'm2', uan: '100071775230', ipNumber: '7431097178', memberId: '16730', memberName: 'ABALA KUMAR', dob: '1984-02-04', dateOfJoining: '2009-06-01', gender: 'FEMALE', fatherHusbandName: 'MAGARAM KUMAR', relation: 'FATHER' },
-  { id: 'm3', uan: '100074055850', ipNumber: '7431097302', memberId: '16731', memberName: 'ADITYA KUMAR', dob: '1975-05-02', dateOfJoining: '1999-01-01', gender: 'MALE', fatherHusbandName: 'HABLU KUMAR', relation: 'FATHER' },
-  { id: 'm4', uan: '100074323433', ipNumber: '7431099562', memberId: '16732', memberName: 'AGAMANI KUMAR', dob: '1975-08-13', dateOfJoining: '2010-10-02', gender: 'FEMALE', fatherHusbandName: 'PHALGUNI KUMAR', relation: 'FATHER' },
-  { id: 'm5', uan: '100076209547', ipNumber: '7431085231', memberId: '16733', memberName: 'AJIT MAHATO', dob: '1989-02-02', dateOfJoining: '2008-01-01', gender: 'MALE', fatherHusbandName: 'SHRIPADA MAHATO', relation: 'FATHER' },
-  { id: 'm6', uan: '100079498235', ipNumber: '7431088720', memberId: '16734', memberName: 'AMBIKA KUMAR', dob: '1970-08-07', dateOfJoining: '2001-09-01', gender: 'FEMALE', fatherHusbandName: 'INDRAJIT KUMAR', relation: 'FATHER' },
-  { id: 'm7', uan: '100082035888', ipNumber: '7431085139', memberId: '16735', memberName: 'ANADI ROHIDAS', dob: '1973-01-17', dateOfJoining: '2006-12-01', gender: 'MALE', fatherHusbandName: 'HABLU ROHIDAS', relation: 'FATHER' },
-  { id: 'm8', uan: '100082628428', ipNumber: '7431089731', memberId: '16736', memberName: 'ANANDA KUMAR', dob: '1990-09-09', dateOfJoining: '2011-03-01', gender: 'MALE', fatherHusbandName: 'SHARANAN KUMAR', relation: 'FATHER' }
+  { id: 'm1', uan: '100338110653', ipNumber: '7431114905', memberId: '', memberName: 'SARALA KUMAR', dob: '1980-04-04', dateOfJoining: '2026-04-01', gender: 'FEMALE', fatherHusbandName: 'SABYASACHI KUMAR', relation: 'HUSBAND', mobile: '9749186606', email: '73207821' },
+  { id: 'm2', uan: '100633293469', ipNumber: '7431118458', memberId: '', memberName: 'CHINU RAJAK', dob: '1981-01-01', dateOfJoining: '2026-04-01', gender: 'FEMALE', fatherHusbandName: 'AJAY RAJAK', relation: 'HUSBAND', mobile: '9083409625', email: '26702454' },
+  { id: 'm3', uan: '101144955160', ipNumber: '7431115042', memberId: '', memberName: 'USHA MAHATO', dob: '1982-01-03', dateOfJoining: '2026-04-01', gender: 'FEMALE', fatherHusbandName: 'BISWANATH MAHATO', relation: 'HUSBAND', mobile: '8016358185', email: '93831697' },
+  { id: 'm4', uan: '101163039151', ipNumber: '7431116157', memberId: '', memberName: 'SHIKHA MAHATO', dob: '1993-10-24', dateOfJoining: '2026-04-01', gender: 'FEMALE', fatherHusbandName: 'MANIK MAHATO', relation: 'FATHER', mobile: '7384732552', email: '20535442' },
+  { id: 'm5', uan: '101556427344', ipNumber: '7431114891', memberId: '', memberName: 'RAHUL KUMAR', dob: '2002-01-01', dateOfJoining: '2026-04-01', gender: 'MALE', fatherHusbandName: 'GOPINATH KUMAR', relation: 'FATHER', mobile: '8348273207', email: '80459666' },
+  { id: 'm6', uan: '101887464712', ipNumber: '7431115047', memberId: '', memberName: 'KAILASH KUMAR', dob: '2003-12-08', dateOfJoining: '2026-04-01', gender: 'MALE', fatherHusbandName: 'KRISHNA KUMAR', relation: 'FATHER', mobile: '7865009525', email: '48695099' },
+  { id: 'm7', uan: '101934723705', ipNumber: '7431118450', memberId: '', memberName: 'ROHIT KUMAR', dob: '2002-10-15', dateOfJoining: '2026-04-01', gender: 'MALE', fatherHusbandName: 'NIRMAL KUMAR', relation: 'FATHER', mobile: '7501337320', email: '34606073' },
+  { id: 'm8', uan: '102200508885', ipNumber: '7431115062', memberId: '', memberName: 'DIBAKAR KUMAR', dob: '2007-02-03', dateOfJoining: '2026-04-01', gender: 'MALE', fatherHusbandName: 'KRISHNA KUMAR', relation: 'FATHER', mobile: '7810923604', email: '23890942' },
+  { id: 'm9', uan: '102316622517', ipNumber: '7431117582', memberId: '', memberName: 'MONARANJAN MAHATO', dob: '1988-09-12', dateOfJoining: '2026-04-01', gender: 'MALE', fatherHusbandName: 'HARIPADA MAHATO', relation: 'FATHER', mobile: '8001541175', email: '36193131' },
+  { id: 'm10', uan: '102318049633', ipNumber: '7431114843', memberId: '', memberName: 'BASANTI MAHATO', dob: '1994-03-02', dateOfJoining: '2026-04-01', gender: 'FEMALE', fatherHusbandName: 'RAJEN MAHATO', relation: 'HUSBAND', mobile: '6297541459', email: '94231891' }
 ];
 
 const formatDate = (dateStr) => {
-  if (!dateStr) return '-';
+  if (!dateStr) return '';
   const parts = dateStr.split('-');
   if (parts.length === 3) {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
@@ -26,23 +28,45 @@ const formatDate = (dateStr) => {
 };
 
 const EmployeeDataExportPage = () => {
-  const [selectedMonth, setSelectedMonth] = useState('2026-06'); // default to match screenshot 06/2026
-  const [searchTriggeredMonth, setSearchTriggeredMonth] = useState('2026-06');
+  const [selectedMonth, setSelectedMonth] = useState('2026-04'); // default to match screenshot 04/2026
+  const [searchTriggeredMonth, setSearchTriggeredMonth] = useState('2026-04');
   const [localSearch, setLocalSearch] = useState('');
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const addToast = useToast();
+  
+  const [dbEmployees, setDbEmployees] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      setIsLoading(true);
+      try {
+        const companyId = localStorage.getItem('selectedCompany');
+        if (companyId) {
+          const res = await getEmployees(companyId);
+          setDbEmployees(res || []);
+        } else {
+          setDbEmployees([]);
+          addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+        }
+      } catch (err) {
+        addToast({ type: 'error', message: 'Failed to fetch employees' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchEmployees();
+  }, []);
 
   // Load database employees combined with extra mockup rows
   const allEmployees = useMemo(() => {
-    const dbList = getEmployees() || [];
-    // remove duplicates by UAN between db list and mockup
-    const dbUans = new Set(dbList.map(e => e.uan));
+    const dbUans = new Set(dbEmployees.map(e => e.uan));
     const uniqueMocks = EXTRA_MOCK_EMPLOYEES.filter(e => !dbUans.has(e.uan));
-    return [...dbList, ...uniqueMocks];
-  }, []);
+    return [...dbEmployees, ...uniqueMocks];
+  }, [dbEmployees]);
 
   // Filter employees based on joining date <= selected month
   const filteredByMonth = useMemo(() => {
@@ -64,13 +88,24 @@ const EmployeeDataExportPage = () => {
     if (!query) return filteredByMonth;
 
     return filteredByMonth.filter(emp => {
+      const formattedDob = formatDate(emp.dob).toLowerCase();
+      const formattedDoj = formatDate(emp.dateOfJoining).toLowerCase();
+      const mobileStr = (emp.mobile || emp.mobileNumber || '').toLowerCase();
+      const emailStr = (emp.email || emp.emailId || '').toLowerCase();
+      const genderStr = (emp.gender || '').toLowerCase();
+
       return (
         (emp.uan && emp.uan.toLowerCase().includes(query)) ||
         (emp.ipNumber && emp.ipNumber.toLowerCase().includes(query)) ||
         (emp.memberName && emp.memberName.toLowerCase().includes(query)) ||
         (emp.fatherHusbandName && emp.fatherHusbandName.toLowerCase().includes(query)) ||
         (emp.relation && emp.relation.toLowerCase().includes(query)) ||
-        (emp.memberId && emp.memberId.toLowerCase().includes(query))
+        (emp.memberId && emp.memberId.toLowerCase().includes(query)) ||
+        (formattedDob && formattedDob.includes(query)) ||
+        (formattedDoj && formattedDoj.includes(query)) ||
+        (mobileStr && mobileStr.includes(query)) ||
+        (emailStr && emailStr.includes(query)) ||
+        (genderStr && genderStr.includes(query))
       );
     });
   }, [filteredByMonth, localSearch]);
@@ -135,17 +170,111 @@ const EmployeeDataExportPage = () => {
       return;
     }
 
-    if (type === 'Copy') {
-      addToast({
-        type: 'success',
-        message: 'Copied filtered employees list to clipboard!'
+    if (type === 'Excel' || type === 'CSV') {
+      const headers = ['UAN', 'IP Number', 'Previous Member Id', 'Member Name', 'Date Of Birth', 'DateOfJoining', 'Gender', 'Father/Husband Name', 'Relationship with the Member', 'Mobile Number', 'EmailId'];
+      let csvContent = headers.join(',') + '\n';
+      
+      searchedData.forEach(emp => {
+        const row = [
+          `"${emp.uan || ''}"`,
+          `"${emp.ipNumber || ''}"`,
+          `"${emp.memberId || ''}"`,
+          `"${emp.memberName || ''}"`,
+          `"${formatDate(emp.dob)}"`,
+          `"${formatDate(emp.dateOfJoining)}"`,
+          `"${emp.gender || ''}"`,
+          `"${emp.fatherHusbandName || ''}"`,
+          `"${emp.relation || 'FATHER'}"`,
+          `"${emp.mobile || emp.mobileNumber || ''}"`,
+          `"${emp.email || emp.emailId || ''}"`
+        ];
+        csvContent += row.join(',') + '\n';
       });
-    } else {
-      addToast({
-        type: 'info',
-        message: `${type} export started for ${totalEntries} employee records!`
-      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `employee_export_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      addToast({ type: 'success', message: `${type} file downloaded successfully!` });
+    } 
+    else if (type === 'Print' || type === 'PDF') {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        let html = `
+          <html>
+          <head>
+            <title>Employee Export Data</title>
+            <style>
+              body { font-family: sans-serif; padding: 20px; }
+              table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 20px; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #f2f2f2; font-weight: bold; }
+              h2 { color: #333; margin-bottom: 5px; }
+            </style>
+          </head>
+          <body>
+            <h2>Employee Export Data</h2>
+            <p>Total Records: ${searchedData.length}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>UAN</th><th>IP Number</th><th>Member Name</th><th>Date Of Birth</th><th>Date Of Joining</th>
+                  <th>Gender</th><th>Father/Husband Name</th><th>Relation</th><th>Mobile</th><th>Email</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+        
+        searchedData.forEach(emp => {
+          html += `
+            <tr>
+              <td>${emp.uan || ''}</td>
+              <td>${emp.ipNumber || ''}</td>
+              <td>${emp.memberName || ''}</td>
+              <td>${formatDate(emp.dob)}</td>
+              <td>${formatDate(emp.dateOfJoining)}</td>
+              <td>${emp.gender || ''}</td>
+              <td>${emp.fatherHusbandName || ''}</td>
+              <td>${emp.relation || 'FATHER'}</td>
+              <td>${emp.mobile || emp.mobileNumber || ''}</td>
+              <td>${emp.email || emp.emailId || ''}</td>
+            </tr>
+          `;
+        });
+        
+        html += `
+              </tbody>
+            </table>
+            <script>
+              window.onload = function() { 
+                setTimeout(function() { window.print(); window.close(); }, 500);
+              };
+            </script>
+          </body>
+          </html>
+        `;
+        
+        printWindow.document.write(html);
+        printWindow.document.close();
+        addToast({ type: 'success', message: `${type} document generated successfully!` });
+      } else {
+        addToast({ type: 'error', message: 'Pop-up blocker prevented printing.' });
+      }
     }
+    else if (type === 'Copy') {
+      const text = searchedData.map(emp => 
+        `${emp.uan || ''}\t${emp.ipNumber || ''}\t${emp.memberName || ''}\t${formatDate(emp.dob)}\t${formatDate(emp.dateOfJoining)}\t${emp.mobile || emp.mobileNumber || ''}`
+      ).join('\n');
+      navigator.clipboard.writeText(text);
+      addToast({ type: 'success', message: 'Copied filtered employees list to clipboard!' });
+    }
+
     setIsDropdownOpen(false);
   };
 
@@ -154,7 +283,7 @@ const EmployeeDataExportPage = () => {
       {/* Page Header with download actions dropdown */}
       <div className={styles.headerSection}>
         <div>
-          <h2 className={styles.title}>Employee Data Export</h2>
+          <h2 className={styles.title}>Employee Export</h2>
           <p className={styles.subtitle}>
             Configure, filter, and export employee data registers into customized Excel formats.
           </p>
@@ -243,7 +372,6 @@ const EmployeeDataExportPage = () => {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th style={{ width: '70px', textAlign: 'center' }}>Sr. No.</th>
                 <th>UAN</th>
                 <th>IP Number</th>
                 <th>Previous Member Id</th>
@@ -252,22 +380,27 @@ const EmployeeDataExportPage = () => {
                 <th>DateOfJoining</th>
                 <th>Gender</th>
                 <th>Father/Husband Name</th>
-                <th>Relationship</th>
+                <th>Relationship with the Member</th>
+                <th>Mobile Number</th>
+                <th>EmailId</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedData.length === 0 ? (
+              {isLoading ? (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                  <td colSpan={11} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                    Loading...
+                  </td>
+                </tr>
+              ) : paginatedData.length === 0 ? (
+                <tr>
+                  <td colSpan={11} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                     No matching records found.
                   </td>
                 </tr>
               ) : (
-                paginatedData.map((emp, index) => (
+                paginatedData.map((emp) => (
                   <tr key={emp.id}>
-                    <td style={{ textAlign: 'center', fontWeight: '500' }}>
-                      {startIndex + index + 1}
-                    </td>
                     <td style={{ color: 'var(--text-primary)' }}>{emp.uan}</td>
                     <td>{emp.ipNumber}</td>
                     <td>{emp.memberId || '-'}</td>
@@ -277,6 +410,8 @@ const EmployeeDataExportPage = () => {
                     <td>{emp.gender}</td>
                     <td>{emp.fatherHusbandName}</td>
                     <td>{emp.relation || 'FATHER'}</td>
+                    <td>{emp.mobile || emp.mobileNumber || '-'}</td>
+                    <td>{emp.email || emp.emailId || '-'}</td>
                   </tr>
                 ))
               )}

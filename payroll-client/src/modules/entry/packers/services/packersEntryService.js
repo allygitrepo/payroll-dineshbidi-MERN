@@ -1,171 +1,126 @@
-import { getPackingWages } from '../../../setup/packing-wages/services/packingWagesService';
-import { getProfessionalTax } from '../../../setup/professional-tax/services/professionalTaxService';
-
-const STORAGE_KEY = 'payroll_packers_entry';
-
-// Sample packer employees with code and account number
-const defaultPackerEmployees = [
-  { employeeId: 'packer1', employeeName: 'SAMIR MACHHIJAR',  employeeCode: '0005872', accountNo: '100325662005' },
-  { employeeId: 'packer2', employeeName: 'NAHLESH BAGUI',    employeeCode: '0005875', accountNo: '100251178836' },
-  { employeeId: 'packer3', employeeName: 'RAJESH KUMAR',     employeeCode: '0005880', accountNo: '100251178837' },
-  { employeeId: 'packer4', employeeName: 'SUNITA DEVI',      employeeCode: '0005883', accountNo: '100251178838' },
-  { employeeId: 'packer5', employeeName: 'PRIYA SHARMA',     employeeCode: '0005886', accountNo: '100251178839' },
-  { employeeId: 'packer6', employeeName: 'ANITA KUMARI',     employeeCode: '0005890', accountNo: '100251178840' },
-];
+import apiClient from '../../../../shared/services/apiClient';
 
 /**
- * Get active packing wages rates for a given month (YYYY-MM).
- * Returns the rate record whose startDate <= selected month <= endDate.
+ * Fetch entry data for a given month (YYYY-MM).
+ * @param {string} monthYear  - e.g. "2026-01"
  */
-const getActiveRates = (monthYear) => {
-  const rates = getPackingWages();
-  if (!rates || rates.length === 0) return null;
-
-  const selectedDate = monthYear ? `${monthYear}-01` : null;
-  if (!selectedDate) return rates[rates.length - 1]; // fallback: latest
-
-  const active = rates.find(r => r.startDate <= selectedDate && selectedDate <= r.endDate);
-  if (active) return active;
-
-  // Fallback: latest record
-  return [...rates].sort((a, b) => b.startDate.localeCompare(a.startDate))[0];
+export const getPackersEntry = async (monthYear, companyId) => {
+  try {
+    const cid = companyId || localStorage.getItem('selectedCompany');
+    const response = await apiClient.get('/packers-entries/company', {
+      params: { month_year: monthYear, company_id: cid }
+    });
+    return response.data; // Expected { status, data: [], config: {} }
+  } catch (error) {
+    console.error('Error fetching packers entries:', error);
+    throw error;
+  }
 };
 
 /**
- * Calculate Professional Tax from slabs
+ * Save entry data for a given month
  */
-const calculatePT = (grossSalary, monthYear) => {
-  const ptSlabs = getProfessionalTax();
-  if (!ptSlabs || ptSlabs.length === 0) return 0;
+export const savePackersEntry = async (monthYear, rows, companyId) => {
+  try {
+    const cid = companyId || localStorage.getItem('selectedCompany');
+    const response = await apiClient.post('/packers-entries/company', {
+      month_year: monthYear,
+      company_id: cid,
+      entries: rows
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error saving packers entries:', error);
+    throw error;
+  }
+};
 
-  const selectedDate = monthYear ? `${monthYear}-01` : null;
+// Helper function to calculate PT based on slabs
+const calculatePT = (grossSalary, slabs) => {
+  if (!slabs || slabs.length === 0) return 0;
+  
+  const applicableSlab = slabs.find(slab => {
+    return grossSalary >= parseFloat(slab.from) && grossSalary <= parseFloat(slab.to);
+  });
 
-  const applicable = ptSlabs.find(slab =>
-    (!selectedDate || (slab.startDate <= selectedDate && selectedDate <= slab.endDate)) &&
-    grossSalary >= parseFloat(slab.from) &&
-    grossSalary <= parseFloat(slab.to)
-  );
-
-  return applicable ? parseFloat(applicable.taxRate) : 0;
+  return applicableSlab ? parseFloat(applicableSlab.taxRate) : 0;
 };
 
 /**
- * Calculate wages and deductions for a packer row.
- *
- * wages       = (unit1 × rate1) + (unit2 × rate2) + (unit3 × rate3) + (unit4 × rate4)
- * weeklyLeave = wages / daysWorked × 4  (1 day per week approx)
- * total       = wages + weeklyLeave + additionalPaidWages
- * PF          = 12% of total (capped at ₹15,000 wage)
- * PT          = from slab
- * ESIC        = 0.75% of total (if total ≤ ₹21,000)
- * netWages    = total − PF − PT − ESIC
+ * Recalculate a single row when inputs change (done locally).
+ * Requires the config object returned from getPackersEntry.
  */
-const calculateRow = (row, rates, monthYear) => {
+export const recalculateRow = (row, config) => {
+  const { rate1, rate2, rate3, rate4, ptSlabs, pfRateMale, pfRateFemale, esicShare, esicWageLimit } = config;
+  
   const unit1 = parseFloat(row.unit1) || 0;
   const unit2 = parseFloat(row.unit2) || 0;
   const unit3 = parseFloat(row.unit3) || 0;
   const unit4 = parseFloat(row.unit4) || 0;
-  const daysWorked = parseInt(row.daysWorked) || 0;
-  const additionalPaidWages = parseFloat(row.additionalPaidWages) || 0;
+  const additionNum = parseFloat(row.addition) || 0;
+  const daysNum = parseFloat(row.daysWorked) || 0;
 
-  const rate1 = rates ? parseFloat(rates.rate1) || 0 : 0;
-  const rate2 = rates ? parseFloat(rates.rate2) || 0 : 0;
-  const rate3 = rates ? parseFloat(rates.rate3) || 0 : 0;
-  const rate4 = rates ? parseFloat(rates.rate4) || 0 : 0;
+  // Determine pfRate based on employee gender
+  const isMale = row.gender === 'MALE' || row.gender === 'Male' || row.gender === 'M';
+  const pfRate = isMale ? (pfRateMale || 0.12) : (pfRateFemale || 0.12);
 
-  const wages = Math.round(unit1 * rate1 + unit2 * rate2 + unit3 * rate3 + unit4 * rate4);
+  // Wages Calculation
+  const wages = (unit1 * rate1) + (unit2 * rate2) + (unit3 * rate3) + (unit4 * rate4);
+  
+  // Weekly Leave Calculation
+  const weeklyLeave = Math.round(wages / 6);
+  
+  // Total Gross
+  const gross = Math.round(wages + weeklyLeave + additionNum);
 
-  // Weekly leave: 1 paid leave per 6 working days
-  const weeklyLeave = daysWorked > 0 ? Math.round((wages / daysWorked) * 4) : 0;
+  // PF Calculation
+  const pfAmount = Math.round(gross * pfRate);
 
-  const total = wages + weeklyLeave + additionalPaidWages;
+  // PT Calculation
+  const ptAmount = calculatePT(gross, ptSlabs);
 
-  // PF: 12% of wages capped at ₹15,000
-  const pfWage = Math.min(total, 15000);
-  const pf = Math.round(pfWage * 0.12);
-
-  // PT from slab
-  const pt = calculatePT(total, monthYear);
-
-  // ESIC: 0.75% if total ≤ ₹21,000
-  const esic = total <= 21000 ? Math.round(total * 0.0075) : 0;
-
-  const netWages = Math.max(0, total - pf - pt - esic);
-
-  return { wages, weeklyLeave, total, pf, pt, esic, netWages };
-};
-
-/**
- * Get packer employees list.
- * In future, this can be connected to an actual employee service filtered by category.
- */
-export const getPackerEmployees = () => defaultPackerEmployees;
-
-/**
- * Get entry rows for a given month (YYYY-MM).
- */
-export const getPackersEntry = (monthYear) => {
-  const key = `${STORAGE_KEY}_${monthYear}`;
-  const data = localStorage.getItem(key);
-  const employees = getPackerEmployees();
-  const rates = getActiveRates(monthYear);
-
-  const freshRow = (emp) => {
-    const baseRow = {
-      employeeId: emp.employeeId,
-      employeeName: emp.employeeName,
-      employeeCode: emp.employeeCode,
-      accountNo: emp.accountNo,
-      daysWorked: '0',
-      unit1: '0',
-      unit2: '0',
-      unit3: '0',
-      unit4: '0',
-      additionalPaidWages: '0',
-      // Active rates (read-only display)
-      rate1: rates?.rate1 || '0.00',
-      rate2: rates?.rate2 || '0.00',
-      rate3: rates?.rate3 || '0.00',
-      rate4: rates?.rate4 || '0.00',
-    };
-    return { ...baseRow, ...calculateRow(baseRow, rates, monthYear) };
-  };
-
-  if (!data) {
-    return employees.map(emp => freshRow(emp));
+  // ESIC Calculation
+  let esicAmount = 0;
+  const dailyWage = daysNum > 0 ? gross / daysNum : 0;
+  
+  // Exempted if daily wage <= 176
+  if (dailyWage > esicWageLimit) {
+    esicAmount = Math.ceil(gross * esicShare);
   }
 
-  const saved = JSON.parse(data);
-  return employees.map(emp => {
-    const existing = saved.find(s => s.employeeId === emp.employeeId);
-    if (existing) {
-      // Refresh rates from setup in case they changed
-      return {
-        ...existing,
-        rate1: rates?.rate1 || '0.00',
-        rate2: rates?.rate2 || '0.00',
-        rate3: rates?.rate3 || '0.00',
-        rate4: rates?.rate4 || '0.00',
-        ...calculateRow(existing, rates, monthYear)
-      };
-    }
-    return freshRow(emp);
-  });
-};
+  // Net Wages
+  const netWages = Math.max(0, gross - pfAmount - ptAmount - esicAmount);
 
-/**
- * Recalculate a single row when editable inputs change.
- */
-export const recalculatePackerRow = (row, monthYear) => {
-  const rates = getActiveRates(monthYear);
-  return { ...row, ...calculateRow(row, rates, monthYear) };
-};
+  console.group(`--- Recalculating: ${row.employeeName || 'Employee'} ---`);
+  console.log(`[Inputs] Units: [${unit1}, ${unit2}, ${unit3}, ${unit4}], Rates: [${rate1}, ${rate2}, ${rate3}, ${rate4}]`);
+  console.log(`[Wages] = ${wages}`);
+  console.log(`[Weekly Leave] = Wages / 6 = ${weeklyLeave}`);
+  console.log(`[Total Gross] = Wages + Weekly Leave + Addition = ${gross}`);
+  console.log(`[PF] = Gross * PF Rate (${(pfRate * 100).toFixed(2)}%) = ${pfAmount}`);
+  console.log(`[PT] = Calculated from tax slab for gross ${gross} = ${ptAmount}`);
+  console.log(`[ESIC Daily Wage] = Gross (${gross}) / Worked Days (${daysNum}) = ${dailyWage.toFixed(2)}`);
+  if (dailyWage > esicWageLimit) {
+    console.log(`[ESIC Deduction] = ${dailyWage.toFixed(2)} > ${esicWageLimit} (Limit). Deducting = ${esicAmount}`);
+  } else {
+    console.log(`[ESIC Deduction] = Exempted (<= Limit) = 0`);
+  }
+  console.log(`[Net Wages] = Gross - PF - PT - ESIC = ${netWages}`);
+  console.groupEnd();
 
-/**
- * Save entry rows for a given month.
- */
-export const savePackersEntry = (monthYear, rows) => {
-  const key = `${STORAGE_KEY}_${monthYear}`;
-  localStorage.setItem(key, JSON.stringify(rows));
-  return rows;
+  return {
+    ...row,
+    unit1,
+    unit2,
+    unit3,
+    unit4,
+    addition: additionNum,
+    daysWorked: daysNum,
+    wages,
+    weeklyLeave,
+    gross,
+    pf: pfAmount,
+    pt: ptAmount,
+    esic: esicAmount,
+    netWages
+  };
 };

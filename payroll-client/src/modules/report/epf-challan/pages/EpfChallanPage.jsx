@@ -2,8 +2,12 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
 import { useToast, MonthYearPicker } from '../../../../shared/components';
 import { getEpfChallans } from '../../../entry/epf-challan-date/services/epfChallanDateService';
-import { getEmployees } from '../../../master/employee/services/employeeService';
 import { getCompanies } from '../../../master/company/services/companyService';
+import { getOfficeStaffEntry } from '../../../entry/office-staff/services/officeStaffEntryService';
+import { getPackersEntry } from '../../../entry/packers/services/packersEntryService';
+import { getBidiRollerEntry } from '../../../entry/bidi-roller/services/bidiRollerEntryService';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import styles from '../components/EpfChallanPage.module.css';
 
 const EpfChallanPage = () => {
@@ -15,7 +19,11 @@ const EpfChallanPage = () => {
   const addToast = useToast();
 
   // Load database EPF Challans
-  const challanDb = useMemo(() => getEpfChallans() || [], []);
+  const [challanDb, setChallanDb] = useState([]);
+  
+  useEffect(() => {
+    getEpfChallans().then(data => setChallanDb(data)).catch(err => console.error(err));
+  }, []);
 
   // Format month selected (YYYY-MM) to service month (MM/YYYY)
   const serviceMonthKey = useMemo(() => {
@@ -34,6 +42,55 @@ const EpfChallanPage = () => {
     return dStr;
   };
 
+  const [dynamicWages, setDynamicWages] = useState({
+    grossWages: 0,
+    epfWages: 0,
+    uanCount: 0
+  });
+
+  useEffect(() => {
+    const fetchDynamicData = async () => {
+      if (!searchTriggeredMonth) return;
+      const companyId = localStorage.getItem('selectedCompany');
+      
+      try {
+        const [office, packers, bidi] = await Promise.all([
+          getOfficeStaffEntry(searchTriggeredMonth, companyId).catch(() => ({ data: [] })),
+          getPackersEntry(searchTriggeredMonth, companyId).catch(() => ({ data: [] })),
+          getBidiRollerEntry(searchTriggeredMonth, companyId).catch(() => ({ data: [] }))
+        ]);
+
+        let grossWages = 0;
+        let epfWages = 0;
+        let uanCount = 0;
+
+        const processRows = (rows) => {
+          (rows || []).forEach(row => {
+            const gross = parseFloat(row.gross || row.gross_wages || row.total || row.netWages || 0);
+            if (gross > 0) {
+              grossWages += gross;
+              epfWages += Math.min(gross, 15000);
+              uanCount += 1;
+            }
+          });
+        };
+
+        processRows(office?.data);
+        processRows(packers?.data);
+        processRows(bidi?.data);
+
+        setDynamicWages({
+          grossWages: Math.round(grossWages),
+          epfWages: Math.round(epfWages),
+          uanCount
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchDynamicData();
+  }, [searchTriggeredMonth]);
+
   // Find challan log matching query
   const matchedChallan = useMemo(() => {
     if (!searchTriggeredMonth) return null;
@@ -41,23 +98,6 @@ const EpfChallanPage = () => {
     const queryKey = `${month}/${year}`;
     
     const record = challanDb.find(c => c.wageMonth === queryKey);
-    if (record) return record;
-
-    // Return smart fallback values if not found in db
-    const employeesList = getEmployees() || [];
-    const activeCount = employeesList.length || 10;
-    
-    // Simulate wages
-    const grossWages = activeCount * 8000;
-    const epfWages = Math.min(grossWages, activeCount * 15000);
-    
-    const ac1EE = Math.round(epfWages * 0.12);
-    const ac1ER = Math.round(epfWages * 0.0367);
-    const ac10 = Math.round(epfWages * 0.0833);
-    const ac2 = Math.round(epfWages * 0.005);
-    const ac21 = Math.round(epfWages * 0.005);
-    const ac22 = 0;
-    const totalAmount = ac1EE + ac1ER + ac10 + ac2 + ac21;
 
     // Parse Month Names
     const monthIndex = parseInt(month) - 1;
@@ -68,10 +108,30 @@ const EpfChallanPage = () => {
     const nextYear = nextMonthIndex === 0 ? parseInt(year) + 1 : year;
     const returnMonthLabel = `${monthNames[nextMonthIndex]}-${String(nextYear).slice(-2)}`;
 
+    if (record) {
+      return {
+        ...record,
+        wageMonthLabel,
+        returnMonth: returnMonthLabel
+      };
+    }
+
+    // Dynamic Fallback Calculation
+    const { epfWages } = dynamicWages;
+    
+    const ac1EE = Math.round(epfWages * 0.12);
+    const ac1ER = Math.round(epfWages * 0.0367);
+    const ac10 = Math.round(epfWages * 0.0833);
+    const ac2 = epfWages > 0 ? Math.max(500, Math.round(epfWages * 0.005)) : 0;
+    const ac21 = epfWages > 0 ? Math.max(200, Math.round(epfWages * 0.005)) : 0;
+    const ac22 = 0;
+    const totalAmount = ac1EE + ac1ER + ac10 + ac2 + ac21;
+
     return {
       trrn: 'N/A',
       crnNo: 'N/A',
-      wageMonth: wageMonthLabel,
+      wageMonth: queryKey,
+      wageMonthLabel,
       returnMonth: returnMonthLabel,
       challanDate: '',
       returnDate: '',
@@ -84,7 +144,7 @@ const EpfChallanPage = () => {
       totalAmount,
       isFallback: true
     };
-  }, [searchTriggeredMonth, challanDb]);
+  }, [searchTriggeredMonth, challanDb, dynamicWages]);
 
   // Load companies or default info
   const companyInfo = useMemo(() => {
@@ -153,7 +213,7 @@ const EpfChallanPage = () => {
     const epfCharges = Number(ac2 || 0);
     const edliCharges = Number(ac22 || 0);
     
-    const wageMonthLabel = matchedChallan.isFallback ? matchedChallan.wageMonth : searchTriggeredMonth;
+    const wageMonthLabel = matchedChallan.wageMonthLabel || searchTriggeredMonth;
 
     if (type === 'Copy') {
       let text = `EPF Challan Statement - Month: ${wageMonthLabel}\n\n`;
@@ -209,6 +269,52 @@ const EpfChallanPage = () => {
         message: `EPF Challan ${type} downloaded successfully!`
       });
     }
+    else if (type === 'PDF') {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      doc.setFontSize(16);
+      doc.text(`EPF Challan Statement - ${wageMonthLabel}`, pageWidth / 2, 20, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.text(`Establishment Name: ${companyInfo.name}`, 14, 35);
+      doc.text(`Establishment Id: ${companyInfo.code}`, 14, 42);
+      doc.text(`TRRN: ${trrn}`, 14, 49);
+      doc.text(`CRN: ${crnNo}`, 14, 56);
+      doc.text(`Challan Date: ${challanDate || '-'}`, 14, 63);
+
+      const tableColumn = ["Account", "Remitted as per ECR", "Upfront Benefit", "Net Payable", "Net Paid"];
+      const tableRows = [
+        ["Total EPF Contribution EE Share (A/C 1)", eeShare, 0, eeShare, eeShare],
+        ["Total EPS Contribution (A/C 10)", epsShare, 0, epsShare, epsShare],
+        ["Total Difference EPF & EPS ER Share (A/C 1)", erShare, 0, erShare, erShare],
+        ["Total EDLI Contribution (A/C 21)", edliShare, 0, edliShare, edliShare],
+        ["Total EPF Charges (A/C 2)", epfCharges, 0, epfCharges, epfCharges],
+        ["Total EDLI Charges (A/C 22)", edliCharges, 0, edliCharges, edliCharges],
+        ["Total", totalAmount, 0, totalAmount, totalAmount]
+      ];
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 70,
+        theme: 'grid',
+        headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold' },
+        bodyStyles: { textColor: [55, 65, 81] },
+        didParseCell: function(data) {
+          if (data.row.index === tableRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [243, 244, 246];
+          }
+        }
+      });
+
+      doc.save(`EPF_Challan_${wageMonthLabel.replace('/', '_')}.pdf`);
+      addToast({
+        type: 'success',
+        message: 'EPF Challan PDF downloaded successfully!'
+      });
+    }
     else {
       addToast({
         type: 'info',
@@ -246,11 +352,12 @@ const EpfChallanPage = () => {
   const edliCharges = matchedChallan ? Number(matchedChallan.ac22 || 0) : 0;
   const totalAmountVal = matchedChallan ? Number(matchedChallan.totalAmount || 0) : 0;
 
-  // Mock wages sums inside card
-  const mockGrossWages = eeShare ? Math.round(eeShare / 0.12) : 0;
-  const mockEpfWages = mockGrossWages;
-  const mockEpsWages = mockGrossWages;
-  const mockEdliWages = mockGrossWages;
+  // Dynamic wages sums inside card
+  const mockGrossWages = dynamicWages.grossWages;
+  const mockEpfWages = dynamicWages.epfWages;
+  const mockEpsWages = dynamicWages.epfWages;
+  const mockEdliWages = dynamicWages.epfWages;
+  const uanCount = dynamicWages.uanCount;
 
   return (
     <div className={styles.container}>
@@ -362,7 +469,7 @@ const EpfChallanPage = () => {
             </div>
             <div className={styles.detailsRow}>
               <span className={styles.detailsLabel}>Total Number of UAN's</span>
-              <span className={styles.detailsValue}>676</span>
+              <span className={styles.detailsValue}>{uanCount}</span>
             </div>
           </div>
 
@@ -495,7 +602,7 @@ const EpfChallanPage = () => {
           <div className={styles.detailsGrid}>
             <div className={styles.detailsRow}>
               <span className={styles.detailsLabel}>Total number of Employees in the month *</span>
-              <span className={styles.detailsValue}>676</span>
+              <span className={styles.detailsValue}>{uanCount}</span>
             </div>
             <div className={styles.detailsRow}>
               <span className={styles.detailsLabel}>Number of excluded employees *</span>

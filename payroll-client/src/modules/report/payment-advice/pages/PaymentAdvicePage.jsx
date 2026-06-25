@@ -7,6 +7,8 @@ import { getBidiRollerEntry } from '../../../entry/bidi-roller/services/bidiRoll
 import { getOfficeStaffEntry } from '../../../entry/office-staff/services/officeStaffEntryService';
 import { getPackersEntry } from '../../../entry/packers/services/packersEntryService';
 import { getCompanies } from '../../../master/company/services/companyService';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import styles from '../components/PaymentAdvicePage.module.css';
 
 const PaymentAdvicePage = () => {
@@ -26,32 +28,37 @@ const PaymentAdvicePage = () => {
   const dropdownRef = useRef(null);
   const addToast = useToast();
 
-  // Load contractors list
-  const contractorsList = useMemo(() => {
-    return getContractors() || [];
-  }, []);
+  const [contractorsList, setContractorsList] = useState([]);
+  const [companyInfo, setCompanyInfo] = useState({
+    name: 'BRIJBASHI TRADERS',
+    address: 'BANDHA GHAT, P.O. JHALDA, PURULIA, PIN - 723202'
+  });
+  const [resolvedRecords, setResolvedRecords] = useState([]);
 
-  // Fetch company details
-  const companyInfo = useMemo(() => {
-    const companies = getCompanies() || [];
-    if (companies.length > 0) {
-      const c = companies[0];
-      const name = c.estbName || 'BRIJBASHI TRADERS';
-      const addrParts = [
-        c.address,
-        c.postOffice ? `P.O. ${c.postOffice}` : '',
-        c.district,
-        c.pincode ? `PIN - ${c.pincode}` : ''
-      ].filter(Boolean);
-      return {
-        name,
-        address: addrParts.join(', ')
-      };
-    }
-    return {
-      name: 'BRIJBASHI TRADERS',
-      address: 'BANDHA GHAT, P.O. JHALDA, PURULIA, PIN - 723202'
+  useEffect(() => {
+    const fetchMasters = async () => {
+      try {
+        const companyId = localStorage.getItem('selectedCompany');
+        const cList = await getContractors(companyId) || [];
+        setContractorsList(cList);
+
+        const companies = await getCompanies() || [];
+        if (companies.length > 0) {
+          const c = companies[0];
+          const name = c.estbName || 'BRIJBASHI TRADERS';
+          const addrParts = [
+            c.address,
+            c.postOffice ? `P.O. ${c.postOffice}` : '',
+            c.district,
+            c.pincode ? `PIN - ${c.pincode}` : ''
+          ].filter(Boolean);
+          setCompanyInfo({ name, address: addrParts.join(', ') });
+        }
+      } catch (err) {
+        console.error(err);
+      }
     };
+    fetchMasters();
   }, []);
 
   // Get current date formatted like 23/6/2026
@@ -61,55 +68,70 @@ const PaymentAdvicePage = () => {
   }, []);
 
   // Resolve and filter list based on month, type, and contractor
-  const resolvedRecords = useMemo(() => {
-    if (!searchTriggeredMonth) return [];
-
-    let rawEntries = [];
-    if (searchTriggeredType === 'BIDI MAKER') {
-      rawEntries = getBidiRollerEntry(searchTriggeredMonth) || [];
-      // Filter Bidi makers by contractor if selected
-      if (searchTriggeredContractor !== 'ALL') {
-        rawEntries = rawEntries.filter(row => row.contractor === searchTriggeredContractor);
+  useEffect(() => {
+    const fetchRecords = async () => {
+      if (!searchTriggeredMonth) {
+        setResolvedRecords([]);
+        return;
       }
-    } 
-    else if (searchTriggeredType === 'OFFICE STAFF') {
-      rawEntries = getOfficeStaffEntry(searchTriggeredMonth) || [];
-    } 
-    else if (searchTriggeredType === 'PACKING STAFF') {
-      rawEntries = getPackersEntry(searchTriggeredMonth) || [];
-    }
 
-    const dbEmployees = getEmployees() || [];
-
-    // Map rows to retrieve bank account and IFSC from kycDetails
-    return rawEntries.map(row => {
-      const empName = row.employeeName;
-      const empCode = row.employeeCode || '';
-      const uan = row.accountNo || ''; // accountNo field in monthly entries contains the UAN
-
-      let bankAccount = uan; // Default fallback to UAN
-      let ifsc = 'SBIN0001234'; // Default fallback IFSC
-
-      // Attempt to match with master employee database using UAN or name
-      const masterEmp = dbEmployees.find(emp => emp.uan === uan || emp.memberName === empName);
-      if (masterEmp && masterEmp.kycDetails) {
-        const bankDoc = masterEmp.kycDetails.find(doc => 
-          doc.documentType === 'BANK PASSBOOK' || doc.documentType === 'BANK'
-        );
-        if (bankDoc) {
-          bankAccount = bankDoc.documentNumber || bankAccount;
-          ifsc = bankDoc.ifsc || ifsc;
+      const companyId = localStorage.getItem('selectedCompany');
+      let rawEntries = [];
+      try {
+        if (searchTriggeredType === 'BIDI MAKER') {
+          const res = await getBidiRollerEntry(searchTriggeredMonth, companyId);
+          rawEntries = res?.data || [];
+          if (searchTriggeredContractor !== 'ALL') {
+            rawEntries = rawEntries.filter(row => row.contractorId === searchTriggeredContractor || row.contractor === searchTriggeredContractor);
+          }
+        } 
+        else if (searchTriggeredType === 'OFFICE STAFF') {
+          const res = await getOfficeStaffEntry(searchTriggeredMonth, companyId);
+          rawEntries = res?.data || [];
+        } 
+        else if (searchTriggeredType === 'PACKING STAFF') {
+          const res = await getPackersEntry(searchTriggeredMonth, companyId);
+          rawEntries = res?.data || [];
         }
-      }
 
-      return {
-        name: empName,
-        code: empCode,
-        bankAccount,
-        ifsc,
-        amount: Math.round(row.netWages || 0)
-      };
-    });
+        const dbEmployees = await getEmployees(companyId) || [];
+
+        // Map rows to retrieve bank account and IFSC from kycDetails
+        const mapped = rawEntries.map(row => {
+          const empName = row.employeeName;
+          const empCode = row.employeeCode || '';
+          const uan = row.accountNo || ''; 
+
+          let bankAccount = null;
+          let ifsc = null;
+
+          // Attempt to match with master employee database using UAN or name
+          const masterEmp = dbEmployees.find(emp => emp.uan === uan || emp.memberName === empName);
+          if (masterEmp && masterEmp.kycDetails) {
+            const bankDoc = masterEmp.kycDetails.find(doc => 
+              doc.documentType === 'BANK PASSBOOK' || doc.documentType === 'BANK'
+            );
+            if (bankDoc) {
+              bankAccount = bankDoc.documentNumber;
+              ifsc = bankDoc.ifsc;
+            }
+          }
+
+          return {
+            name: empName,
+            code: empCode,
+            bankAccount,
+            ifsc,
+            amount: Math.round(row.netWages || 0)
+          };
+        }).filter(row => row.bankAccount && row.bankAccount.trim() !== '' && row.amount > 0);
+
+        setResolvedRecords(mapped);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchRecords();
   }, [searchTriggeredMonth, searchTriggeredType, searchTriggeredContractor]);
 
   // Local text filter
@@ -237,6 +259,46 @@ const PaymentAdvicePage = () => {
       addToast({
         type: 'success',
         message: `Payment Advice ${type} downloaded successfully!`
+      });
+    }
+    else if (type === 'PDF') {
+      const doc = new jsPDF('landscape');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      doc.setFontSize(16);
+      doc.text(`Payment Advice Report - Month: ${searchTriggeredMonth}`, pageWidth / 2, 20, { align: 'center' });
+      
+      doc.setFontSize(11);
+      doc.text(`Company: ${companyInfo.name}`, 15, 30);
+      doc.text(`Address: ${companyInfo.address}`, 15, 36);
+
+      const tableColumn = ['Sr No.', 'Beneficiary Name', 'Emp. Code', 'Beneficiary Account Number', 'IFSC', 'Amount'];
+      const tableRows = [];
+      
+      filteredRecords.forEach((rec, idx) => {
+        tableRows.push([idx + 1, rec.name, rec.code, rec.bankAccount, rec.ifsc, rec.amount]);
+      });
+      tableRows.push(["", "", "", "", "Total", totalAmount]);
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 45,
+        theme: 'grid',
+        headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold', fontSize: 9, halign: 'center' },
+        bodyStyles: { textColor: [55, 65, 81], fontSize: 9, halign: 'center' },
+        didParseCell: function(data) {
+          if (data.row.index === tableRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [243, 244, 246];
+          }
+        }
+      });
+
+      doc.save(`Payment_Advice_${monthLabel}_${searchTriggeredType.replace(' ', '_')}.pdf`);
+      addToast({
+        type: 'success',
+        message: 'Payment Advice PDF downloaded successfully!'
       });
     }
     else {

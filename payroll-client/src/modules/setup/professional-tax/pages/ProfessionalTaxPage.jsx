@@ -5,6 +5,7 @@ import ProfessionalTaxForm from '../components/ProfessionalTaxForm';
 import ProfessionalTaxTable from '../components/ProfessionalTaxTable';
 import { getProfessionalTax, saveProfessionalTax, deleteProfessionalTax } from '../services/professionalTaxService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
 
 const formatDateForExport = (dateStr) => {
   if (!dateStr) return '';
@@ -23,6 +24,7 @@ const ProfessionalTaxPage = () => {
   const [editingWages, setEditingWages] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -30,10 +32,29 @@ const ProfessionalTaxPage = () => {
 
   const dropdownRef = useRef(null);
 
+  const fetchTaxes = async () => {
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const data = await getProfessionalTax(companyId);
+      setWagesList(data);
+    } catch (err) {
+      console.error('Error fetching professional taxes:', err);
+      addToast({ type: 'error', message: 'Failed to load professional taxes.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load initial data
   useEffect(() => {
-    setWagesList(getProfessionalTax());
-  }, []);
+    fetchTaxes();
+  }, [addToast]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -67,11 +88,17 @@ const ProfessionalTaxPage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deleteProfessionalTax(deleteTargetId);
-      setWagesList(updated);
-      addToast({ type: 'success', message: 'Professional Tax record deleted successfully!' });
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const updated = await deleteProfessionalTax(deleteTargetId, companyId);
+        setWagesList(updated);
+        addToast({ type: 'success', message: 'Professional Tax record deleted successfully!' });
+      } catch (err) {
+        console.error('Error deleting professional tax:', err);
+        addToast({ type: 'error', message: 'Failed to delete professional tax.' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -82,15 +109,24 @@ const ProfessionalTaxPage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (wagesData) => {
-    const updated = saveProfessionalTax(wagesData);
-    setWagesList(updated);
-    setIsFormOpen(false);
-    setEditingWages(null);
-    addToast({
-      type: 'success',
-      message: wagesData.id ? 'Professional Tax record updated successfully!' : 'Professional Tax record created successfully!'
-    });
+  const handleSave = async (wagesData) => {
+    const companyId = localStorage.getItem('selectedCompany');
+    try {
+      const updated = await saveProfessionalTax(wagesData, companyId);
+      setWagesList(updated);
+      setIsFormOpen(false);
+      setEditingWages(null);
+      addToast({
+        type: 'success',
+        message: wagesData.id ? 'Professional Tax record updated successfully!' : 'Professional Tax record created successfully!'
+      });
+    } catch (err) {
+      console.error('Error saving professional tax:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to save professional tax.'
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -117,17 +153,25 @@ const ProfessionalTaxPage = () => {
   }, [wagesList, searchTerm]);
 
   // Export handlers
-  const handleExport = (type) => {
+  const handleExport = async (type) => {
+    setIsDropdownOpen(false);
     if (type === 'Copy') {
       const text = filteredWages.map((w, index) => 
         `${index + 1}\t${formatDateForExport(w.startDate)}\t${formatDateForExport(w.endDate)}\t${w.from}\t${w.to}\t${w.taxRate}`
       ).join('\n');
       navigator.clipboard.writeText(text);
       addToast({ type: 'success', message: 'Copied filtered records to clipboard!' });
-    } else {
-      addToast({ type: 'info', message: `${type} export started for ${filteredWages.length} records!` });
+      return;
     }
-    setIsDropdownOpen(false);
+    
+    try {
+      addToast({ type: 'info', message: `${type} export started...` });
+      await exportModuleData('professional-taxes', type.toLowerCase());
+      addToast({ type: 'success', message: `${type} export completed successfully!` });
+    } catch (err) {
+      console.error(err);
+      addToast({ type: 'error', message: `Failed to export ${type} file.` });
+    }
   };
 
   return (

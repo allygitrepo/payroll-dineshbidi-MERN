@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './OfficeStaffSalaryPage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 
 const OfficeStaffSalaryForm = ({ wages, onSave, onCancel }) => {
   const addToast = useToast();
@@ -21,7 +21,20 @@ const OfficeStaffSalaryForm = ({ wages, onSave, onCancel }) => {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    setEmployees(getEmployees());
+    const fetchEmps = async () => {
+      const companyId = localStorage.getItem('selectedCompany');
+      if (companyId) {
+        try {
+          const data = await getEmployees(companyId);
+          // Only show Office Staff employees in this dropdown
+          const officeStaff = data.filter(emp => emp.employeeType === 'OFFICE STAFF');
+          setEmployees(officeStaff);
+        } catch (err) {
+          console.error('Error fetching employees for dropdown:', err);
+        }
+      }
+    };
+    fetchEmps();
   }, []);
 
   useEffect(() => {
@@ -135,13 +148,10 @@ const OfficeStaffSalaryForm = ({ wages, onSave, onCancel }) => {
             <label className={styles.label}>
               Start Date <span className={styles.required}>*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               name="startDate"
               value={formData.startDate}
               onChange={handleChange}
-              onBlur={handleBlur}
-              className={styles.input}
             />
             {errors.startDate && <span className={styles.errorText}>{errors.startDate}</span>}
           </div>
@@ -151,13 +161,10 @@ const OfficeStaffSalaryForm = ({ wages, onSave, onCancel }) => {
             <label className={styles.label}>
               End Date <span className={styles.required}>*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               name="endDate"
               value={formData.endDate}
               onChange={handleChange}
-              onBlur={handleBlur}
-              className={styles.input}
             />
             {errors.endDate && <span className={styles.errorText}>{errors.endDate}</span>}
           </div>

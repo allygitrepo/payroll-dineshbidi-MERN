@@ -1,78 +1,45 @@
-const STORAGE_KEY = 'payroll_professional_tax';
+import apiClient from '../../../../shared/services/apiClient';
 
-const defaultProfessionalTax = [
-  {
-    id: '1',
-    startDate: '2017-04-01',
-    endDate: '2027-03-31',
-    from: '0.00',
-    to: '10000.00',
-    taxRate: '0.00'
-  },
-  {
-    id: '2',
-    startDate: '2017-04-01',
-    endDate: '2027-03-31',
-    from: '10001.00',
-    to: '15000.00',
-    taxRate: '110.00'
-  },
-  {
-    id: '3',
-    startDate: '2017-04-01',
-    endDate: '2027-03-31',
-    from: '15001.00',
-    to: '25000.00',
-    taxRate: '130.00'
-  },
-  {
-    id: '4',
-    startDate: '2017-04-01',
-    endDate: '2027-03-31',
-    from: '25001.00',
-    to: '40000.00',
-    taxRate: '150.00'
-  },
-  {
-    id: '5',
-    startDate: '2017-04-01',
-    endDate: '2027-03-31',
-    from: '40001.00',
-    to: '999999.00',
-    taxRate: '200.00'
-  }
-];
+const mapToFrontend = (t) => ({
+  id: t.id,
+  startDate: t.start_date,
+  endDate: t.end_date,
+  from: t.from_amount ? String(t.from_amount) : '0.00',
+  to: t.to_amount ? String(t.to_amount) : '0.00',
+  taxRate: t.tax_rate ? String(t.tax_rate) : '0.00'
+});
 
-export const getProfessionalTax = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultProfessionalTax));
-    return defaultProfessionalTax;
+const mapToBackend = (t, companyId) => ({
+  company_id: companyId,
+  start_date: t.startDate,
+  end_date: t.endDate,
+  from_amount: parseFloat(t.from) || 0.00,
+  to_amount: parseFloat(t.to) || 0.00,
+  tax_rate: parseFloat(t.taxRate) || 0.00
+});
+
+export const getProfessionalTax = async (companyId) => {
+  if (!companyId) return [];
+  const response = await apiClient.get(`professional-taxes/company/${companyId}`);
+  if ((response.data?.status || response.data?.success) && response.data?.data) {
+    return response.data.data.map(mapToFrontend);
   }
-  return JSON.parse(data);
+  return [];
 };
 
-export const saveProfessionalTax = (tax) => {
-  const list = getProfessionalTax();
+export const saveProfessionalTax = async (tax, companyId) => {
+  const payload = mapToBackend(tax, companyId);
   if (tax.id) {
-    // Update existing
-    const index = list.findIndex(t => t.id === tax.id);
-    if (index !== -1) {
-      list[index] = tax;
-    }
+    // Update
+    await apiClient.put(`professional-taxes/${tax.id}`, payload);
   } else {
-    // Create new
-    const nextId = String(list.length > 0 ? Math.max(...list.map(t => parseInt(t.id))) + 1 : 1);
-    const newTax = { ...tax, id: nextId };
-    list.push(newTax);
+    // Create
+    await apiClient.post('professional-taxes', payload);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  return list;
+  return await getProfessionalTax(companyId);
 };
 
-export const deleteProfessionalTax = (id) => {
-  const list = getProfessionalTax();
-  const filtered = list.filter(t => t.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  return filtered;
+export const deleteProfessionalTax = async (id, companyId) => {
+  await apiClient.delete(`professional-taxes/${id}`);
+  return await getProfessionalTax(companyId);
 };

@@ -37,8 +37,17 @@ const ResignationPage = () => {
   const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   // Load initial data
+  const fetchData = async () => {
+    try {
+      const data = await getResignations();
+      setResignations(data);
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to fetch resignations' });
+    }
+  };
+
   useEffect(() => {
-    setResignations(getResignations());
+    fetchData();
   }, []);
 
   // Close dropdown when clicking outside
@@ -73,11 +82,15 @@ const ResignationPage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deleteResignation(deleteTargetId);
-      setResignations(updated);
-      addToast({ type: 'success', message: 'Resignation record deleted successfully!' });
+      try {
+        await deleteResignation(deleteTargetId);
+        addToast({ type: 'success', message: 'Resignation record deleted successfully!' });
+        fetchData(); // Reload from server
+      } catch (error) {
+        addToast({ type: 'error', message: 'Failed to delete resignation' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -88,15 +101,19 @@ const ResignationPage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (resignationData) => {
-    const updated = saveResignation(resignationData);
-    setResignations(updated);
-    setIsFormOpen(false);
-    setEditingResignation(null);
-    addToast({
-      type: 'success',
-      message: resignationData.id ? 'Resignation record updated successfully!' : 'Resignation record created successfully!'
-    });
+  const handleSave = async (resignationData) => {
+    try {
+      await saveResignation(resignationData);
+      setIsFormOpen(false);
+      setEditingResignation(null);
+      addToast({
+        type: 'success',
+        message: resignationData.id ? 'Resignation record updated successfully!' : 'Resignation record created successfully!'
+      });
+      fetchData(); // Reload from server
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to save resignation' });
+    }
   };
 
   const handleCancel = () => {

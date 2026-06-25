@@ -1,85 +1,43 @@
-const STORAGE_KEY = 'payroll_addresses';
+import apiClient from '../../../../shared/services/apiClient';
 
-const defaultAddresses = [
-  {
-    id: '1',
-    address: 'BANDHA GHAT',
-    postOffice: 'JHALDA',
-    district: 'PURULIA',
-    pincode: '723202'
-  },
-  {
-    id: '2',
-    address: 'NAMO PARA',
-    postOffice: 'JHALDA',
-    district: 'PURULIA',
-    pincode: '723202'
-  },
-  {
-    id: '3',
-    address: 'CHEKYA',
-    postOffice: 'CHEKYA',
-    district: 'PURULIA',
-    pincode: '723202'
-  },
-  {
-    id: '4',
-    address: 'DURGU',
-    postOffice: 'CHEKYA',
-    district: 'PURULIA',
-    pincode: '723202'
-  },
-  {
-    id: '5',
-    address: 'HET KAHAN',
-    postOffice: 'UPER KAHAN',
-    district: 'PURULIA',
-    pincode: '723202'
-  },
-  {
-    id: '6',
-    address: 'PATJHALDA',
-    postOffice: 'PATJHALDA',
-    district: 'PURULIA',
-    pincode: '723202'
-  },
-  {
-    id: '7',
-    address: 'GOURA NAGAR COLONY',
-    postOffice: 'VRINDABAN',
-    district: 'MATHURA',
-    pincode: '261121'
-  }
-];
+const mapToFrontend = (a) => ({
+  id: a.id,
+  address: a.address,
+  postOffice: a.post_office,
+  district: a.district,
+  pincode: a.pincode
+});
 
-export const getAddresses = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultAddresses));
-    return defaultAddresses;
+const mapToBackend = (a, companyId) => ({
+  company_id: companyId,
+  address: a.address,
+  post_office: a.postOffice,
+  district: a.district,
+  pincode: a.pincode
+});
+
+export const getAddresses = async (companyId) => {
+  if (!companyId) return [];
+  const response = await apiClient.get(`addresses/company/${companyId}`);
+  if ((response.data?.status || response.data?.success) && response.data?.data) {
+    return response.data.data.map(mapToFrontend);
   }
-  return JSON.parse(data);
+  return [];
 };
 
-export const saveAddress = (address) => {
-  const addresses = getAddresses();
+export const saveAddress = async (address, companyId) => {
+  const payload = mapToBackend(address, companyId);
   if (address.id) {
-    const index = addresses.findIndex(a => a.id === address.id);
-    if (index !== -1) {
-      addresses[index] = address;
-    }
+    // Update
+    await apiClient.put(`addresses/${address.id}`, payload);
   } else {
-    const nextId = String(addresses.length > 0 ? Math.max(...addresses.map(a => parseInt(a.id))) + 1 : 1);
-    const newAddress = { ...address, id: nextId };
-    addresses.push(newAddress);
+    // Create
+    await apiClient.post('addresses', payload);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(addresses));
-  return addresses;
+  return await getAddresses(companyId);
 };
 
-export const deleteAddress = (id) => {
-  const addresses = getAddresses();
-  const filtered = addresses.filter(a => a.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  return filtered;
+export const deleteAddress = async (id, companyId) => {
+  await apiClient.delete(`addresses/${id}`);
+  return await getAddresses(companyId);
 };

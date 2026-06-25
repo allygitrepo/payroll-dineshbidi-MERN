@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, ChevronLeft, ChevronRight, UserCheck } from 'lucide-react';
+import { useToast } from '../../../shared/components';
+import dashboardService from '../services/dashboardService';
 import styles from './DashboardPage.module.css';
 
 const DashboardHome = () => {
+  const addToast = useToast();
   // Search and Pagination states
   const [absentSearch, setAbsentSearch] = useState('');
   const [absentRowsPerPage, setAbsentRowsPerPage] = useState(5);
@@ -12,44 +15,43 @@ const DashboardHome = () => {
   const [retireRowsPerPage, setRetireRowsPerPage] = useState(5);
   const [retirePage, setRetirePage] = useState(1);
 
-  // Notes state
-  const [notes, setNotes] = useState(
-    "1. PF Return filing due date is 25th.\n2. Review absent list for Maity Contractor.\n3. Complete 58-year-age verifications."
-  );
+  // Dynamic States
+  const [notes, setNotes] = useState("Loading upcoming notes...");
+  const [staffData, setStaffData] = useState([]);
+  const [challanStatus, setChallanStatus] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock Datasets
-  const staffData = [
-    { type: 'Office Staff', month: 'May-2026', nos: 12, amount: 185000 },
-    { type: 'Packing Staff', month: 'May-2026', nos: 45, amount: 420000 },
-    { type: 'Bidi Roller', month: 'May-2026', nos: 120, amount: 840000 }
-  ];
+  const [absentList, setAbsentList] = useState([]);
+  const [retireList, setRetireList] = useState([]);
 
-  const challanStatus = [
-    { type: 'PF Challan', month: 'May-2026', status: 'Pending', date: '-' },
-    { type: 'PF Return', month: 'May-2026', status: 'Pending', date: '-' },
-    { type: 'ESIC Challan', month: 'May-2026', status: 'Completed', date: '15-Jun-2026' }
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const companyId = localStorage.getItem('selectedCompany');
+        if (!companyId) return;
 
-  const absentList = [
-    { name: 'BIPADTARAN GOSWAMI', acNo: '0015067', uan: '100115419794', contractor: 'MAITY CONTRACTOR' },
-    { name: 'KANJAN KUMAR', acNo: '17291', uan: '100188654022', contractor: 'KUMAR ENTERPRISES' },
-    { name: 'KIRTAN KUMAR', acNo: '0017225', uan: '100194181241', contractor: 'DAS LOGISTICS' },
-    { name: 'NABIN MAHATO', acNo: '0005870', uan: '100247084817', contractor: 'SEN & CO' },
-    { name: 'RAJ KHATIK', acNo: '0017450', uan: '101513506630', contractor: 'MAITY CONTRACTOR' },
-    { name: 'DINESH PATEL', acNo: '0018020', uan: '101526789123', contractor: 'PATEL INFRA' },
-    { name: 'SANJAY PRASAD', acNo: '0019280', uan: '101534567890', contractor: 'KUMAR ENTERPRISES' },
-    { name: 'GOPAL SHARMA', acNo: '0020115', uan: '101545678901', contractor: 'DAS LOGISTICS' }
-  ];
+        setIsLoading(true);
+        const res = await dashboardService.getDashboardSummary(companyId);
+        
+        if (res?.status) {
+          setStaffData(res.data.staffData || []);
+          setChallanStatus(res.data.challanStatus || []);
+          setNotes(res.data.notesText || "No upcoming notes found.");
+          setAbsentList(res.data.absentList || []);
+          setRetireList(res.data.retireList || []);
+        } else {
+          addToast({ type: 'error', message: 'Failed to load dashboard data' });
+        }
+      } catch (error) {
+        console.error("Dashboard fetch error", error);
+        addToast({ type: 'error', message: 'An error occurred while loading dashboard' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const retireList = [
-    { name: 'ARUN ROHIDAS', acNo: '0002041', uan: '100090965378', dob: '06/07/1968', contractor: 'LAKHIRAM KUMAR' },
-    { name: 'ASHOK KUMAR', acNo: '0001470', uan: '100093736407', dob: '13/05/1969', contractor: 'ASHOK KUMAR' },
-    { name: 'BAHARAT CHANDRA DAS', acNo: '0016239', uan: '101238434600', dob: '14/03/1969', contractor: 'SAHUD ANSARI' },
-    { name: 'BHAKU MAHATO', acNo: '0004872', uan: '100110358674', dob: '05/08/1968', contractor: 'SHREEPADA MAHATO' },
-    { name: 'BIMALA KUMAR', acNo: '0005906', uan: '100114758818', dob: '07/05/1968', contractor: 'PARAN CHANDRA KUMAR' },
-    { name: 'HARISH SINGH', acNo: '0006215', uan: '100115678901', dob: '12/10/1968', contractor: 'PATEL INFRA' },
-    { name: 'RAMESH PAL', acNo: '0007320', uan: '100116789012', dob: '19/02/1969', contractor: 'DAS LOGISTICS' }
-  ];
+    fetchDashboardData();
+  }, []);
 
   // Filtering & Pagination Calculations for Absent List
   const filteredAbsent = absentList.filter(emp =>

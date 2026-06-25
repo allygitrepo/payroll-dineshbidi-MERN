@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './ResignationPage.module.css';
+import { fetchEmployeeByUan } from '../services/resignationService';
+import { DatePicker } from '../../../../shared/components';
 
 const REASON_OPTIONS = [
   'CESSATION (SHORT SERVICE)',
@@ -47,6 +49,37 @@ const ResignationForm = ({ resignation, onSave, onCancel }) => {
       setTouched({});
     }
   }, [resignation]);
+
+  // Fetch employee details when UAN is exactly 12 digits
+  useEffect(() => {
+    const fetchEmployeeInfo = async () => {
+      if (formData.uan && formData.uan.length === 12 && !resignation) {
+        try {
+          const emp = await fetchEmployeeByUan(formData.uan);
+          if (emp) {
+            setFormData(prev => ({
+              ...prev,
+              nameOfMember: emp.name_of_member || prev.nameOfMember,
+              nameOfParents: emp.name_of_parents || prev.nameOfParents,
+              accountNo: emp.account_no || prev.accountNo
+            }));
+            
+            // Clear any previous errors on these fields since they are auto-filled
+            setErrors(prev => ({
+              ...prev,
+              nameOfMember: '',
+              nameOfParents: '',
+              accountNo: ''
+            }));
+          }
+        } catch (error) {
+          console.error("Employee not found for this UAN", error);
+        }
+      }
+    };
+    
+    fetchEmployeeInfo();
+  }, [formData.uan, resignation]);
 
   const validateField = (name, value) => {
     let error = '';
@@ -232,13 +265,11 @@ const ResignationForm = ({ resignation, onSave, onCancel }) => {
             <label className={styles.label}>
               Date of Leaving <span className={styles.required}>*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               name="dateOfLeaving"
               value={formData.dateOfLeaving}
               onChange={handleChange}
-              className={`${styles.input} ${errors.dateOfLeaving && touched.dateOfLeaving ? styles.inputError : ''}`}
-              onBlur={handleBlur}
+              className={errors.dateOfLeaving && touched.dateOfLeaving ? styles.inputError : ''}
             />
             {errors.dateOfLeaving && touched.dateOfLeaving && (
               <span className={styles.errorText}>{errors.dateOfLeaving}</span>

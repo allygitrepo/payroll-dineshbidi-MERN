@@ -1,9 +1,13 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
 import { useToast, MonthYearPicker } from '../../../../shared/components';
-import { getEmployees } from '../../../master/employee/services/employeeService';
-import { getResignations } from '../../../entry/resignation/services/resignationService';
+import { getOfficeStaffEntry } from '../../../entry/office-staff/services/officeStaffEntryService';
+import { getPackersEntry } from '../../../entry/packers/services/packersEntryService';
+import { getBidiRollerEntry } from '../../../entry/bidi-roller/services/bidiRollerEntryService';
+import { getChallanSetup } from '../../../setup/challan-setup/services/challanSetupService';
 import { getContractors } from '../../../master/contractor/services/contractorService';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import styles from '../components/PfSummaryPage.module.css';
 
 // Realistic PF summary mock records matching the user's screenshot for 01/2026 pre-load
@@ -58,130 +62,109 @@ const PfSummaryPage = () => {
   const addToast = useToast();
 
   // Load database structures to fetch dynamic monthly records
-  const bidiContractors = useMemo(() => {
-    if (!searchTriggeredMonth) return [];
+  const [bidiContractors, setBidiContractors] = useState([]);
+  const [officeTotals, setOfficeTotals] = useState({ employee: 0, unitWorked: 0, wages: 0, pf: 0, esic: 0, epf: 0, eps: 0, net: 0 });
+  const [packingTotals, setPackingTotals] = useState({ employee: 0, unitWorked: 0, wages: 0, pf: 0, esic: 0, epf: 0, eps: 0, net: 0 });
 
-    const key = `payroll_bidi_roller_entry_${searchTriggeredMonth}`;
-    const rawData = localStorage.getItem(key);
-    const dbBidiRows = rawData ? JSON.parse(rawData) : [];
+  useEffect(() => {
+    const fetchDynamicData = async () => {
+      if (!searchTriggeredMonth) return;
+      const companyId = localStorage.getItem('selectedCompany');
+      
+      try {
+        const [setupRes, office, packers, bidi, contractorsRes] = await Promise.all([
+          getChallanSetup(companyId).catch(() => []),
+          getOfficeStaffEntry(searchTriggeredMonth, companyId).catch(() => ({ data: [] })),
+          getPackersEntry(searchTriggeredMonth, companyId).catch(() => ({ data: [] })),
+          getBidiRollerEntry(searchTriggeredMonth, companyId).catch(() => ({ data: [] })),
+          getContractors(companyId).catch(() => [])
+        ]);
 
-    // Group database rollers by contractor
-    const dbContractorsMap = {};
-    dbBidiRows.forEach(row => {
-      if (!row.contractor || row.contractor === 'SELF') return;
-      const name = row.contractor.split(' - ')[0];
+        const setup = setupRes?.[0] || {};
+        const pfRate = parseFloat(setup.ac1eemf || 12) / 100;
+        const esicRate = 0.0075; // standard employee esic
 
-      if (!dbContractorsMap[name]) {
-        dbContractorsMap[name] = {
-          name,
-          employee: 0,
-          unitWorked: 0,
-          wages: 0,
-          pf: 0,
-          esic: 0,
-          epf: 0,
-          eps: 0,
-          net: 0
-        };
+        const contractorMap = {};
+        (contractorsRes || []).forEach(c => {
+          contractorMap[c.id] = c.name;
+        });
+
+        // Process Bidi Rollers
+        const dbContractorsMap = {};
+        (bidi?.data || []).forEach(row => {
+          if (!row.contractorId) return;
+          const name = contractorMap[row.contractorId] || 'Unknown';
+          if (name.toUpperCase() === 'SELF') return;
+
+          if (!dbContractorsMap[name]) {
+            dbContractorsMap[name] = { name, employee: 0, unitWorked: 0, wages: 0 };
+          }
+          const group = dbContractorsMap[name];
+          group.employee += 1;
+          group.unitWorked += parseFloat(row.unit1 || 0) + parseFloat(row.unit2 || 0);
+          group.wages += parseFloat(row.wages || row.total || 0);
+        });
+
+        const bidiList = Object.values(dbContractorsMap).map(c => {
+          const pf = Math.round(c.wages * pfRate);
+          const eps = Math.round(c.wages * 0.0833);
+          const epf = pf - eps;
+          const esic = Math.ceil(c.wages * esicRate);
+          const net = c.wages - pf - esic;
+          return { ...c, pf, eps, epf, esic, net };
+        });
+
+        setBidiContractors(bidiList);
+
+        // Process Office Staff
+        let officeWages = 0;
+        let officeEmp = 0;
+        (office?.data || []).forEach(row => {
+          const gross = parseFloat(row.total || row.gross_wages || row.totalAmount || 0);
+          if (gross > 0) {
+            officeWages += gross;
+            officeEmp += 1;
+          }
+        });
+        const officePf = Math.round(officeWages * pfRate);
+        const officeEps = Math.round(officeWages * 0.0833);
+        const officeEpf = officePf - officeEps;
+        const officeEsic = Math.ceil(officeWages * esicRate);
+        
+        setOfficeTotals({
+          employee: officeEmp, unitWorked: 0, wages: officeWages,
+          pf: officePf, esic: officeEsic, epf: officeEpf, eps: officeEps,
+          net: officeWages - officePf - officeEsic
+        });
+
+        // Process Packing Staff
+        let packWages = 0;
+        let packEmp = 0;
+        let packUnits = 0;
+        (packers?.data || []).forEach(row => {
+          const gross = parseFloat(row.total || row.gross_wages || row.totalAmount || 0);
+          if (gross > 0) {
+            packWages += gross;
+            packEmp += 1;
+            packUnits += parseFloat(row.daysWorked || row.days || 0);
+          }
+        });
+        const packPf = Math.round(packWages * pfRate);
+        const packEps = Math.round(packWages * 0.0833);
+        const packEpf = packPf - packEps;
+        const packEsic = Math.ceil(packWages * esicRate);
+        
+        setPackingTotals({
+          employee: packEmp, unitWorked: packUnits, wages: packWages,
+          pf: packPf, esic: packEsic, epf: packEpf, eps: packEps,
+          net: packWages - packPf - packEsic
+        });
+
+      } catch (err) {
+        console.error(err);
       }
-
-      const group = dbContractorsMap[name];
-      group.employee += 1;
-      group.unitWorked += parseFloat(row.unit1 || 0) + parseFloat(row.unit2 || 0);
-      group.wages += row.wages || 0;
-      group.pf += row.pf || 0;
-      group.esic += row.esic || 0;
-      
-      const rowEps = Math.round((row.wages || 0) * 0.0833);
-      const rowEpf = (row.pf || 0) - rowEps;
-      group.eps += rowEps;
-      group.epf += rowEpf;
-      group.net += row.netWages || 0;
-    });
-
-    const dbList = Object.values(dbContractorsMap);
-
-    // If query month is 01/2026 or has no database rows, merge with mock rows
-    if (dbList.length === 0 || searchTriggeredMonth === '2026-01') {
-      const dbNames = new Set(dbList.map(c => c.name));
-      const uniqueMocks = MOCK_SUMMARY_RECORDS.filter(m => !dbNames.has(m.name));
-      return [...dbList, ...uniqueMocks];
-    }
-
-    return dbList;
-  }, [searchTriggeredMonth]);
-
-  // Load Office Staff totals
-  const officeTotals = useMemo(() => {
-    if (!searchTriggeredMonth) return { employee: 0, unitWorked: 0, wages: 0, pf: 0, esic: 0, epf: 0, eps: 0, net: 0 };
-
-    const key = `payroll_office_staff_entry_${searchTriggeredMonth}`;
-    const rawData = localStorage.getItem(key);
-    const officeRows = rawData ? JSON.parse(rawData) : [];
-
-    if (officeRows.length === 0 || searchTriggeredMonth === '2026-01') {
-      return {
-        employee: 10,
-        unitWorked: 0,
-        wages: 74848,
-        pf: 7486,
-        esic: 566,
-        epf: 1250,
-        eps: 6236,
-        net: 66796
-      };
-    }
-
-    const totals = { employee: officeRows.length, unitWorked: 0, wages: 0, pf: 0, esic: 0, epf: 0, eps: 0, net: 0 };
-    officeRows.forEach(row => {
-      totals.wages += row.totalAmount || 0;
-      totals.pf += row.pf || 0;
-      totals.esic += row.esic || 0;
-      
-      const rowEps = Math.min(Math.round((row.totalAmount || 0) * 0.0833), 1250);
-      const rowEpf = (row.pf || 0) - rowEps;
-      totals.eps += rowEps;
-      totals.epf += rowEpf;
-      totals.net += row.netSalary || 0;
-    });
-    return totals;
-  }, [searchTriggeredMonth]);
-
-  // Load Packing Staff totals
-  const packingTotals = useMemo(() => {
-    if (!searchTriggeredMonth) return { employee: 0, unitWorked: 0, wages: 0, pf: 0, esic: 0, epf: 0, eps: 0, net: 0 };
-
-    const key = `payroll_packers_entry_${searchTriggeredMonth}`;
-    const rawData = localStorage.getItem(key);
-    const packingRows = rawData ? JSON.parse(rawData) : [];
-
-    if (packingRows.length === 0 || searchTriggeredMonth === '2026-01') {
-      return {
-        employee: 3,
-        unitWorked: 111,
-        wages: 19295,
-        pf: 1930,
-        esic: 146,
-        epf: 323,
-        eps: 1607,
-        net: 17219
-      };
-    }
-
-    const totals = { employee: packingRows.length, unitWorked: 0, wages: 0, pf: 0, esic: 0, epf: 0, eps: 0, net: 0 };
-    packingRows.forEach(row => {
-      totals.unitWorked += parseFloat(row.daysWorked || 0);
-      totals.wages += row.totalAmount || 0;
-      totals.pf += row.pf || 0;
-      totals.esic += row.esic || 0;
-      
-      const rowEps = Math.min(Math.round((row.totalAmount || 0) * 0.0833), 1250);
-      const rowEpf = (row.pf || 0) - rowEps;
-      totals.eps += rowEps;
-      totals.epf += rowEpf;
-      totals.net += row.netSalary || 0;
-    });
-    return totals;
+    };
+    fetchDynamicData();
   }, [searchTriggeredMonth]);
 
   // Group Bidi Rollers subtotal
@@ -337,6 +320,45 @@ const PfSummaryPage = () => {
         message: `PF Summary ${type} downloaded successfully!`
       });
     }
+    else if (type === 'PDF') {
+      const doc = new jsPDF('landscape');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      doc.setFontSize(16);
+      doc.text(`PF Summary - Month: ${monthLabel}`, pageWidth / 2, 20, { align: 'center' });
+      
+      const tableColumn = ['Sr No.', 'Name', 'Employee', 'TOTAL UNIT WORKED', 'Wages', 'PF on Wages', 'ESIC', 'EPF', 'EPS', 'Net Payment'];
+      const tableRows = [];
+      
+      filteredContractors.forEach((c, idx) => {
+        tableRows.push([idx + 1, c.name, c.employee, c.unitWorked, c.wages, c.pf, c.esic, c.epf, c.eps, c.net]);
+      });
+      tableRows.push(["", "BIDI ROLLER TOTAL", bidiSubtotal.employee, bidiSubtotal.unitWorked, bidiSubtotal.wages, bidiSubtotal.pf, bidiSubtotal.esic, bidiEpfDisplay, bidiEpsDisplay, bidiSubtotal.net]);
+      tableRows.push(["A", "OFFICE STAFF TOTAL", officeTotals.employee, officeTotals.unitWorked, officeTotals.wages, officeTotals.pf, officeTotals.esic, officeTotals.epf, officeTotals.eps, officeTotals.net]);
+      tableRows.push(["B", "PACKING STAFF TOTAL", packingTotals.employee, packingTotals.unitWorked, packingTotals.wages, packingTotals.pf, packingTotals.esic, packingTotals.epf, packingTotals.eps, packingTotals.net]);
+      tableRows.push(["", "Total", overallTotals.employee, overallTotals.unitWorked, overallTotals.wages, overallTotals.pf, overallTotals.esic, overallEpfDisplay, overallEpsDisplay, overallTotals.net]);
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 30,
+        theme: 'grid',
+        headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold', fontSize: 8, halign: 'center' },
+        bodyStyles: { textColor: [55, 65, 81], fontSize: 8, halign: 'center' },
+        didParseCell: function(data) {
+          if (data.row.index >= tableRows.length - 4) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [243, 244, 246];
+          }
+        }
+      });
+
+      doc.save(`PF_Summary_${monthLabel}.pdf`);
+      addToast({
+        type: 'success',
+        message: 'PF Summary PDF downloaded successfully!'
+      });
+    }
     else {
       addToast({
         type: 'info',
@@ -447,15 +469,22 @@ const PfSummaryPage = () => {
               </tr>
             </thead>
             <tbody>
-              {bidiContractors.length === 0 ? (
+              {!searchTriggeredMonth ? (
                 <tr>
                   <td colSpan={10} className={styles.noDataText}>
-                    {!searchTriggeredMonth ? 'Select Month and Year to query PF Summary records.' : 'No matching records found.'}
+                    Select Month and Year to query PF Summary records.
                   </td>
                 </tr>
               ) : (
                 <>
                   {/* Paginated Bidi Roller Contractors */}
+                  {paginatedData.length === 0 && (
+                    <tr>
+                      <td colSpan={10} style={{ textAlign: 'center', padding: '12px' }}>
+                        No Bidi Roller records found.
+                      </td>
+                    </tr>
+                  )}
                   {paginatedData.map((row, idx) => (
                     <tr key={idx}>
                       <td style={{ fontWeight: '500' }}>{startIndex + idx + 1}</td>

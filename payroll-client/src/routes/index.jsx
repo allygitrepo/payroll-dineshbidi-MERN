@@ -4,6 +4,7 @@ import LoginPage from '../modules/auth/pages/LoginPage';
 import DashboardPage from '../modules/dashboard/pages/DashboardPage';
 import DashboardHome from '../modules/dashboard/pages/DashboardHome';
 import ModulePageWrapper from './ModulePageWrapper';
+import FaceAttendanceSelfPage from '../modules/attendance/self/pages/FaceAttendanceSelfPage';
 
 export const router = createBrowserRouter([
   {
@@ -27,6 +28,10 @@ export const router = createBrowserRouter([
         element: <ModulePageWrapper />
       }
     ]
+  },
+  {
+    path: '/trial-attendance',
+    element: <FaceAttendanceSelfPage />
   },
   {
     path: '*',

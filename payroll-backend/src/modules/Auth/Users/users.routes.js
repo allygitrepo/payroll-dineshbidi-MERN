@@ -11,6 +11,7 @@ router.post("/refresh", UsersController.refresh);
 // Protected routes (require JWT verification)
 router.post("/logout", authenticateJWT, UsersController.logout);
 router.get("/me", authenticateJWT, UsersController.getProfile);
+router.get("/", authenticateJWT, UsersController.getAll);
 router.put("/:id", authenticateJWT, UsersController.update);
 router.delete("/:id", authenticateJWT, UsersController.delete);
 

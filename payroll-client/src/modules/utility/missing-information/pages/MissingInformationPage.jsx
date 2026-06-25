@@ -2,129 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, RotateCcw, Edit, AlertCircle } from 'lucide-react';
 import { useToast } from '../../../../shared/components';
-import { getEmployees } from '../../../master/employee/services/employeeService';
+import { getMissingDetails } from '../../../master/employee/services/employeeService';
 import styles from '../components/MissingInformationPage.module.css';
-
-// Preloaded mock data with various missing fields for realistic audits
-const MOCK_EMPLOYEES = [
-  {
-    id: 'mock1',
-    memberName: 'NAMITA MAHATO',
-    uan: '102318950034',
-    dob: '', // Missing Dob
-    dateOfJoining: '2026-06-23',
-    gender: 'FEMALE',
-    relation: '', // Missing Relation
-    maritalStatus: 'SINGLE',
-    qualification: 'MATRIC',
-    kycDetails: [
-      { documentType: 'AADHAAR', documentNumber: '657199054792' },
-      { documentType: 'BANK PASSBOOK', documentNumber: '99283726182', ifsc: 'SBIN0002031' }
-    ] // Missing PAN KYC
-  },
-  {
-    id: 'mock2',
-    memberName: 'REKHA KUMAR',
-    uan: '102318088496',
-    dob: '1995-08-12',
-    dateOfJoining: '2026-06-23',
-    gender: 'FEMALE',
-    relation: 'HUSBAND',
-    maritalStatus: 'MARRIED',
-    qualification: 'GRADUATE',
-    kycDetails: [] // Missing AADHAAR, PAN, BANK KYC
-  },
-  {
-    id: 'mock3',
-    memberName: 'NIYATI MACHHUAR',
-    uan: '102318063813',
-    dob: '1998-11-20',
-    dateOfJoining: '2026-06-23',
-    gender: 'FEMALE',
-    relation: 'FATHER',
-    maritalStatus: 'SINGLE',
-    qualification: 'UNDER GRADUATE',
-    kycDetails: [
-      { documentType: 'AADHAAR', documentNumber: '399417814159' },
-      { documentType: 'PAN', documentNumber: 'ABCDE1234F' }
-    ] // Missing BANK KYC
-  },
-  {
-    id: 'mock4',
-    memberName: 'RAHUL KUMAR',
-    uan: '101556427344',
-    dob: '2001-04-05',
-    dateOfJoining: '2026-06-23',
-    gender: 'MALE',
-    relation: 'FATHER',
-    maritalStatus: '', // Missing Marital Status
-    qualification: '', // Missing Qualification
-    kycDetails: [
-      { documentType: 'AADHAAR', documentNumber: '804595857184' },
-      { documentType: 'PAN', documentNumber: 'XYZAB5678K' },
-      { documentType: 'BANK PASSBOOK', documentNumber: '88392817263', ifsc: 'HDFC0001928' }
-    ]
-  },
-  {
-    id: 'mock5',
-    memberName: 'MONARANJAN MAHATO',
-    uan: '102316622517',
-    dob: '1990-12-15',
-    dateOfJoining: '', // Missing Doj
-    gender: '', // Missing Gender
-    relation: 'FATHER',
-    maritalStatus: 'MARRIED',
-    qualification: 'POST GRADUATE',
-    kycDetails: [
-      { documentType: 'AADHAAR', documentNumber: '361931314912' }
-    ] // Missing PAN, BANK KYC
-  },
-  {
-    id: 'mock6',
-    memberName: 'ARCHANA MAHATO',
-    uan: '102318953530',
-    dob: '1996-03-24',
-    dateOfJoining: '2026-06-23',
-    gender: 'FEMALE',
-    relation: 'FATHER',
-    maritalStatus: 'SINGLE',
-    qualification: 'GRADUATE',
-    kycDetails: [
-      { documentType: 'PAN', documentNumber: 'QWERP9876O' }
-    ] // Missing AADHAAR, BANK KYC
-  },
-  {
-    id: 'mock7',
-    memberName: 'MANIK MAHATO',
-    uan: '102318956783',
-    dob: '', // Missing Dob
-    dateOfJoining: '2026-06-23',
-    gender: 'MALE',
-    relation: 'FATHER',
-    maritalStatus: 'MARRIED',
-    qualification: 'MATRIC',
-    kycDetails: [
-      { documentType: 'AADHAAR', documentNumber: '547473395083' },
-      { documentType: 'PAN', documentNumber: 'PLKMJ7483K' },
-      { documentType: 'BANK PASSBOOK', documentNumber: '99281736452', ifsc: 'ICIC0003829' }
-    ]
-  },
-  {
-    id: 'mock8',
-    memberName: 'RABI NAYEK',
-    uan: '102318079307',
-    dob: '1992-06-18',
-    dateOfJoining: '2026-06-23',
-    gender: 'MALE',
-    relation: 'FATHER',
-    maritalStatus: 'MARRIED',
-    qualification: 'GRADUATE',
-    kycDetails: [
-      { documentType: 'AADHAAR', documentNumber: '414445977128' },
-      { documentType: 'BANK PASSBOOK', documentNumber: '88371625439', ifsc: 'UTIB0000293' }
-    ] // Missing PAN KYC
-  }
-];
 
 const DIAGNOSTIC_FIELDS = [
   { key: 'Name', label: 'Name' },
@@ -139,34 +18,6 @@ const DIAGNOSTIC_FIELDS = [
   { key: 'BANK KYC', label: 'BANK KYC' }
 ];
 
-const getMissingFields = (emp) => {
-  const missing = [];
-  if (!emp.memberName || !emp.memberName.trim()) missing.push('Name');
-  if (!emp.dob || !emp.dob.trim()) missing.push('Dob');
-  if (!emp.dateOfJoining || !emp.dateOfJoining.trim()) missing.push('Doj');
-  if (!emp.gender || !emp.gender.trim()) missing.push('Gender');
-  if (!emp.relation || !emp.relation.trim()) missing.push('Relation');
-  if (!emp.maritalStatus || !emp.maritalStatus.trim()) missing.push('Marital Status');
-  if (!emp.qualification || !emp.qualification.trim()) missing.push('Qualification');
-  
-  const hasAadhaar = emp.kycDetails && emp.kycDetails.some(
-    k => k.documentType === 'AADHAAR' && k.documentNumber && k.documentNumber.trim()
-  );
-  if (!hasAadhaar) missing.push('AADHAAR KYC');
-  
-  const hasPan = emp.kycDetails && emp.kycDetails.some(
-    k => k.documentType === 'PAN' && k.documentNumber && k.documentNumber.trim()
-  );
-  if (!hasPan) missing.push('PAN KYC');
-  
-  const hasBank = emp.kycDetails && emp.kycDetails.some(
-    k => (k.documentType === 'BANK PASSBOOK' || k.documentType === 'BANK') && k.documentNumber && k.documentNumber.trim()
-  );
-  if (!hasBank) missing.push('BANK KYC');
-  
-  return missing;
-};
-
 const MissingInformationPage = () => {
   const navigate = useNavigate();
   const addToast = useToast();
@@ -176,44 +27,24 @@ const MissingInformationPage = () => {
   // Selection states for checkbox grid
   const [selectedFields, setSelectedFields] = useState(allFieldKeys);
   // Applied search states for results table
-  const [appliedFields, setAppliedFields] = useState(allFieldKeys);
+  const [appliedFields, setAppliedFields] = useState([]);
 
   // Local text search & pagination states
   const [searchTerm, setSearchTerm] = useState('');
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Load database employees combined with mocks
-  const allEmployees = useMemo(() => {
-    const dbList = getEmployees() || [];
-    const dbUans = new Set(dbList.map(emp => emp.uan).filter(Boolean));
-    const uniqueMocks = MOCK_EMPLOYEES.filter(emp => !dbUans.has(emp.uan));
-    return [...dbList, ...uniqueMocks];
-  }, []);
+  const [diagnosticResults, setDiagnosticResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Filter list by selected fields
-  const diagnosticResults = useMemo(() => {
-    const processed = allEmployees.map(emp => {
-      const missing = getMissingFields(emp);
-      return {
-        ...emp,
-        missingFields: missing
-      };
-    });
-
-    return processed.filter(emp => {
-      return emp.missingFields.some(field => appliedFields.includes(field));
-    });
-  }, [allEmployees, appliedFields]);
-
-  // Apply query text matching
+  // Apply query text matching locally after fetching from DB
   const searchedResults = useMemo(() => {
     const query = searchTerm.toLowerCase().trim();
     if (!query) return diagnosticResults;
     return diagnosticResults.filter(emp => {
       const matchName = emp.memberName && emp.memberName.toLowerCase().includes(query);
       const matchUan = emp.uan && emp.uan.toLowerCase().includes(query);
-      const matchMissing = emp.missingFields.some(f => f.toLowerCase().includes(query));
+      const matchMissing = emp.missingFields && emp.missingFields.some(f => f.toLowerCase().includes(query));
       return matchName || matchUan || matchMissing;
     });
   }, [diagnosticResults, searchTerm]);
@@ -240,7 +71,7 @@ const MissingInformationPage = () => {
     );
   };
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (selectedFields.length === 0) {
       addToast({
         type: 'error',
@@ -248,16 +79,34 @@ const MissingInformationPage = () => {
       });
       return;
     }
-    setAppliedFields(selectedFields);
-    addToast({
-      type: 'success',
-      message: `Diagnostic audit completed for ${selectedFields.length} selected categories.`
-    });
+    
+    setIsLoading(true);
+    try {
+      const companyId = localStorage.getItem('selectedCompany');
+      if (!companyId) {
+        addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+        return;
+      }
+      
+      const res = await getMissingDetails(companyId, selectedFields);
+      setDiagnosticResults(res || []);
+      setAppliedFields(selectedFields);
+      
+      addToast({
+        type: 'success',
+        message: `Diagnostic audit completed for ${selectedFields.length} selected categories.`
+      });
+    } catch (err) {
+      addToast({ type: 'error', message: 'Failed to fetch diagnostic data' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleReset = () => {
     setSelectedFields(allFieldKeys);
-    setAppliedFields(allFieldKeys);
+    setAppliedFields([]);
+    setDiagnosticResults([]);
     setSearchTerm('');
     addToast({
       type: 'info',
@@ -362,7 +211,13 @@ const MissingInformationPage = () => {
               </tr>
             </thead>
             <tbody>
-              {paginatedData.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                    Loading...
+                  </td>
+                </tr>
+              ) : paginatedData.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                     No employees with missing details matching selected criteria.

@@ -23,6 +23,16 @@ class CompanyService {
     }
 
     /**
+     * Retrieves all active companies for the public login dropdown.
+     */
+    static async getPublicCompanies() {
+        return await Company.findAll({
+            where: { cstatus: true },
+            attributes: ["id", "company_name"]
+        });
+    }
+
+    /**
      * Retrieves all active companies.
      */
     static async getAllCompanies(userId) {

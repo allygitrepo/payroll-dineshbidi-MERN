@@ -22,10 +22,15 @@ const User = sequelize.define(
             type: DataTypes.STRING,
             allowNull: false,
         },
-        role: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            defaultValue: "admin",
+        role_id: {
+            type: DataTypes.UUID,
+            allowNull: true,
+            references: {
+                model: "Roles",
+                key: "id",
+            },
+            onDelete: "SET NULL",
+            onUpdate: "CASCADE",
         },
         status: {
             type: DataTypes.BOOLEAN,

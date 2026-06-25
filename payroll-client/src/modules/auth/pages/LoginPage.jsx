@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Building2 } from 'lucide-react';
-import { Input, Button, Select } from '../../../shared/components';
+import { Input, Button, Select, useToast } from '../../../shared/components';
+import authService from '../services/authService';
 import mobileImage from '../../../assets/Images/mobile.png';
 import logoImage from '../../../assets/Images/Logo.png';
 import styles from './LoginPage.module.css';
@@ -11,16 +12,72 @@ const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [company, setCompany] = useState('');
+  const [companyOptions, setCompanyOptions] = useState([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const addToast = useToast();
 
-  const companyOptions = [
-    { value: 'ally_solutions', label: 'Ally Soft Solutions' },
-    { value: 'dinesh_bidi', label: 'Dinesh Bidi Works' },
-    { value: 'demo_company', label: 'Demo Corporation' }
-  ];
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const response = await authService.getPublicCompanies();
+        if ((response.status || response.success) && response.data) {
+          const options = response.data.map((c) => ({
+            value: c.id,
+            label: c.company_name,
+          }));
+          setCompanyOptions(options);
+        } else {
+          addToast({
+            type: 'error',
+            message: 'Failed to load company options.',
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching companies:', err);
+        addToast({
+          type: 'error',
+          message: err.response?.data?.messageToShow || 'Error loading companies from server.',
+        });
+      } finally {
+        setLoadingCompanies(false);
+      }
+    };
+    fetchCompanies();
+  }, [addToast]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate('/dashboard');
+    setIsSubmitting(true);
+    try {
+      const response = await authService.login(username, password, company);
+      if ((response.status || response.success) && response.data) {
+        const { user, accessToken } = response.data;
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('selectedCompany', company);
+        
+        addToast({
+          type: 'success',
+          message: 'Welcome back! Login successful.',
+        });
+        
+        navigate('/dashboard');
+      } else {
+        addToast({
+          type: 'error',
+          message: response.messageToShow || 'Login failed.',
+        });
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Invalid user ID or password.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -60,6 +117,7 @@ const LoginPage = () => {
                 placeholder="Enter User Id"
                 icon={Mail}
                 required
+                disabled={isSubmitting}
               />
             </div>
 
@@ -72,6 +130,7 @@ const LoginPage = () => {
                 placeholder="Password"
                 icon={Lock}
                 required
+                disabled={isSubmitting}
               />
             </div>
 
@@ -81,23 +140,24 @@ const LoginPage = () => {
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
                 options={companyOptions}
-                placeholder="Select Company"
+                placeholder={loadingCompanies ? "Loading companies..." : "Select Company"}
+                disabled={loadingCompanies || isSubmitting}
                 icon={Building2}
                 required
               />
             </div>
 
-            <Button type="submit" className={styles.loginBtn}>
-              Login
+            <Button type="submit" className={styles.loginBtn} disabled={isSubmitting}>
+              {isSubmitting ? 'Logging in...' : 'Login'}
             </Button>
           </form>
 
-          {/* Form Footer Links
-          <div className={styles.formFooter}>
-            <a href="#forgot" className={styles.link}>Forgot</a>
-            <a href="#help" className={styles.link}>Help</a>
+          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Or test face recognition: </span>
+            <a href="/trial-attendance" style={{ color: 'var(--primary)', fontWeight: '600', fontSize: '0.85rem', textDecoration: 'underline' }}>
+              Self-Attendance Kiosk
+            </a>
           </div>
-          */}
         </div>
 
       </div>

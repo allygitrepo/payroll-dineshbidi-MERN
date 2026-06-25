@@ -55,6 +55,80 @@ const seedUsers = async () => {
             console.log(`Created user: ${userData.user_name} (${userData.user_id})`);
         }
 
+        // Retrieve seeded user to associate companies
+        const adminUser = await db.User.findOne({ where: { user_id: "admin01" } });
+        if (!adminUser) {
+            throw new Error("Admin user not found for seeding companies.");
+        }
+
+        console.log("Seeding sample companies...");
+        const sampleCompanies = [
+            {
+                user_id: adminUser.id,
+                establishment_id: "ALLYSOFTSOLUT01",
+                company_name: "Ally Soft Solutions",
+                company_type: "Private Limited",
+                epfo_office: "Bangalore",
+                lin_number: "1234567890",
+                esic_id: "12345678901234567",
+                address_line: "No 45, Residency Road",
+                post_office: "Residency Road PO",
+                district: "Bangalore Urban",
+                pincode: "560025",
+                pan: "ABCDE1234F",
+                tan: "ABCD12345E",
+                email_id: "info@allysoft.com",
+                phone: "9876543210",
+                cstatus: true
+            },
+            {
+                user_id: adminUser.id,
+                establishment_id: "DINESHBIDIWRK02",
+                company_name: "Dinesh Bidi Works",
+                company_type: "Proprietorship",
+                epfo_office: "Mangalore",
+                lin_number: "2234567890",
+                esic_id: "22345678901234567",
+                address_line: "Bidi Industrial Estate",
+                post_office: "Kankanady PO",
+                district: "Dakshina Kannada",
+                pincode: "575002",
+                pan: "FGHIJ5678K",
+                tan: "FGHI56789J",
+                email_id: "contact@dineshbidi.com",
+                phone: "8765432109",
+                cstatus: true
+            },
+            {
+                user_id: adminUser.id,
+                establishment_id: "DEMOCORPORATN03",
+                company_name: "Demo Corporation",
+                company_type: "Partnership",
+                epfo_office: "Mumbai",
+                lin_number: "3234567890",
+                esic_id: "32345678901234567",
+                address_line: "A/102 Corporate Plaza",
+                post_office: "Bandra PO",
+                district: "Mumbai Suburban",
+                pincode: "400050",
+                pan: "KLMNO9012P",
+                tan: "KLMN90123O",
+                email_id: "admin@democorp.com",
+                phone: "7654321098",
+                cstatus: true
+            }
+        ];
+
+        for (const companyData of sampleCompanies) {
+            const exists = await db.Company.findOne({ where: { establishment_id: companyData.establishment_id } });
+            if (exists) {
+                console.log(`Company ${companyData.company_name} already exists, skipping...`);
+                continue;
+            }
+            await db.Company.create(companyData);
+            console.log(`Created company: ${companyData.company_name}`);
+        }
+
         console.log("Database seeded successfully!");
         process.exit(0);
     } catch (error) {

@@ -5,6 +5,7 @@ import CompanyForm from '../components/CompanyForm';
 import CompanyTable from '../components/CompanyTable';
 import { getCompanies, saveCompany, deleteCompany } from '../services/companyService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
 
 const CompanyPage = () => {
   const addToast = useToast();
@@ -22,8 +23,17 @@ const CompanyPage = () => {
 
   // Load initial data
   useEffect(() => {
-    setCompanies(getCompanies());
-  }, []);
+    const fetchCompanies = async () => {
+      try {
+        const data = await getCompanies();
+        setCompanies(data);
+      } catch (err) {
+        console.error('Error fetching companies:', err);
+        addToast({ type: 'error', message: 'Failed to load companies.' });
+      }
+    };
+    fetchCompanies();
+  }, [addToast]);
 
   const dropdownRef = useRef(null);
 
@@ -59,11 +69,16 @@ const CompanyPage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deleteCompany(deleteTargetId);
-      setCompanies(updated);
-      addToast({ type: 'success', message: 'Company deleted successfully!' });
+      try {
+        const updated = await deleteCompany(deleteTargetId);
+        setCompanies(updated);
+        addToast({ type: 'success', message: 'Company deleted successfully!' });
+      } catch (err) {
+        console.error('Error deleting company:', err);
+        addToast({ type: 'error', message: 'Failed to delete company.' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -74,15 +89,23 @@ const CompanyPage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (companyData) => {
-    const updated = saveCompany(companyData);
-    setCompanies(updated);
-    setIsFormOpen(false);
-    setEditingCompany(null);
-    addToast({
-      type: 'success',
-      message: companyData.id ? 'Company updated successfully!' : 'Company created successfully!'
-    });
+  const handleSave = async (companyData) => {
+    try {
+      const updated = await saveCompany(companyData);
+      setCompanies(updated);
+      setIsFormOpen(false);
+      setEditingCompany(null);
+      addToast({
+        type: 'success',
+        message: companyData.id ? 'Company updated successfully!' : 'Company created successfully!'
+      });
+    } catch (err) {
+      console.error('Error saving company:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to save company.'
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -111,9 +134,16 @@ const CompanyPage = () => {
   }, [companies, searchTerm]);
 
   // Export handlers at page level
-  const handleExportClick = (type) => {
-    addToast({ type: 'info', message: `${type} export started for ${filteredCompanies.length} records!` });
+  const handleExportClick = async (type) => {
     setIsDropdownOpen(false);
+    try {
+      addToast({ type: 'info', message: `${type} export started...` });
+      await exportModuleData('companies', type.toLowerCase());
+      addToast({ type: 'success', message: `${type} export completed successfully!` });
+    } catch (err) {
+      console.error(err);
+      addToast({ type: 'error', message: `Failed to export ${type} file.` });
+    }
   };
 
   const handleCopyClick = () => {

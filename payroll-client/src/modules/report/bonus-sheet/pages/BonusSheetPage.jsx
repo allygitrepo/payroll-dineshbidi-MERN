@@ -5,81 +5,12 @@ import { getEmployees } from '../../../master/employee/services/employeeService'
 import { getBidiRollerEntry } from '../../../entry/bidi-roller/services/bidiRollerEntryService';
 import { getOfficeStaffEntry } from '../../../entry/office-staff/services/officeStaffEntryService';
 import { getPackersEntry } from '../../../entry/packers/services/packersEntryService';
+import { getBidiRollerWages } from '../../../setup/bidi-roller-wages/services/bidiRollerWagesService';
+import { getOfficeStaffSalaries } from '../../../setup/office-staff-salary/services/officeStaffSalaryService';
+import { getPackingWages } from '../../../setup/packing-wages/services/packingWagesService';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import styles from '../components/BonusSheetPage.module.css';
-
-// Realistic mock values from the legacy screenshot for From: 06/2025 To: 06/2026 for OFFICE STAFF
-const MOCK_WAGES_DATA = {
-  'BIPADTARAN GOSWAMI': {
-    memberId: '0016062',
-    uan: '100115419794',
-    months: {
-      '2025-06': 5350, '2025-07': 8030, '2025-08': 8352, '2025-09': 8700, '2025-10': 8337, '2025-11': 6522, '2025-12': 8365, '2026-01': 8700, '2026-02': 8700
-    }
-  },
-  'KANDAN KUMAR': {
-    memberId: '17291',
-    uan: '100188684022',
-    months: {
-      '2025-06': 6516, '2025-07': 6516, '2025-08': 7700, '2025-09': 7084, '2025-10': 7379, '2025-11': 5613, '2025-12': 7700, '2026-01': 6095, '2026-02': 7218
-    }
-  },
-  'KIRTAN KUMAR': {
-    memberId: '0017225',
-    uan: '100194181241',
-    months: {
-      '2025-06': 7500, '2025-07': 6636, '2025-08': 7500, '2025-09': 7500, '2025-10': 7500, '2025-11': 4213, '2025-12': 6060, '2026-01': 7500, '2026-02': 7500
-    }
-  },
-  'MEGHNATH MAHATA': {
-    memberId: '0004465',
-    uan: '100226766722',
-    months: {
-      '2025-06': 8144, '2025-07': 8307, '2025-08': 8301, '2025-09': 7623, '2025-10': 8470, '2025-11': 8470, '2025-12': 8307, '2026-01': 8470, '2026-02': 6705, '2026-03': 6515
-    }
-  },
-  'NABIN MAHATO': {
-    memberId: '0005870',
-    uan: '100247084817',
-    months: {
-      '2025-06': 6625, '2025-07': 7570, '2025-08': 6232, '2025-09': 5904, '2025-10': 8029, '2025-11': 7174, '2025-12': 7255, '2026-01': 7516, '2026-02': 7516
-    }
-  },
-  'RAJ KHATIK': {
-    memberId: '0017450',
-    uan: '101613506630',
-    months: {
-      '2025-10': 8625, '2025-11': 8813, '2025-12': 8135, '2026-01': 6375, '2026-02': 9000
-    }
-  },
-  'RAJU KUMAR': {
-    memberId: '0016060',
-    uan: '101002763175',
-    months: {
-      '2025-06': 7692, '2025-07': 6768, '2025-08': 5440, '2025-09': 8000, '2025-10': 7334, '2025-11': 7001, '2025-12': 6306, '2026-01': 7334, '2026-02': 8000
-    }
-  },
-  'SANJAY MAHATO': {
-    memberId: '0016058',
-    uan: '101002763152',
-    months: {
-      '2025-06': 8000, '2025-07': 7692, '2025-08': 8000, '2025-09': 8000, '2025-10': 7667, '2025-11': 7834, '2025-12': 8000, '2026-01': 8000, '2026-02': 8000
-    }
-  },
-  'SRIHARI KUMAR': {
-    memberId: '0005868',
-    uan: '100362255467',
-    months: {
-      '2025-06': 7885, '2025-07': 7885, '2025-08': 8200, '2025-09': 7872, '2025-10': 8200, '2025-11': 8029, '2025-12': 7885, '2026-01': 7858, '2026-02': 8200, '2026-03': 4731
-    }
-  },
-  'SWAPAN MAHATO': {
-    memberId: '0017224',
-    uan: '102163961347',
-    months: {
-      '2025-06': 6462, '2025-07': 6731, '2025-08': 6300, '2025-09': 6720, '2025-10': 6416, '2025-11': 6562, '2025-12': 6731, '2026-01': 7000, '2026-02': 6416
-    }
-  }
-};
 
 const getMonthRangeList = (fromStr, toStr) => {
   if (!fromStr || !toStr) return [];
@@ -87,7 +18,7 @@ const getMonthRangeList = (fromStr, toStr) => {
   const end = new Date(toStr + '-01');
   const list = [];
   let current = new Date(start);
-  
+
   while (current <= end) {
     const year = current.getFullYear();
     const month = String(current.getMonth() + 1).padStart(2, '0');
@@ -125,107 +56,140 @@ const BonusSheetPage = () => {
     return getMonthRangeList(searchTriggeredFrom, searchTriggeredTo);
   }, [searchTriggeredFrom, searchTriggeredTo]);
 
+  const [bonusData, setBonusData] = useState([]);
+
   // Aggregate monthly wages and compute bonuses
-  const bonusData = useMemo(() => {
-    if (activeMonths.length === 0) return [];
-
-    const dbEmployees = getEmployees() || [];
-    let targetEmployees = [];
-
-    // Filter employees based on type
-    if (searchTriggeredType === 'OFFICE STAFF') {
-      targetEmployees = dbEmployees.filter(e => e.employeeType === 'OFFICE STAFF');
-    } else if (searchTriggeredType === 'PACKING STAFF') {
-      targetEmployees = dbEmployees.filter(e => e.employeeType === 'PACKING STAFF');
-    } else {
-      // BIDI MAKER
-      targetEmployees = dbEmployees.filter(e => e.employeeType === 'BIDI MAKER' || e.employeeType === 'BIDI ROLLER');
-    }
-
-    // Prepare compiled list of employees
-    const listMap = {};
-    
-    // Add master db employees first
-    targetEmployees.forEach(emp => {
-      listMap[emp.memberName] = {
-        name: emp.memberName,
-        memberId: emp.memberId || emp.id,
-        uan: emp.uan || 'N/A',
-        monthlyWages: {}
-      };
-    });
-
-    // If query matches screenshot dates and type is OFFICE STAFF, populate with mock values fallback
-    const isMockRange = searchTriggeredFrom === '2025-06' && searchTriggeredTo === '2026-06' && searchTriggeredType === 'OFFICE STAFF';
-    if (isMockRange) {
-      Object.keys(MOCK_WAGES_DATA).forEach(name => {
-        if (!listMap[name]) {
-          listMap[name] = {
-            name,
-            memberId: MOCK_WAGES_DATA[name].memberId,
-            uan: MOCK_WAGES_DATA[name].uan,
-            monthlyWages: {}
-          };
-        }
-        // Force mock wages
-        listMap[name].monthlyWages = { ...MOCK_WAGES_DATA[name].months };
-      });
-    }
-
-    // Now pull live local storage entry databases for each active month
-    activeMonths.forEach(m => {
-      let monthlyRows = [];
-      if (searchTriggeredType === 'OFFICE STAFF') {
-        monthlyRows = getOfficeStaffEntry(m) || [];
-      } else if (searchTriggeredType === 'PACKING STAFF') {
-        monthlyRows = getPackersEntry(m) || [];
-      } else {
-        monthlyRows = getBidiRollerEntry(m) || [];
+  useEffect(() => {
+    const fetchData = async () => {
+      if (activeMonths.length === 0) {
+        setBonusData([]);
+        return;
       }
 
-      monthlyRows.forEach(row => {
-        const empName = row.employeeName;
-        // Skip updating mock entries to preserve screen-matching values if range matches
-        if (isMockRange && MOCK_WAGES_DATA[empName]) return;
+      try {
+        const companyId = localStorage.getItem('selectedCompany');
+        const [dbEmployees, bidiWages, officeSalaries, packingWages] = await Promise.all([
+          getEmployees(companyId).catch(() => []),
+          getBidiRollerWages(companyId).catch(() => []),
+          getOfficeStaffSalaries(companyId).catch(() => []),
+          getPackingWages(companyId).catch(() => [])
+        ]);
 
-        if (!listMap[empName]) {
-          listMap[empName] = {
-            name: empName,
-            memberId: row.employeeCode || 'N/A',
-            uan: row.accountNo || 'N/A',
+        let targetEmployees = [];
+
+        // Filter employees based on type
+        if (searchTriggeredType === 'OFFICE STAFF') {
+          targetEmployees = dbEmployees.filter(e => e.employeeType === 'OFFICE STAFF');
+        } else if (searchTriggeredType === 'PACKING STAFF') {
+          targetEmployees = dbEmployees.filter(e => e.employeeType === 'PACKING STAFF');
+        } else {
+          // BIDI MAKER
+          targetEmployees = dbEmployees.filter(e => e.employeeType === 'BIDI MAKER' || e.employeeType === 'BIDI ROLLER');
+        }
+
+        // Prepare compiled list of employees
+        const listMap = {};
+
+        // Add master db employees first
+        targetEmployees.forEach(emp => {
+          listMap[emp.memberName] = {
+            name: emp.memberName,
+            memberId: emp.memberId || emp.id,
+            employeeId: emp.id,
+            uan: emp.uan || 'N/A',
             monthlyWages: {}
           };
+        });
+
+        // Now pull live local storage entry databases for each active month
+        for (const m of activeMonths) {
+          let monthlyRows = [];
+          if (searchTriggeredType === 'OFFICE STAFF') {
+            const res = await getOfficeStaffEntry(m, companyId).catch(() => ({ data: [] }));
+            monthlyRows = res?.data || [];
+          } else if (searchTriggeredType === 'PACKING STAFF') {
+            const res = await getPackersEntry(m, companyId).catch(() => ({ data: [] }));
+            monthlyRows = res?.data || [];
+          } else {
+            const res = await getBidiRollerEntry(m, companyId).catch(() => ({ data: [] }));
+            monthlyRows = res?.data || [];
+          }
+
+          let bidiConfig = null;
+          if (searchTriggeredType !== 'OFFICE STAFF' && searchTriggeredType !== 'PACKING STAFF') {
+            bidiConfig = bidiWages.find(w => new Date(w.startDate) <= new Date(m + '-01')) || bidiWages[0] || { bonus1: 0, bonus2: 0 };
+          }
+
+          monthlyRows.forEach(row => {
+            const empName = row.employeeName;
+
+            if (!listMap[empName]) {
+              listMap[empName] = {
+                name: empName,
+                memberId: row.employeeCode || 'N/A',
+                employeeId: row.employeeId,
+                uan: row.accountNo || 'N/A',
+                monthlyWages: {}
+              };
+            }
+
+            if (searchTriggeredType !== 'OFFICE STAFF' && searchTriggeredType !== 'PACKING STAFF') {
+              const unit1 = parseFloat(row.unit1 || 0);
+              const unit2 = parseFloat(row.unit2 || 0);
+              const bonusVal = (unit1 * parseFloat(bidiConfig?.bonus1 || 0)) + (unit2 * parseFloat(bidiConfig?.bonus2 || 0));
+              listMap[empName].monthlyWages[m] = bonusVal;
+            } else {
+              const amount = row.netWages || row.gross || row.wages || 0;
+              listMap[empName].monthlyWages[m] = amount;
+            }
+          });
         }
-        // For bidi roller we sum wages, for packers we use total, for office we use gross
-        const amount = row.netWages || row.gross || row.wages || 0;
-        listMap[empName].monthlyWages[m] = amount;
-      });
-    });
 
-    // Compile rows list and calculate bonus variables
-    return Object.values(listMap).map(row => {
-      const wages = {};
-      let total = 0;
+        // Compile rows list and calculate bonus variables
+        const mapped = Object.values(listMap).map(row => {
+          const wages = {};
+          let total = 0;
 
-      activeMonths.forEach(m => {
-        const amt = row.monthlyWages[m] || 0;
-        wages[m] = amt;
-        total += amt;
-      });
+          activeMonths.forEach(m => {
+            const amt = parseFloat(row.monthlyWages[m]) || 0;
+            wages[m] = amt;
+            total += amt;
+          });
 
-      const bonus = Math.round(total * 0.0833);
-      const additionalBonus = Math.round(total * 0.0278);
-      const totalPayment = bonus + additionalBonus;
+          let bonus = 0;
+          let additionalBonus = 0;
 
-      return {
-        ...row,
-        wages,
-        total,
-        bonus,
-        additionalBonus,
-        totalPayment
-      };
-    });
+          if (searchTriggeredType === 'OFFICE STAFF') {
+            const config = officeSalaries.find(s => s.employeeId === row.employeeId) || { standardBonus: 8.33, additionalBonus: 2.78 };
+            bonus = Math.round(total * (parseFloat(config.standardBonus) / 100));
+            additionalBonus = Math.round(total * (parseFloat(config.additionalBonus) / 100));
+          } else if (searchTriggeredType === 'PACKING STAFF') {
+            const config = packingWages[0] || { bonus: 8.33 };
+            bonus = Math.round(total * (parseFloat(config.bonus) / 100));
+            additionalBonus = 0;
+          } else {
+            bonus = Math.round(total);
+            additionalBonus = 0;
+          }
+
+          const totalPayment = bonus + additionalBonus;
+
+          return {
+            ...row,
+            wages,
+            total,
+            bonus,
+            additionalBonus,
+            totalPayment
+          };
+        });
+
+        setBonusData(mapped);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
   }, [activeMonths, searchTriggeredFrom, searchTriggeredTo, searchTriggeredType]);
 
   // Local Search Filter
@@ -389,6 +353,51 @@ const BonusSheetPage = () => {
         message: `Bonus Sheet ${type} downloaded successfully!`
       });
     }
+    else if (type === 'PDF') {
+      const doc = new jsPDF('landscape');
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      doc.setFontSize(16);
+      doc.text(`Bonus Sheet Report (${searchTriggeredFrom} to ${searchTriggeredTo})`, pageWidth / 2, 20, { align: 'center' });
+
+      const monthHeaders = activeMonths.map(m => formatMonthLabel(m));
+      const tableColumn = ['Sr No.', 'Name', 'Member ID', 'UAN', ...monthHeaders, 'Total', 'Bonus', 'Add. Bonus', 'Payment'];
+      const tableRows = [];
+
+      filteredRows.forEach((row, idx) => {
+        const monthVals = activeMonths.map(m => row.wages[m] || 0);
+        tableRows.push([idx + 1, row.name, row.memberId, row.uan, ...monthVals, row.total, row.bonus, row.additionalBonus, row.totalPayment]);
+      });
+
+      const totalMonthVals = activeMonths.map(m => columnTotals.wages[m]);
+      tableRows.push(["", "", "", "Total", ...totalMonthVals, columnTotals.total, columnTotals.bonus, columnTotals.additionalBonus, columnTotals.totalPayment]);
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 30,
+        theme: 'grid',
+        headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold', fontSize: 8, halign: 'center' },
+        bodyStyles: { textColor: [55, 65, 81], fontSize: 8, halign: 'right' },
+        columnStyles: {
+          1: { halign: 'left' },
+          2: { halign: 'left' },
+          3: { halign: 'left' }
+        },
+        didParseCell: function (data) {
+          if (data.row.index === tableRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [243, 244, 246];
+          }
+        }
+      });
+
+      doc.save(`Bonus_Sheet_${rangeLabel}.pdf`);
+      addToast({
+        type: 'success',
+        message: 'Bonus Sheet PDF downloaded successfully!'
+      });
+    }
     else {
       addToast({
         type: 'info',
@@ -410,8 +419,8 @@ const BonusSheetPage = () => {
         </div>
         <div className={styles.headerActions}>
           <div className={styles.dropdownContainer} ref={dropdownRef}>
-            <button 
-              className={styles.downloadBtn} 
+            <button
+              className={styles.downloadBtn}
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             >
               <Download size={18} /> Download
@@ -491,7 +500,7 @@ const BonusSheetPage = () => {
           <div className={styles.totalRecords}>
             Total Records: {totalEntries}
           </div>
-          
+
           <div className={styles.searchWrapper}>
             <Search size={16} className={styles.searchIcon} />
             <input

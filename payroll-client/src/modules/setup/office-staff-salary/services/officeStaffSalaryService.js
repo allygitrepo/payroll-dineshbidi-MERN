@@ -1,138 +1,48 @@
-const STORAGE_KEY = 'payroll_office_staff_salary';
+import apiClient from '../../../../shared/services/apiClient';
 
-const defaultOfficeStaffSalaries = [
-  {
-    id: '1',
-    startDate: '2017-04-01',
-    endDate: '2019-04-30',
-    employeeId: 'mock1',
-    employeeName: 'PRASANTA GOSWAMI',
-    salary: '4960.00',
-    standardBonus: '8.33',
-    additionalBonus: '5.56'
-  },
-  {
-    id: '2',
-    startDate: '2017-04-01',
-    endDate: '2030-03-31',
-    employeeId: 'mock2',
-    employeeName: 'MAHESH CHANDRA AGARWAL',
-    salary: '40000.00',
-    standardBonus: '8.33',
-    additionalBonus: '5.56'
-  },
-  {
-    id: '3',
-    startDate: '2017-04-01',
-    endDate: '2019-04-30',
-    employeeId: 'mock3',
-    employeeName: 'DHARANI MAHATO',
-    salary: '4270.00',
-    standardBonus: '8.33',
-    additionalBonus: '5.56'
-  },
-  {
-    id: '4',
-    startDate: '2017-04-01',
-    endDate: '2019-04-30',
-    employeeId: 'mock4',
-    employeeName: 'MEGHNATH MAHATA',
-    salary: '4270.00',
-    standardBonus: '8.33',
-    additionalBonus: '5.56'
-  },
-  {
-    id: '5',
-    startDate: '2017-04-01',
-    endDate: '2019-04-30',
-    employeeId: 'mock5',
-    employeeName: 'SRIHARI KUMAR',
-    salary: '4000.00',
-    standardBonus: '8.33',
-    additionalBonus: '5.56'
-  },
-  {
-    id: '6',
-    startDate: '2017-04-01',
-    endDate: '2019-04-30',
-    employeeId: 'mock6',
-    employeeName: 'NABIN MAHATO',
-    salary: '4000.00',
-    standardBonus: '8.33',
-    additionalBonus: '5.56'
-  },
-  {
-    id: '7',
-    startDate: '2017-04-01',
-    endDate: '2019-04-30',
-    employeeId: 'mock7',
-    employeeName: 'SUSHIL KUMAR TEKRIWAL',
-    salary: '5900.00',
-    standardBonus: '8.33',
-    additionalBonus: '5.56'
-  },
-  {
-    id: '8',
-    startDate: '2017-04-01',
-    endDate: '2019-04-30',
-    employeeId: 'mock8',
-    employeeName: 'SANJAY MAHATO',
-    salary: '3800.00',
-    standardBonus: '8.33',
-    additionalBonus: '5.56'
-  },
-  {
-    id: '9',
-    startDate: '2017-04-01',
-    endDate: '2019-04-30',
-    employeeId: 'mock9',
-    employeeName: 'RAJU KUMAR',
-    salary: '3800.00',
-    standardBonus: '8.33',
-    additionalBonus: '5.56'
-  },
-  {
-    id: '10',
-    startDate: '2017-04-01',
-    endDate: '2030-03-31',
-    employeeId: 'mock10',
-    employeeName: 'GOHALI KUMAR',
-    salary: '3800.00',
-    standardBonus: '8.33',
-    additionalBonus: '5.56'
-  }
-];
+const mapToFrontend = (s) => ({
+  id: s.id,
+  startDate: s.start_date,
+  endDate: s.end_date,
+  employeeId: s.employee_id,
+  employeeName: s.employee ? s.employee.name : 'Unknown',
+  salary: s.salary ? String(s.salary) : '0.00',
+  standardBonus: s.standard_bonus ? String(s.standard_bonus) : '0.00',
+  additionalBonus: s.additional_bonus ? String(s.additional_bonus) : '0.00'
+});
 
-export const getOfficeStaffSalaries = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultOfficeStaffSalaries));
-    return defaultOfficeStaffSalaries;
+const mapToBackend = (s, companyId) => ({
+  company_id: companyId,
+  employee_id: s.employeeId,
+  start_date: s.startDate,
+  end_date: s.endDate,
+  salary: parseFloat(s.salary) || 0.00,
+  standard_bonus: parseFloat(s.standardBonus) || 0.00,
+  additional_bonus: parseFloat(s.additionalBonus) || 0.00
+});
+
+export const getOfficeStaffSalaries = async (companyId) => {
+  if (!companyId) return [];
+  const response = await apiClient.get(`office-staff-salaries/company/${companyId}`);
+  if ((response.data?.status || response.data?.success) && response.data?.data) {
+    return response.data.data.map(mapToFrontend);
   }
-  return JSON.parse(data);
+  return [];
 };
 
-export const saveOfficeStaffSalary = (salary) => {
-  const list = getOfficeStaffSalaries();
+export const saveOfficeStaffSalary = async (salary, companyId) => {
+  const payload = mapToBackend(salary, companyId);
   if (salary.id) {
-    // Update existing
-    const index = list.findIndex(s => s.id === salary.id);
-    if (index !== -1) {
-      list[index] = salary;
-    }
+    // Update
+    await apiClient.put(`office-staff-salaries/${salary.id}`, payload);
   } else {
-    // Create new
-    const nextId = String(list.length > 0 ? Math.max(...list.map(s => parseInt(s.id))) + 1 : 1);
-    const newSalary = { ...salary, id: nextId };
-    list.push(newSalary);
+    // Create
+    await apiClient.post('office-staff-salaries', payload);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  return list;
+  return await getOfficeStaffSalaries(companyId);
 };
 
-export const deleteOfficeStaffSalary = (id) => {
-  const list = getOfficeStaffSalaries();
-  const filtered = list.filter(s => s.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  return filtered;
+export const deleteOfficeStaffSalary = async (id, companyId) => {
+  await apiClient.delete(`office-staff-salaries/${id}`);
+  return await getOfficeStaffSalaries(companyId);
 };

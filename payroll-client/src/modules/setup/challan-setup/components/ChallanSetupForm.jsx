@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './ChallanSetupPage.module.css';
-import { useToast } from '../../../../shared/components';
+import { useToast, DatePicker } from '../../../../shared/components';
 
 const numericFields = [
   'salaryLimit', 'edliWages', 'accNo1EEMale', 'accNo1EEFemale',
@@ -95,23 +95,34 @@ const ChallanSetupForm = ({ challan, onSave, onCancel }) => {
     onSave(formattedData);
   };
 
-  const renderField = (label, name, required = false, placeholder = '') => (
-    <div className={styles.field}>
-      <label className={styles.label}>
-        {label} {required && <span className={styles.required}>*</span>}
-      </label>
-      <input
-        type={name === 'startDate' || name === 'endDate' ? 'date' : 'text'}
-        name={name}
-        value={formData[name]}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        placeholder={placeholder || `Enter ${label}`}
-        className={styles.input}
-      />
-      {errors[name] && <span className={styles.errorText}>{errors[name]}</span>}
-    </div>
-  );
+  const renderField = (label, name, required = false, placeholder = '') => {
+    const isDate = name === 'startDate' || name === 'endDate';
+    return (
+      <div className={styles.field}>
+        <label className={styles.label}>
+          {label} {required && <span className={styles.required}>*</span>}
+        </label>
+        {isDate ? (
+          <DatePicker
+            name={name}
+            value={formData[name]}
+            onChange={handleChange}
+          />
+        ) : (
+          <input
+            type="text"
+            name={name}
+            value={formData[name]}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            placeholder={placeholder || `Enter ${label}`}
+            className={styles.input}
+          />
+        )}
+        {errors[name] && <span className={styles.errorText}>{errors[name]}</span>}
+      </div>
+    );
+  };
 
   return (
     <div className={styles.formCard} style={{ marginBottom: '24px' }}>

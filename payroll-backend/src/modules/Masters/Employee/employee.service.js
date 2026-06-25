@@ -7,10 +7,51 @@ const EmployeeFamilyMember = require("./employeeFamilyMember.model");
 const Company = require("../Company/company.model");
 const Address = require("../Address/address.model");
 const Contractor = require("../Contractor/contractor.model");
+const fs = require("fs");
+const path = require("path");
 
 /**
- * Helper to verify company exists and belongs to user.
+ * Saves a base64 image string to uploads/employee_image directory.
+ * Returns the relative database path e.g. "uploads/employee_image/<employeeId>_<timestamp>.<ext>".
  */
+const saveEmployeeImage = (base64Str, employeeId) => {
+    if (!base64Str || !base64Str.startsWith("data:")) return null;
+
+    try {
+        const match = base64Str.match(/^data:image\/([a-zA-Z0-9+]+);base64,/);
+        const ext = match ? match[1] : "jpg";
+        const filename = `${employeeId}_${Date.now()}.${ext}`;
+        const dir = path.join(__dirname, "..", "..", "..", "..", "uploads", "employee_image");
+        
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+
+        const base64Data = base64Str.replace(/^data:image\/[a-zA-Z0-9+]+;base64,/, "");
+        fs.writeFileSync(path.join(dir, filename), base64Data, "base64");
+        
+        return `uploads/employee_image/${filename}`;
+    } catch (error) {
+        console.error("Error saving employee image:", error);
+        throw new Error("Failed to save employee image to disk.");
+    }
+};
+
+/**
+ * Deletes an employee image from uploads/employee_image directory if it exists.
+ */
+const deleteEmployeeImage = (imagePath) => {
+    if (!imagePath) return;
+    try {
+        const fullPath = path.join(__dirname, "..", "..", "..", "..", imagePath);
+        if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+        }
+    } catch (error) {
+        console.error(`Error deleting image at path ${imagePath}:`, error);
+    }
+};
+
 const verifyCompanyOwnership = async (companyId, userId) => {
     const company = await Company.findOne({ where: { id: companyId, cstatus: true } });
     if (!company) {
@@ -150,6 +191,11 @@ class EmployeeService {
             ...personalDetails
         } = employeeData;
 
+        const incomingImagePath = personalDetails.image_path;
+        if (incomingImagePath && incomingImagePath.startsWith("data:")) {
+            personalDetails.image_path = null;
+        }
+
         // 1. Verify Company, Address, and Contractor
         await verifyCompanyOwnership(company_id, userId);
         await verifyAddressAssociation(address_id, company_id);
@@ -181,6 +227,13 @@ class EmployeeService {
             );
 
             const employeeId = newEmployee.id;
+
+            if (incomingImagePath && incomingImagePath.startsWith("data:")) {
+                const savedPath = saveEmployeeImage(incomingImagePath, employeeId);
+                if (savedPath) {
+                    await newEmployee.update({ image_path: savedPath }, { transaction: t });
+                }
+            }
 
             // Create KYC Details
             const kycPayload = {
@@ -247,8 +300,47 @@ class EmployeeService {
                 { model: Address, as: "address" },
                 { model: Contractor, as: "contractor", required: false },
             ],
-            order: [["created_at", "DESC"]],
+            order: [["createdAt", "DESC"]],
         });
+    }
+
+    /**
+     * Gets employees missing requested details dynamically.
+     */
+    static async getMissingDetails(companyId, fieldsStr, userId) {
+        await verifyCompanyOwnership(companyId, userId);
+
+        const fields = fieldsStr ? fieldsStr.split(',').map(f => f.trim().toLowerCase()) : [];
+        if (fields.length === 0) return [];
+
+        const employees = await Employee.findAll({
+            where: { company_id: companyId, status: true },
+            include: [
+                { model: EmployeeKycDetail, as: "kycDetail", where: { status: true }, required: false },
+            ],
+            order: [["createdAt", "DESC"]],
+        });
+
+        const processed = employees.map(emp => {
+            const missing = [];
+            const empData = emp.toJSON();
+            const kyc = empData.kycDetail || {};
+
+            if (fields.includes('name') && (!empData.name || empData.name === 'NOT AVAILABLE')) missing.push('Name');
+            if (fields.includes('dob') && (!empData.dob || empData.dob === '0000-00-00')) missing.push('Dob');
+            if (fields.includes('doj') && (!empData.date_of_joining || empData.date_of_joining === '0000-00-00')) missing.push('Doj');
+            if (fields.includes('gender') && !empData.gender) missing.push('Gender');
+            if (fields.includes('relation') && !empData.relation) missing.push('Relation');
+            if (fields.includes('marital status') && !empData.marital_status) missing.push('Marital Status');
+            if (fields.includes('qualification') && !empData.qualification) missing.push('Qualification');
+            if (fields.includes('aadhaar kyc') && !empData.aadhar) missing.push('AADHAAR KYC');
+            if (fields.includes('pan kyc') && !kyc.pan) missing.push('PAN KYC');
+            if (fields.includes('bank kyc') && !kyc.bank_ac) missing.push('BANK KYC');
+
+            return { ...empData, missingFields: missing };
+        });
+
+        return processed.filter(emp => emp.missingFields.length > 0);
     }
 
     /**
@@ -317,6 +409,24 @@ class EmployeeService {
             family_members,
             ...personalDetails
         } = updateData;
+
+        if (personalDetails.image_path !== undefined) {
+            const existingImagePath = employee.image_path;
+            let newImagePath = personalDetails.image_path;
+
+            if (newImagePath && newImagePath.startsWith("data:")) {
+                if (existingImagePath) {
+                    deleteEmployeeImage(existingImagePath);
+                }
+                newImagePath = saveEmployeeImage(newImagePath, id);
+                personalDetails.image_path = newImagePath;
+            } else if (newImagePath === "" || newImagePath === null) {
+                if (existingImagePath) {
+                    deleteEmployeeImage(existingImagePath);
+                }
+                personalDetails.image_path = null;
+            }
+        }
 
         // Verify updated contractor / address if provided
         if (personalDetails.address_id && personalDetails.address_id !== employee.address_id) {
@@ -407,6 +517,24 @@ class EmployeeService {
             }
 
             await t.commit();
+
+            // Sync updated name into face_data json profile if face biometrics are enrolled
+            if (personalDetails.name) {
+                const fs = require("fs");
+                const path = require("path");
+                try {
+                    const faceDataDir = path.join(__dirname, "..", "..", "..", "..", "face_data");
+                    const filePath = path.join(faceDataDir, `${id}.json`);
+                    if (fs.existsSync(filePath)) {
+                        const fileData = JSON.parse(fs.readFileSync(filePath, "utf8"));
+                        fileData.name = personalDetails.name;
+                        fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2));
+                    }
+                } catch (e) {
+                    console.warn("Failed to synchronize employee name in face profile:", e.message);
+                }
+            }
+
             return await EmployeeService.getEmployeeById(id, userId);
         } catch (err) {
             await t.rollback();
@@ -455,6 +583,19 @@ class EmployeeService {
             await EmployeeFamilyMember.update({ status: false }, { where: { employee_id: id }, transaction: t });
 
             await t.commit();
+
+            // Delete biometric face data JSON file if it exists (outside transaction after commit)
+            try {
+                const faceDataDir = path.join(__dirname, "..", "..", "..", "..", "face_data");
+                const filePath = path.join(faceDataDir, `${id}.json`);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                    console.log(`Successfully deleted face data file: ${filePath}`);
+                }
+            } catch (fsErr) {
+                console.warn(`Failed to clean up face data file for employee ${id}:`, fsErr.message);
+            }
+
             return true;
         } catch (err) {
             await t.rollback();

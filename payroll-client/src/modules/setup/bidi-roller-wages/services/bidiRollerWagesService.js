@@ -1,88 +1,51 @@
-const STORAGE_KEY = 'payroll_bidi_roller_wages';
+import apiClient from '../../../../shared/services/apiClient';
 
-const defaultBidiRollerWages = [
-  {
-    id: '1',
-    startDate: '2018-02-01',
-    endDate: '2021-11-30',
-    rate1: '85.00',
-    rate2: '125.00',
-    rate3: '110.00',
-    rate4: '18.00',
-    bonus: '8.33'
-  },
-  {
-    id: '2',
-    startDate: '2016-04-01',
-    endDate: '2018-01-31',
-    rate1: '75.00',
-    rate2: '115.00',
-    rate3: '0.00',
-    rate4: '0.00',
-    bonus: '8.33'
-  },
-  {
-    id: '3',
-    startDate: '2021-12-01',
-    endDate: '2023-03-31',
-    rate1: '95.00',
-    rate2: '145.00',
-    rate3: '125.00',
-    rate4: '25.00',
-    bonus: '8.33'
-  },
-  {
-    id: '4',
-    startDate: '2023-04-01',
-    endDate: '2025-03-31',
-    rate1: '105.00',
-    rate2: '155.00',
-    rate3: '135.00',
-    rate4: '220.00',
-    bonus: '8.33'
-  },
-  {
-    id: '5',
-    startDate: '2025-04-01',
-    endDate: '2027-03-31',
-    rate1: '115.00',
-    rate2: '175.00',
-    rate3: '155.00',
-    rate4: '240.00',
-    bonus: '8.33'
-  }
-];
+const mapToFrontend = (w) => ({
+  id: w.id,
+  startDate: w.start_date,
+  endDate: w.end_date,
+  rate1: w.rate_1 ? String(w.rate_1) : '0.00',
+  hra1: w.hra_1 ? String(w.hra_1) : '0.00',
+  bonus1: w.bonus_1 ? String(w.bonus_1) : '0.00',
+  rate2: w.rate_2 ? String(w.rate_2) : '0.00',
+  hra2: w.hra_2 ? String(w.hra_2) : '0.00',
+  bonus2: w.bonus_2 ? String(w.bonus_2) : '0.00'
+});
 
-export const getBidiRollerWages = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultBidiRollerWages));
-    return defaultBidiRollerWages;
+const mapToBackend = (w, companyId) => ({
+  company_id: companyId,
+  start_date: w.startDate,
+  end_date: w.endDate,
+  rate_1: parseFloat(w.rate1) || 0.00,
+  hra_1: parseFloat(w.hra1) || 0.00,
+  bonus_1: parseFloat(w.bonus1) || 0.00,
+  rate_2: parseFloat(w.rate2) || 0.00,
+  hra_2: parseFloat(w.hra2) || 0.00,
+  bonus_2: parseFloat(w.bonus2) || 0.00
+});
+
+export const getBidiRollerWages = async (companyId) => {
+  if (!companyId) return [];
+  const response = await apiClient.get(`bidi-roller-wages/company/${companyId}`);
+  if ((response.data?.status || response.data?.success) && response.data?.data) {
+    return response.data.data.map(mapToFrontend);
   }
-  return JSON.parse(data);
+  return [];
 };
 
-export const saveBidiRollerWages = (wages) => {
-  const list = getBidiRollerWages();
+export const saveBidiRollerWages = async (wages, companyId) => {
+  const payload = mapToBackend(wages, companyId);
   if (wages.id) {
-    // Update existing
-    const index = list.findIndex(w => w.id === wages.id);
-    if (index !== -1) {
-      list[index] = wages;
-    }
+    // Update
+    await apiClient.put(`bidi-roller-wages/${wages.id}`, payload);
   } else {
-    // Create new
-    const nextId = String(list.length > 0 ? Math.max(...list.map(w => parseInt(w.id))) + 1 : 1);
-    const newWages = { ...wages, id: nextId };
-    list.push(newWages);
+    // Create
+    await apiClient.post('bidi-roller-wages', payload);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  return list;
+  return await getBidiRollerWages(companyId);
 };
 
-export const deleteBidiRollerWages = (id) => {
-  const list = getBidiRollerWages();
-  const filtered = list.filter(w => w.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  return filtered;
+export const deleteBidiRollerWages = async (id, companyId) => {
+  await apiClient.delete(`bidi-roller-wages/${id}`);
+  return await getBidiRollerWages(companyId);
 };

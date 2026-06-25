@@ -1,8 +1,13 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useToast, MonthYearPicker } from '../../../../shared/components';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { getResignations } from '../../../entry/resignation/services/resignationService';
+import { getOfficeStaffEntry } from '../../../entry/office-staff/services/officeStaffEntryService';
+import { getPackersEntry } from '../../../entry/packers/services/packersEntryService';
+import { getBidiRollerEntry } from '../../../entry/bidi-roller/services/bidiRollerEntryService';
 import styles from '../components/EsicReportPage.module.css';
 
 // Realistic ESIC mock records to enrich search queries and represent reference data
@@ -30,78 +35,112 @@ const EsicReportPage = () => {
   const dropdownRef = useRef(null);
   const addToast = useToast();
 
+  const [allRecords, setAllRecords] = useState([]);
+
   // Load database employees, cross reference with resignations and combine with mock records
-  const allRecords = useMemo(() => {
-    const dbList = getEmployees() || [];
-    const resignationsList = getResignations() || [];
-
-    // Helper to format Date string YYYY-MM-DD to DD/MM/YYYY
-    const formatLeavingDate = (dStr) => {
-      if (!dStr) return '';
-      const parts = dStr.split('-');
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-      return dStr;
-    };
-
-    // Helper to map resignation reasons to ESIC reason codes:
-    // 1: Retirement, 2: Death in Service, 3: Permanent Disablement, 4: Cessation/Resignation
-    const mapReasonToCode = (reason) => {
-      if (!reason) return 0;
-      const rUpper = reason.toUpperCase();
-      if (rUpper.includes('RETIREMENT')) return 1;
-      if (rUpper.includes('DEATH')) return 2;
-      if (rUpper.includes('DISABLEMENT')) return 3;
-      if (rUpper.includes('CESSATION') || rUpper.includes('SUPERANNUATION') || rUpper.includes('RESIGNATION')) return 4;
-      return 0;
-    };
-
-    // Process DB employee list
-    const mappedDb = dbList.map(emp => {
-      const name = emp.memberName;
-      const ipNumber = emp.ipNumber || '743109' + String(1000 + Number(emp.id || 1)).slice(-4);
-      const basicSalary = emp.basicSalary || 8000;
-
-      // Check if employee is in resignation list
-      const resignation = resignationsList.find(res => {
-        // Match by name or UAN
-        return (
-          (res.uan && res.uan === emp.uan) ||
-          (res.nameOfMember && res.nameOfMember.toUpperCase() === name.toUpperCase())
-        );
-      });
-
-      let daysWorked = 24; // Default working days
-      let totalWages = basicSalary;
-      let reasonCode = 0;
-      let lastWorkingDay = '';
-
-      if (resignation) {
-        // If resigned, verify check
-        daysWorked = 0;
-        totalWages = 0;
-        reasonCode = mapReasonToCode(resignation.reasonOfLeaving);
-        lastWorkingDay = formatLeavingDate(resignation.dateOfLeaving);
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!searchTriggeredMonth) {
+        setAllRecords([]);
+        return;
       }
 
-      return {
-        id: emp.id,
-        ipNumber,
-        name,
-        daysWorked,
-        totalWages,
-        reasonCode,
-        lastWorkingDay
-      };
-    });
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const dbList = await getEmployees(companyId) || [];
+        const resignationsList = await getResignations(companyId) || [];
+        const officeRes = await getOfficeStaffEntry(searchTriggeredMonth, companyId);
+        const packersRes = await getPackersEntry(searchTriggeredMonth, companyId);
+        const bidiRes = await getBidiRollerEntry(searchTriggeredMonth, companyId);
+        
+        const officeRows = officeRes?.data || [];
+        const packersRows = packersRes?.data || [];
+        const bidiRows = bidiRes?.data || [];
 
-    // Merge database list and mock records avoiding duplicates by IP number
-    const uniqueIps = new Set(mappedDb.map(e => e.ipNumber));
-    const uniqueMocks = MOCK_ESIC_RECORDS.filter(e => !uniqueIps.has(e.ipNumber));
+        // Helper to format Date string YYYY-MM-DD to DD/MM/YYYY
+        const formatLeavingDate = (dStr) => {
+          if (!dStr) return '';
+          const parts = dStr.split('-');
+          if (parts.length === 3) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+          }
+          return dStr;
+        };
 
-    return [...mappedDb, ...uniqueMocks];
-  }, []);
+        const mapReasonToCode = (reason) => {
+          if (!reason) return 2; // Default to Cessation if resigned but no reason provided
+          const r = String(reason).trim().toUpperCase();
+          if (r.startsWith('C') || r.includes('RESIGNATION')) return 2;
+          if (r.startsWith('S')) return 3;
+          if (r.startsWith('D')) return 5;
+          // Fallback for any other recognized resignation reason
+          return 2;
+        };
+
+        // Process DB employee list
+        const mappedDb = dbList.map(emp => {
+          const name = emp.memberName;
+          const uan = emp.uan;
+          const ipNumber = emp.ipNumber || '';
+          
+          let days = 0;
+          let wages = 0;
+
+          if (emp.employeeType === 'OFFICE STAFF') {
+             const row = officeRows.find(r => r.employeeName === name || r.employeeCode === emp.memberId);
+             if (row) { days = row.no_of_days_worked || row.days || 0; wages = row.gross || row.gross_wages || row.netWages || 0; }
+          } else if (emp.employeeType === 'PACKING STAFF') {
+             const row = packersRows.find(r => r.employeeName === name || r.employeeCode === emp.memberId);
+             if (row) { days = row.no_of_worked_days || row.no_of_days || row.days || 0; wages = row.total || row.gross_wages || row.netWages || 0; }
+          } else {
+             const row = bidiRows.find(r => r.employeeName === name || r.employeeCode === emp.memberId);
+             if (row) { days = row.no_of_days || row.days || 0; wages = row.total || row.gross_wages || row.netWages || 0; }
+          }
+          
+          days = Math.ceil(parseFloat(days) || 0);
+          wages = Math.round(parseFloat(wages) || 0);
+          
+          let reasonCode = '';
+          let lastWorkingDay = '';
+          
+          if (days > 0 && wages > 0) {
+            reasonCode = '';
+            lastWorkingDay = '';
+          } else {
+            const resignation = resignationsList.find(res => {
+              return (res.uan && res.uan === uan) || (res.nameOfMember && res.nameOfMember.toUpperCase() === name.toUpperCase());
+            });
+            
+            if (resignation) {
+              reasonCode = mapReasonToCode(resignation.reasonOfLeaving);
+              lastWorkingDay = formatLeavingDate(resignation.dateOfLeaving);
+            } else {
+              reasonCode = 11;
+              lastWorkingDay = '';
+            }
+          }
+
+          return {
+            id: emp.id,
+            ipNumber,
+            name,
+            daysWorked: days,
+            totalWages: wages,
+            reasonCode,
+            lastWorkingDay
+          };
+        });
+
+        // Filter out employees without an IP Number and who did not work or resign
+        const validRecords = mappedDb.filter(e => e.ipNumber);
+
+        setAllRecords(validRecords);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      }
+    };
+    fetchData();
+  }, [searchTriggeredMonth]);
 
   // Filter list based on whether search was clicked, and local search term
   const filteredRecords = useMemo(() => {
@@ -215,6 +254,29 @@ const EsicReportPage = () => {
         });
       });
     } 
+    else if (type === 'TXT (ESIC)') {
+      let txtContent = '';
+      const mStr = searchTriggeredMonth ? (searchTriggeredMonth.split('-')[1] + ' ' + searchTriggeredMonth.split('-')[0]) : '';
+      filteredRecords.forEach(rec => {
+        txtContent += `${rec.ipNumber}####${rec.name}####${rec.daysWorked}####${rec.totalWages}####${rec.reasonCode}####${rec.lastWorkingDay || ''}####${mStr}\n`;
+      });
+
+      const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const monthLabel = searchTriggeredMonth ? searchTriggeredMonth.replace('-', '_') : 'all';
+      link.download = `ESIC_Report_${monthLabel}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      addToast({
+        type: 'success',
+        message: `ESIC Report TXT downloaded successfully for ${filteredRecords.length} records!`
+      });
+    }
     else if (type === 'CSV' || type === 'Excel') {
       const headers = [
         'IP Number',
@@ -265,8 +327,57 @@ const EsicReportPage = () => {
         message: `ESIC Report ${type} downloaded successfully for ${filteredRecords.length} records!`
       });
     }
+    else if (type === 'PDF') {
+      const doc = new jsPDF('landscape');
+      doc.setFontSize(16);
+      const titleText = `ESIC Report_${searchTriggeredMonth ? searchTriggeredMonth.split('-')[1] + '/' + searchTriggeredMonth.split('-')[0] : ''}`;
+      doc.text(titleText, doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+
+      const tableColumn = [
+        "SR NO.", "IP NUMBER", "IP NAME", "NO OF DAYS", "TOTAL MONTHLY WAGES", "REASON CODE", "LAST WORKING DAY"
+      ];
+      const tableRows = [];
+
+      filteredRecords.forEach((rec, idx) => {
+        tableRows.push([
+          idx + 1,
+          rec.ipNumber,
+          rec.name,
+          rec.daysWorked,
+          rec.totalWages,
+          rec.reasonCode,
+          rec.lastWorkingDay || ''
+        ]);
+      });
+
+      const totalRow = [
+        "", "", "Total", totals.daysWorked, totals.totalWages, "", ""
+      ];
+      tableRows.push(totalRow);
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 25,
+        theme: 'grid',
+        headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold', halign: 'center', fontSize: 8 },
+        bodyStyles: { textColor: [55, 65, 81], halign: 'center', valign: 'middle', fontSize: 8 },
+        didParseCell: function(data) {
+          if (data.row.index === tableRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [243, 244, 246];
+          }
+        }
+      });
+
+      doc.save(`ESIC_Report_${searchTriggeredMonth}.pdf`);
+      addToast({
+        type: 'success',
+        message: `ESIC Report PDF downloaded successfully!`
+      });
+    }
     else {
-      // PDF and Print simulator matching system behaviors
+      // Print simulator matching system behaviors
       addToast({
         type: 'info',
         message: `${type} generated for ESIC Report (${searchTriggeredMonth})!`
@@ -297,6 +408,9 @@ const EsicReportPage = () => {
               <div className={styles.dropdownMenu}>
                 <button onClick={() => handleExport('Excel')}>
                   <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button onClick={() => handleExport('TXT (ESIC)')}>
+                  <FileText size={16} /> TXT (ESIC)
                 </button>
                 <button onClick={() => handleExport('Copy')}>
                   <Copy size={16} /> Copy

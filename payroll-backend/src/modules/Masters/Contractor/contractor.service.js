@@ -139,7 +139,7 @@ class ContractorService {
                     as: "address",
                 }
             ],
-            order: [["created_at", "DESC"]],
+            order: [["createdAt", "DESC"]],
         });
     }
 

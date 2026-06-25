@@ -5,6 +5,7 @@ import ChallanSetupForm from '../components/ChallanSetupForm';
 import ChallanSetupTable from '../components/ChallanSetupTable';
 import { getChallanSetup, saveChallanSetup, deleteChallanSetup } from '../services/challanSetupService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
 
 const formatDateForExport = (dateStr) => {
   if (!dateStr) return '';
@@ -21,6 +22,7 @@ const ChallanSetupPage = () => {
   const [editingChallan, setEditingChallan] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -28,10 +30,29 @@ const ChallanSetupPage = () => {
 
   const dropdownRef = useRef(null);
 
+  const fetchChallans = async () => {
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const data = await getChallanSetup(companyId);
+      setChallanList(data);
+    } catch (err) {
+      console.error('Error fetching challan setups:', err);
+      addToast({ type: 'error', message: 'Failed to load challan setups.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load initial data
   useEffect(() => {
-    setChallanList(getChallanSetup());
-  }, []);
+    fetchChallans();
+  }, [addToast]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -64,11 +85,17 @@ const ChallanSetupPage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deleteChallanSetup(deleteTargetId);
-      setChallanList(updated);
-      addToast({ type: 'success', message: 'Challan Setup record deleted successfully!' });
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const updated = await deleteChallanSetup(deleteTargetId, companyId);
+        setChallanList(updated);
+        addToast({ type: 'success', message: 'Challan Setup record deleted successfully!' });
+      } catch (err) {
+        console.error('Error deleting challan setup:', err);
+        addToast({ type: 'error', message: 'Failed to delete challan setup.' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -79,17 +106,26 @@ const ChallanSetupPage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (challanData) => {
-    const updated = saveChallanSetup(challanData);
-    setChallanList(updated);
-    setIsFormOpen(false);
-    setEditingChallan(null);
-    addToast({
-      type: 'success',
-      message: challanData.id
-        ? 'Challan Setup record updated successfully!'
-        : 'Challan Setup record created successfully!'
-    });
+  const handleSave = async (challanData) => {
+    const companyId = localStorage.getItem('selectedCompany');
+    try {
+      const updated = await saveChallanSetup(challanData, companyId);
+      setChallanList(updated);
+      setIsFormOpen(false);
+      setEditingChallan(null);
+      addToast({
+        type: 'success',
+        message: challanData.id
+          ? 'Challan Setup record updated successfully!'
+          : 'Challan Setup record created successfully!'
+      });
+    } catch (err) {
+      console.error('Error saving challan setup:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to save challan setup.'
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -115,17 +151,25 @@ const ChallanSetupPage = () => {
   }, [challanList, searchTerm]);
 
   // Export handlers
-  const handleExport = (type) => {
+  const handleExport = async (type) => {
+    setIsDropdownOpen(false);
     if (type === 'Copy') {
       const text = filteredChallan.map((c, index) =>
         `${index + 1}\t${formatDateForExport(c.startDate)}\t${formatDateForExport(c.endDate)}\t${c.salaryLimit}\t${c.edliWages}\t${c.accNo1EEMale}\t${c.accNo1EEFemale}\t${c.accNo1ER}\t${c.accNo2}\t${c.accNo10}\t${c.accNo21}\t${c.accNo22}\t${c.accNo2Min}\t${c.accNo22Min}\t${c.pmrpy}\t${c.esicWages}\t${c.employeeShare}\t${c.employerShare}`
       ).join('\n');
       navigator.clipboard.writeText(text);
       addToast({ type: 'success', message: 'Copied filtered records to clipboard!' });
-    } else {
-      addToast({ type: 'info', message: `${type} export started for ${filteredChallan.length} records!` });
+      return;
     }
-    setIsDropdownOpen(false);
+
+    try {
+      addToast({ type: 'info', message: `${type} export started...` });
+      await exportModuleData('challan-setups', type.toLowerCase());
+      addToast({ type: 'success', message: `${type} export completed successfully!` });
+    } catch (err) {
+      console.error(err);
+      addToast({ type: 'error', message: `Failed to export ${type} file.` });
+    }
   };
 
   return (

@@ -5,6 +5,7 @@ import PackingWagesForm from '../components/PackingWagesForm';
 import PackingWagesTable from '../components/PackingWagesTable';
 import { getPackingWages, savePackingWages, deletePackingWages } from '../services/packingWagesService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
 
 const formatDateForExport = (dateStr) => {
   if (!dateStr) return '';
@@ -23,6 +24,7 @@ const PackingWagesPage = () => {
   const [editingWages, setEditingWages] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -30,10 +32,29 @@ const PackingWagesPage = () => {
 
   const dropdownRef = useRef(null);
 
+  const fetchWages = async () => {
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const data = await getPackingWages(companyId);
+      setWagesList(data);
+    } catch (err) {
+      console.error('Error fetching packing wages:', err);
+      addToast({ type: 'error', message: 'Failed to load packing wages.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load initial data
   useEffect(() => {
-    setWagesList(getPackingWages());
-  }, []);
+    fetchWages();
+  }, [addToast]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -67,11 +88,17 @@ const PackingWagesPage = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      const updated = deletePackingWages(deleteTargetId);
-      setWagesList(updated);
-      addToast({ type: 'success', message: 'Packing Wages record deleted successfully!' });
+      const companyId = localStorage.getItem('selectedCompany');
+      try {
+        const updated = await deletePackingWages(deleteTargetId, companyId);
+        setWagesList(updated);
+        addToast({ type: 'success', message: 'Packing Wages record deleted successfully!' });
+      } catch (err) {
+        console.error('Error deleting packing wages:', err);
+        addToast({ type: 'error', message: 'Failed to delete packing wages.' });
+      }
     }
     setIsConfirmOpen(false);
     setDeleteTargetId(null);
@@ -82,15 +109,24 @@ const PackingWagesPage = () => {
     setDeleteTargetId(null);
   };
 
-  const handleSave = (wagesData) => {
-    const updated = savePackingWages(wagesData);
-    setWagesList(updated);
-    setIsFormOpen(false);
-    setEditingWages(null);
-    addToast({
-      type: 'success',
-      message: wagesData.id ? 'Packing Wages record updated successfully!' : 'Packing Wages record created successfully!'
-    });
+  const handleSave = async (wagesData) => {
+    const companyId = localStorage.getItem('selectedCompany');
+    try {
+      const updated = await savePackingWages(wagesData, companyId);
+      setWagesList(updated);
+      setIsFormOpen(false);
+      setEditingWages(null);
+      addToast({
+        type: 'success',
+        message: wagesData.id ? 'Packing Wages record updated successfully!' : 'Packing Wages record created successfully!'
+      });
+    } catch (err) {
+      console.error('Error saving packing wages:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to save packing wages.'
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -119,17 +155,25 @@ const PackingWagesPage = () => {
   }, [wagesList, searchTerm]);
 
   // Export handlers
-  const handleExport = (type) => {
+  const handleExport = async (type) => {
+    setIsDropdownOpen(false);
     if (type === 'Copy') {
       const text = filteredWages.map((w, index) => 
         `${index + 1}\t${formatDateForExport(w.startDate)}\t${formatDateForExport(w.endDate)}\t${w.rate1}\t${w.rate2}\t${w.rate3}\t${w.rate4}\t${w.bonus}`
       ).join('\n');
       navigator.clipboard.writeText(text);
       addToast({ type: 'success', message: 'Copied filtered records to clipboard!' });
-    } else {
-      addToast({ type: 'info', message: `${type} export started for ${filteredWages.length} records!` });
+      return;
     }
-    setIsDropdownOpen(false);
+    
+    try {
+      addToast({ type: 'info', message: `${type} export started...` });
+      await exportModuleData('packing-wages', type.toLowerCase());
+      addToast({ type: 'success', message: `${type} export completed successfully!` });
+    } catch (err) {
+      console.error(err);
+      addToast({ type: 'error', message: `Failed to export ${type} file.` });
+    }
   };
 
   return (

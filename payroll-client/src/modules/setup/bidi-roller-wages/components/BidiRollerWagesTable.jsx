@@ -53,17 +53,18 @@ const BidiRollerWagesTable = ({ data, searchTerm, onSearchChange, onEdit, onDele
               <th>Start Date</th>
               <th>End Date</th>
               <th>Rate1</th>
+              <th>HRA1</th>
+              <th>Bonus1</th>
               <th>Rate2</th>
-              <th>Rate3</th>
-              <th>Rate4</th>
-              <th>Bonus</th>
+              <th>HRA2</th>
+              <th>Bonus2</th>
               <th style={{ width: '120px', textAlign: 'center' }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                <td colSpan={10} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                   No matching records found.
                 </td>
               </tr>
@@ -76,10 +77,11 @@ const BidiRollerWagesTable = ({ data, searchTerm, onSearchChange, onEdit, onDele
                   <td>{formatDate(item.startDate)}</td>
                   <td>{formatDate(item.endDate)}</td>
                   <td>{item.rate1}</td>
+                  <td>{item.hra1}</td>
+                  <td>{item.bonus1}</td>
                   <td>{item.rate2}</td>
-                  <td>{item.rate3}</td>
-                  <td>{item.rate4}</td>
-                  <td>{item.bonus}</td>
+                  <td>{item.hra2}</td>
+                  <td>{item.bonus2}</td>
                   <td>
                     <div className={styles.actionCell}>
                       <button 

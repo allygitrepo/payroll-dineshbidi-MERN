@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
-import { useToast } from '../../../../shared/components';
+import { useToast, YearPicker } from '../../../../shared/components';
 import { getProfessionalTax } from '../../../setup/professional-tax/services/professionalTaxService';
 import { getOfficeStaffEntry } from '../../../entry/office-staff/services/officeStaffEntryService';
 import { getPackersEntry } from '../../../entry/packers/services/packersEntryService';
@@ -37,12 +37,17 @@ const ProfessionalTaxReportPage = () => {
     };
   }, [isDropdownOpen]);
 
-  // Compute month-wise professional tax slabs and counts
-  const resolvedMonths = useMemo(() => {
-    const yr = parseInt(searchTriggeredYear) || 2026;
-    const ptSlabs = getProfessionalTax() || [];
+  const [resolvedMonths, setResolvedMonths] = useState([]);
 
-    return monthNames.map((mName, idx) => {
+  // Compute month-wise professional tax slabs and counts
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const companyId = localStorage.getItem('selectedCompany');
+        const yr = parseInt(searchTriggeredYear) || 2026;
+        const ptSlabs = await getProfessionalTax(companyId) || [];
+
+        const mapped = await Promise.all(monthNames.map(async (mName, idx) => {
       let monthYearKey = '';
       if (idx < 9) {
         // April to December
@@ -54,10 +59,12 @@ const ProfessionalTaxReportPage = () => {
         monthYearKey = `${yr + 1}-${mStr}`;
       }
 
-      // Fetch active monthly entry lists for office staff, packers, and bidi rollers
-      const officeRows = getOfficeStaffEntry(monthYearKey) || [];
-      const packerRows = getPackersEntry(monthYearKey) || [];
-      const bidiRows = getBidiRollerEntry(monthYearKey) || [];
+      // Fetch active monthly entry lists for office staff, packers
+      const officeRes = await getOfficeStaffEntry(monthYearKey, companyId).catch(() => ({ data: [] }));
+      const packerRes = await getPackersEntry(monthYearKey, companyId).catch(() => ({ data: [] }));
+      
+      const officeRows = officeRes?.data || [];
+      const packerRows = packerRes?.data || [];
 
       // Combine all gross salaries
       const grossSalaries = [];
@@ -66,10 +73,6 @@ const ProfessionalTaxReportPage = () => {
         if (gross > 0) grossSalaries.push(gross);
       });
       packerRows.forEach(r => {
-        const gross = parseFloat(r.total) || 0;
-        if (gross > 0) grossSalaries.push(gross);
-      });
-      bidiRows.forEach(r => {
         const gross = parseFloat(r.total) || 0;
         if (gross > 0) grossSalaries.push(gross);
       });
@@ -101,7 +104,13 @@ const ProfessionalTaxReportPage = () => {
         slabs: slabsData,
         totalTax
       };
-    });
+    }));
+        setResolvedMonths(mapped);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
   }, [searchTriggeredYear]);
 
   // Local filtering
@@ -257,11 +266,9 @@ const ProfessionalTaxReportPage = () => {
         <form onSubmit={handleSearch} className={styles.filterRow}>
           <div className={styles.filterGroup}>
             <span className={styles.label}>Select Year <span className={styles.required}>*</span></span>
-            <input
-              type="text"
+            <YearPicker
               value={selectYear}
-              onChange={(e) => setSelectYear(e.target.value)}
-              className={styles.textInput}
+              onChange={setSelectYear}
               placeholder="e.g. 2026"
             />
           </div>

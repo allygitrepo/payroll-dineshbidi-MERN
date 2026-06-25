@@ -4,20 +4,6 @@ import { useToast } from '../../../../shared/components';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import styles from '../components/RetirementListPage.module.css';
 
-const MOCK_RETIREMENT_EMPLOYEES = [
-  { id: 'ret1', memberName: 'SUDEBI KUMAR', memberId: '0016492', uan: '101888461316', dob: '1968-04-22', employeeType: 'BIDI MAKER', contractor: 'BIPADTARAN KUMAR' },
-  { id: 'ret2', memberName: 'BIMALA KUMAR', memberId: '0005906', uan: '100147588188', dob: '1968-05-07', employeeType: 'BIDI MAKER', contractor: 'PARAN CHANDRA KUMAR' },
-  { id: 'ret3', memberName: 'KETAKI KUMAR', memberId: '0016466', uan: '101888453173', dob: '1968-05-17', employeeType: 'BIDI MAKER', contractor: 'BIPADTARAN KUMAR' },
-  { id: 'ret4', memberName: 'ARUN ROHIDAS', memberId: '0002041', uan: '100090965328', dob: '1968-07-06', employeeType: 'BIDI MAKER', contractor: 'LAKHIRAM KUMAR' },
-  { id: 'ret5', memberName: 'BHAKU MAHATO', memberId: '0004872', uan: '100110358674', dob: '1968-08-05', employeeType: 'BIDI MAKER', contractor: 'SHREEPADA MAHATO' },
-  { id: 'ret6', memberName: 'MEGHNATH MAHATO', memberId: '0004465', uan: '100226766722', dob: '1968-10-16', employeeType: 'OFFICE STAFF', contractor: '-' },
-  { id: 'ret7', memberName: 'TARUNKANTI KUMAR', memberId: '0000407', uan: '100389767705', dob: '1968-10-23', employeeType: 'BIDI MAKER', contractor: 'TARUN KANTI KUMAR' },
-  { id: 'ret8', memberName: 'GANESH KUMAR', memberId: '0004339', uan: '100150263249', dob: '1968-11-06', employeeType: 'BIDI MAKER', contractor: 'SHISHUPAL KUMAR' },
-  { id: 'ret9', memberName: 'INDRAJIT KUMAR', memberId: '0000381', uan: '100167385757', dob: '1969-03-06', employeeType: 'BIDI MAKER', contractor: 'INDRAJIT KUMAR' },
-  { id: 'ret10', memberName: 'BAHRAT CHANDRA DAS', memberId: '0016239', uan: '101238434600', dob: '1969-03-14', employeeType: 'BIDI MAKER', contractor: 'SAHUD ANSARI' },
-  { id: 'ret11', memberName: 'MEGHLAL MAHATO', memberId: '0004450', uan: '100226766710', dob: '1968-12-10', employeeType: 'PACKING STAFF', contractor: 'TARUN KANTI KUMAR' }
-];
-
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
   const parts = dateStr.split('-');
@@ -48,14 +34,37 @@ const RetirementListPage = () => {
   const dropdownRef = useRef(null);
   const addToast = useToast();
 
-  // Load database employees who are 58 or older, and merge with mock rows
+  const [dbEmployees, setDbEmployees] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      setIsLoading(true);
+      try {
+        const companyId = localStorage.getItem('selectedCompany');
+        if (companyId) {
+          const res = await getEmployees(companyId);
+          setDbEmployees(res || []);
+        } else {
+          setDbEmployees([]);
+          addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+        }
+      } catch (err) {
+        addToast({ type: 'error', message: 'Failed to fetch employees' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchEmployees();
+  }, []);
+
+  // Load database employees who are 58 or older
   const candidates = useMemo(() => {
-    const dbList = getEmployees() || [];
     // Filter database employees who are 58 or older
-    const dbRetirees = dbList.filter(emp => calculateAge(emp.dob) >= 58);
+    const dbRetirees = dbEmployees.filter(emp => calculateAge(emp.dob) >= 58);
     
     // Map them to match the grid structure
-    const mappedDbRetirees = dbRetirees.map(emp => ({
+    return dbRetirees.map(emp => ({
       id: emp.id,
       memberName: emp.memberName,
       memberId: emp.memberId || '-',
@@ -64,13 +73,7 @@ const RetirementListPage = () => {
       employeeType: emp.employeeType || 'OFFICE STAFF',
       contractor: emp.contractor || 'SELF'
     }));
-
-    // Avoid duplicates by UAN
-    const uniqueUans = new Set(mappedDbRetirees.map(e => e.uan));
-    const uniqueMocks = MOCK_RETIREMENT_EMPLOYEES.filter(e => !uniqueUans.has(e.uan));
-
-    return [...mappedDbRetirees, ...uniqueMocks];
-  }, []);
+  }, [dbEmployees]);
 
   // Filter local data using text search queries
   const searchedCandidates = useMemo(() => {
@@ -83,7 +86,8 @@ const RetirementListPage = () => {
         (cand.memberId && cand.memberId.toLowerCase().includes(query)) ||
         (cand.uan && cand.uan.toLowerCase().includes(query)) ||
         (cand.employeeType && cand.employeeType.toLowerCase().includes(query)) ||
-        (cand.contractor && cand.contractor.toLowerCase().includes(query))
+        (cand.contractor && cand.contractor.toLowerCase().includes(query)) ||
+        (formatDate(cand.dob).toLowerCase().includes(query))
       );
     });
   }, [candidates, searchTerm]);
@@ -129,17 +133,109 @@ const RetirementListPage = () => {
       return;
     }
 
-    if (type === 'Copy') {
-      addToast({
-        type: 'success',
-        message: 'Copied retirement candidates list to clipboard!'
+    if (type === 'Excel' || type === 'CSV') {
+      const headers = ['Sr No.', 'Name', 'Member Id', 'UAN', 'Date of Birth', 'Type of Employee', 'Contractor Name'];
+      let csvContent = headers.join(',') + '\n';
+      
+      searchedCandidates.forEach((cand, index) => {
+        const row = [
+          index + 1,
+          `"${cand.memberName || ''}"`,
+          `"${cand.memberId || ''}"`,
+          `"${cand.uan || ''}"`,
+          `"${formatDate(cand.dob)}"`,
+          `"${cand.employeeType || ''}"`,
+          `"${cand.contractor || '-'}"`
+        ];
+        csvContent += row.join(',') + '\n';
       });
-    } else {
-      addToast({
-        type: 'info',
-        message: `${type} export started for ${totalEntries} retirement candidate records!`
-      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `retirement_list_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      addToast({ type: 'success', message: `${type} file downloaded successfully!` });
+    } 
+    else if (type === 'Print' || type === 'PDF') {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        let html = `
+          <html>
+          <head>
+            <title>Retirement List Data</title>
+            <style>
+              body { font-family: sans-serif; padding: 20px; }
+              table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 20px; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #f2f2f2; font-weight: bold; }
+              h2 { color: #333; margin-bottom: 5px; }
+            </style>
+          </head>
+          <body>
+            <h2>58 Years of Age List</h2>
+            <p>Total Records: ${searchedCandidates.length}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 50px; text-align: center;">Sr No.</th>
+                  <th>Name</th>
+                  <th>Member Id</th>
+                  <th>UAN</th>
+                  <th>Date of Birth</th>
+                  <th>Type of Employee</th>
+                  <th>Contractor Name</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+        
+        searchedCandidates.forEach((cand, index) => {
+          html += `
+            <tr>
+              <td style="text-align: center;">${index + 1}</td>
+              <td>${cand.memberName || ''}</td>
+              <td>${cand.memberId || ''}</td>
+              <td>${cand.uan || ''}</td>
+              <td>${formatDate(cand.dob)}</td>
+              <td>${cand.employeeType || ''}</td>
+              <td>${cand.contractor || '-'}</td>
+            </tr>
+          `;
+        });
+        
+        html += `
+              </tbody>
+            </table>
+            <script>
+              window.onload = function() { 
+                setTimeout(function() { window.print(); window.close(); }, 500);
+              };
+            </script>
+          </body>
+          </html>
+        `;
+        
+        printWindow.document.write(html);
+        printWindow.document.close();
+        addToast({ type: 'success', message: `${type} document generated successfully!` });
+      } else {
+        addToast({ type: 'error', message: 'Pop-up blocker prevented printing.' });
+      }
     }
+    else if (type === 'Copy') {
+      const text = searchedCandidates.map((cand, index) => 
+        `${index + 1}\t${cand.memberName || ''}\t${cand.memberId || ''}\t${cand.uan || ''}\t${formatDate(cand.dob)}\t${cand.employeeType || ''}\t${cand.contractor || '-'}`
+      ).join('\n');
+      navigator.clipboard.writeText(text);
+      addToast({ type: 'success', message: 'Copied retirement list to clipboard!' });
+    }
+
     setIsDropdownOpen(false);
   };
 

@@ -93,9 +93,9 @@ const ResignationTable = ({
             {paginatedData.length > 0 ? (
               paginatedData.map((row) => (
                 <tr key={row.id}>
-                  {/* Account No (displaying UAN value as per screenshot requirements) */}
+                  {/* Account No */}
                   <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
-                    {row.uan}
+                    {row.accountNo}
                   </td>
 
                   {/* Date of Leaving */}

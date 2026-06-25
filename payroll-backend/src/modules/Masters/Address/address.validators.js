@@ -1,7 +1,7 @@
 const Joi = require("joi");
 
 const createAddressSchema = Joi.object({
-    company_id: Joi.string().guid({ version: "uuidv4" }).required().messages({
+    company_id: Joi.string().guid().required().messages({
         "string.base": "Company ID must be a string.",
         "string.empty": "Company ID is required.",
         "string.guid": "Company ID must be a valid UUID.",

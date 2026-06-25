@@ -46,6 +46,8 @@ const OfficeStaffEntryPage = () => {
   const [rows, setRows] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [config, setConfig] = useState(null);
 
   /* Close dropdown outside click */
   React.useEffect(() => {
@@ -59,15 +61,27 @@ const OfficeStaffEntryPage = () => {
   }, [isDropdownOpen]);
 
   /* ---- Search / Load ---- */
-  const handleSearch = useCallback(() => {
+  const handleSearch = useCallback(async () => {
     if (!selectedMonth) {
       addToast({ type: 'error', message: 'Please select a Month and Year.' });
       return;
     }
-    const data = getOfficeStaffEntry(selectedMonth);
-    setRows(data);
-    setActiveMonth(selectedMonth);
-    setHasSearched(true);
+    setLoading(true);
+    try {
+      const response = await getOfficeStaffEntry(selectedMonth);
+      if (response.status) {
+        setRows(response.data || []);
+        setConfig(response.config || null);
+        setActiveMonth(selectedMonth);
+        setHasSearched(true);
+      } else {
+        addToast({ type: 'error', message: response.message || 'Failed to load data' });
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to load data from server' });
+    } finally {
+      setLoading(false);
+    }
   }, [selectedMonth, addToast]);
 
   /* ---- Handle editable cell change ---- */
@@ -77,23 +91,34 @@ const OfficeStaffEntryPage = () => {
         if (row.employeeId !== employeeId) return row;
         const updatedRow = { ...row, [field]: value };
         // Recalculate on days or addition change
-        if (field === 'daysWorked' || field === 'addition') {
-          return recalculateRow(updatedRow, activeMonth);
+        if ((field === 'daysWorked' || field === 'addition') && config) {
+          return recalculateRow(updatedRow, config);
         }
         return updatedRow;
       });
       return updated;
     });
-  }, [activeMonth]);
+  }, [config]);
 
   /* ---- Save ---- */
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!activeMonth || rows.length === 0) {
       addToast({ type: 'error', message: 'No data to save. Please search first.' });
       return;
     }
-    saveOfficeStaffEntry(activeMonth, rows);
-    addToast({ type: 'success', message: `Office Staff Entry for ${formatMonthLabel(activeMonth)} saved successfully!` });
+    setLoading(true);
+    try {
+      const response = await saveOfficeStaffEntry(activeMonth, rows);
+      if (response.status) {
+        addToast({ type: 'success', message: `Office Staff Entry for ${formatMonthLabel(activeMonth)} saved successfully!` });
+      } else {
+        addToast({ type: 'error', message: response.message || 'Failed to save data' });
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to save data to server' });
+    } finally {
+      setLoading(false);
+    }
   }, [activeMonth, rows, addToast]);
 
   /* ---- Export ---- */
@@ -180,8 +205,8 @@ const OfficeStaffEntryPage = () => {
             onChange={setSelectedMonth}
             placeholder="Select Month & Year"
           />
-          <button className={styles.searchBtn} onClick={handleSearch}>
-            <Search size={16} /> Search
+          <button className={styles.searchBtn} onClick={handleSearch} disabled={loading}>
+            <Search size={16} /> {loading ? 'Loading...' : 'Search'}
           </button>
         </div>
       </div>
@@ -303,8 +328,8 @@ const OfficeStaffEntryPage = () => {
 
           {/* Save Button */}
           <div className={styles.saveSection}>
-            <button className={styles.saveBtn} onClick={handleSave}>
-              <Save size={18} /> Save
+            <button className={styles.saveBtn} onClick={handleSave} disabled={loading}>
+              <Save size={18} /> {loading ? 'Saving...' : 'Save'}
             </button>
           </div>
         </div>

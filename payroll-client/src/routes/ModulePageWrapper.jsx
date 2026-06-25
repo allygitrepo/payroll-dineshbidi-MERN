@@ -22,9 +22,9 @@ const slugToSubmenuMap = {
   'office-staff-salary': 'Office Staff Salary',
   'challan-setup': 'Challan Setup',
   
-  'office-attendance': 'Office Attendance',
-  'packing-attendance': 'Packing Attendance',
-  'bidi-roller-attendance': 'Bidi Roller Attendance',
+  'attendence-list': 'Attendence List',
+  'leave-management': 'Leave Management',
+  'face-attendance-self': 'Face Attendance (Self)',
   
   'office-staff': 'Office Staff',
   packers: 'Packers',
