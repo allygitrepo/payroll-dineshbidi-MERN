@@ -128,6 +128,29 @@ class EmployeeController {
     }
 
     /**
+     * Gets employees missing requested details.
+     */
+    static async getMissingDetails(req, res) {
+        const { companyId } = req.params;
+        const { fields } = req.query;
+        
+        if (!companyId) {
+            return res.status(400).json(errorResponse("VALIDATION_ERROR", "Company ID is required.", "Company ID is required."));
+        }
+
+        try {
+            const employees = await EmployeeService.getMissingDetails(companyId, fields, req.user.id);
+            return res.status(200).json(
+                successResponse("MISSING_DETAILS_RETRIEVED", "Missing details retrieved successfully.", "Missing details retrieved.", employees)
+            );
+        } catch (err) {
+            const statusCode = err.statusCode || 500;
+            const errorCode = err.errorCode || "MISSING_DETAILS_FAILED";
+            return res.status(statusCode).json(errorResponse(errorCode, err.message, err.messageToShow || "Failed to retrieve missing details."));
+        }
+    }
+
+    /**
      * Gets a single employee by ID.
      */
     static async getById(req, res) {

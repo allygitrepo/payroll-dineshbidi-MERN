@@ -49,8 +49,10 @@ const BidiRollerEntryPage = () => {
       if (companyId) {
         try {
           const list = await getContractors(companyId);
-          setContractorsList(list);
-          setSelectedContractors(list.map(c => c.id));
+          const selfContractor = { id: 'SELF', name: 'SELF', pfCode: 'N/A' };
+          const extendedList = [selfContractor, ...list];
+          setContractorsList(extendedList);
+          setSelectedContractors(extendedList.map(c => c.id));
         } catch (error) {
           console.error("Failed to load contractors", error);
         }
@@ -155,7 +157,7 @@ const BidiRollerEntryPage = () => {
 
   /* ---- Displayed Rows ---- */
   const displayedRows = useMemo(() => {
-    return rows.filter(r => selectedContractors.includes(r.contractorId));
+    return rows.filter(r => selectedContractors.includes(r.contractorId || 'SELF'));
   }, [rows, selectedContractors]);
 
   /* ---- Export ---- */

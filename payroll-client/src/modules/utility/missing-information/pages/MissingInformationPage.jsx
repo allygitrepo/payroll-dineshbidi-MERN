@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, RotateCcw, Edit, AlertCircle } from 'lucide-react';
 import { useToast } from '../../../../shared/components';
-import { getEmployees } from '../../../master/employee/services/employeeService';
+import { getMissingDetails } from '../../../master/employee/services/employeeService';
 import styles from '../components/MissingInformationPage.module.css';
 
 const DIAGNOSTIC_FIELDS = [
@@ -18,34 +18,6 @@ const DIAGNOSTIC_FIELDS = [
   { key: 'BANK KYC', label: 'BANK KYC' }
 ];
 
-const getMissingFields = (emp) => {
-  const missing = [];
-  if (!emp.memberName || !emp.memberName.trim()) missing.push('Name');
-  if (!emp.dob || !emp.dob.trim()) missing.push('Dob');
-  if (!emp.dateOfJoining || !emp.dateOfJoining.trim()) missing.push('Doj');
-  if (!emp.gender || !emp.gender.trim()) missing.push('Gender');
-  if (!emp.relation || !emp.relation.trim()) missing.push('Relation');
-  if (!emp.maritalStatus || !emp.maritalStatus.trim()) missing.push('Marital Status');
-  if (!emp.qualification || !emp.qualification.trim()) missing.push('Qualification');
-  
-  const hasAadhaar = emp.kycDetails && emp.kycDetails.some(
-    k => k.documentType === 'AADHAAR' && k.documentNumber && k.documentNumber.trim()
-  );
-  if (!hasAadhaar) missing.push('AADHAAR KYC');
-  
-  const hasPan = emp.kycDetails && emp.kycDetails.some(
-    k => k.documentType === 'PAN' && k.documentNumber && k.documentNumber.trim()
-  );
-  if (!hasPan) missing.push('PAN KYC');
-  
-  const hasBank = emp.kycDetails && emp.kycDetails.some(
-    k => (k.documentType === 'BANK PASSBOOK' || k.documentType === 'BANK') && k.documentNumber && k.documentNumber.trim()
-  );
-  if (!hasBank) missing.push('BANK KYC');
-  
-  return missing;
-};
-
 const MissingInformationPage = () => {
   const navigate = useNavigate();
   const addToast = useToast();
@@ -55,65 +27,24 @@ const MissingInformationPage = () => {
   // Selection states for checkbox grid
   const [selectedFields, setSelectedFields] = useState(allFieldKeys);
   // Applied search states for results table
-  const [appliedFields, setAppliedFields] = useState(allFieldKeys);
+  const [appliedFields, setAppliedFields] = useState([]);
 
   // Local text search & pagination states
   const [searchTerm, setSearchTerm] = useState('');
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [dbEmployees, setDbEmployees] = useState([]);
+  const [diagnosticResults, setDiagnosticResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      setIsLoading(true);
-      try {
-        const companyId = localStorage.getItem('selectedCompany');
-        if (companyId) {
-          const res = await getEmployees(companyId);
-          setDbEmployees(res || []);
-        } else {
-          setDbEmployees([]);
-          addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
-        }
-      } catch (err) {
-        addToast({ type: 'error', message: 'Failed to fetch employees' });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchEmployees();
-  }, []);
-
-  // Load database employees
-  const allEmployees = useMemo(() => {
-    return dbEmployees;
-  }, [dbEmployees]);
-
-  // Filter list by selected fields
-  const diagnosticResults = useMemo(() => {
-    const processed = allEmployees.map(emp => {
-      const missing = getMissingFields(emp);
-      return {
-        ...emp,
-        missingFields: missing
-      };
-    });
-
-    return processed.filter(emp => {
-      return emp.missingFields.some(field => appliedFields.includes(field));
-    });
-  }, [allEmployees, appliedFields]);
-
-  // Apply query text matching
+  // Apply query text matching locally after fetching from DB
   const searchedResults = useMemo(() => {
     const query = searchTerm.toLowerCase().trim();
     if (!query) return diagnosticResults;
     return diagnosticResults.filter(emp => {
       const matchName = emp.memberName && emp.memberName.toLowerCase().includes(query);
       const matchUan = emp.uan && emp.uan.toLowerCase().includes(query);
-      const matchMissing = emp.missingFields.some(f => f.toLowerCase().includes(query));
+      const matchMissing = emp.missingFields && emp.missingFields.some(f => f.toLowerCase().includes(query));
       return matchName || matchUan || matchMissing;
     });
   }, [diagnosticResults, searchTerm]);
@@ -140,7 +71,7 @@ const MissingInformationPage = () => {
     );
   };
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (selectedFields.length === 0) {
       addToast({
         type: 'error',
@@ -148,16 +79,34 @@ const MissingInformationPage = () => {
       });
       return;
     }
-    setAppliedFields(selectedFields);
-    addToast({
-      type: 'success',
-      message: `Diagnostic audit completed for ${selectedFields.length} selected categories.`
-    });
+    
+    setIsLoading(true);
+    try {
+      const companyId = localStorage.getItem('selectedCompany');
+      if (!companyId) {
+        addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+        return;
+      }
+      
+      const res = await getMissingDetails(companyId, selectedFields);
+      setDiagnosticResults(res || []);
+      setAppliedFields(selectedFields);
+      
+      addToast({
+        type: 'success',
+        message: `Diagnostic audit completed for ${selectedFields.length} selected categories.`
+      });
+    } catch (err) {
+      addToast({ type: 'error', message: 'Failed to fetch diagnostic data' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleReset = () => {
     setSelectedFields(allFieldKeys);
-    setAppliedFields(allFieldKeys);
+    setAppliedFields([]);
+    setDiagnosticResults([]);
     setSearchTerm('');
     addToast({
       type: 'info',

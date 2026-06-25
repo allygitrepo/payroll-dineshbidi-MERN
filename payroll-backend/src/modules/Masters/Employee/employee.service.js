@@ -305,6 +305,45 @@ class EmployeeService {
     }
 
     /**
+     * Gets employees missing requested details dynamically.
+     */
+    static async getMissingDetails(companyId, fieldsStr, userId) {
+        await verifyCompanyOwnership(companyId, userId);
+
+        const fields = fieldsStr ? fieldsStr.split(',').map(f => f.trim().toLowerCase()) : [];
+        if (fields.length === 0) return [];
+
+        const employees = await Employee.findAll({
+            where: { company_id: companyId, status: true },
+            include: [
+                { model: EmployeeKycDetail, as: "kycDetail", where: { status: true }, required: false },
+            ],
+            order: [["createdAt", "DESC"]],
+        });
+
+        const processed = employees.map(emp => {
+            const missing = [];
+            const empData = emp.toJSON();
+            const kyc = empData.kycDetail || {};
+
+            if (fields.includes('name') && (!empData.name || empData.name === 'NOT AVAILABLE')) missing.push('Name');
+            if (fields.includes('dob') && (!empData.dob || empData.dob === '0000-00-00')) missing.push('Dob');
+            if (fields.includes('doj') && (!empData.date_of_joining || empData.date_of_joining === '0000-00-00')) missing.push('Doj');
+            if (fields.includes('gender') && !empData.gender) missing.push('Gender');
+            if (fields.includes('relation') && !empData.relation) missing.push('Relation');
+            if (fields.includes('marital status') && !empData.marital_status) missing.push('Marital Status');
+            if (fields.includes('qualification') && !empData.qualification) missing.push('Qualification');
+            if (fields.includes('aadhaar kyc') && !empData.aadhar) missing.push('AADHAAR KYC');
+            if (fields.includes('pan kyc') && !kyc.pan) missing.push('PAN KYC');
+            if (fields.includes('bank kyc') && !kyc.bank_ac) missing.push('BANK KYC');
+
+            return { ...empData, missingFields: missing };
+        });
+
+        return processed.filter(emp => emp.missingFields.length > 0);
+    }
+
+    /**
      * Retrieves a single employee by ID.
      */
     static async getEmployeeById(id, userId) {

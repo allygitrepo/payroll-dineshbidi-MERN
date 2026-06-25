@@ -4,7 +4,7 @@ const { Op } = require("sequelize");
 
 exports.getEntries = async (req, res) => {
     try {
-        const company_id = req.user?.company_id || req.query.company_id;
+        const company_id = req.query.company_id || req.user?.company_id;
         const { month_year } = req.query; // format: "YYYY-MM"
 
         if (!company_id || !month_year) {
@@ -51,7 +51,7 @@ exports.getEntries = async (req, res) => {
         });
 
         // 3. Fetch Packing Wages (Rates) for the month
-        const packingWage = await PackingWage.findOne({
+        let packingWage = await PackingWage.findOne({
             where: {
                 company_id,
                 start_date: { [Op.lte]: firstDayOfMonthStr }
@@ -59,10 +59,14 @@ exports.getEntries = async (req, res) => {
             order: [["start_date", "DESC"]]
         });
 
-        const rate1 = packingWage ? parseFloat(packingWage.rate_1) : 0;
-        const rate2 = packingWage ? parseFloat(packingWage.rate_2) : 0;
-        const rate3 = packingWage ? parseFloat(packingWage.rate_3) : 0;
-        const rate4 = packingWage ? parseFloat(packingWage.rate_4) : 0;
+        if (!packingWage) {
+            packingWage = { rate_1: 0, rate_2: 0, rate_3: 0, rate_4: 0 };
+        }
+
+        const rate1 = parseFloat(packingWage.rate_1) || 0;
+        const rate2 = parseFloat(packingWage.rate_2) || 0;
+        const rate3 = parseFloat(packingWage.rate_3) || 0;
+        const rate4 = parseFloat(packingWage.rate_4) || 0;
 
         // 4. Fetch ChallanSetup for ESIC & PF rates
         const challanSetup = await ChallanSetup.findOne({
@@ -155,11 +159,12 @@ exports.getEntries = async (req, res) => {
 };
 
 exports.saveEntries = async (req, res) => {
+    const transaction = await db.sequelize.transaction();
     try {
-        const company_id = req.user?.company_id || req.body.company_id;
-        const { month_year, entries } = req.body;
+        const { company_id: bodyCompanyId, month_year, entries } = req.body;
+        const company_id = bodyCompanyId || req.user?.company_id;
 
-        if (!company_id || !month_year || !entries || !Array.isArray(entries)) {
+        if (!company_id || !month_year || !Array.isArray(entries)) {
             return res.status(400).json({ status: false, message: "Invalid payload" });
         }
 
@@ -198,5 +203,29 @@ exports.saveEntries = async (req, res) => {
     } catch (error) {
         console.error("PackersEntry saveEntries error:", error);
         res.status(500).json({ status: false, message: "Internal server error", error: error.message });
+    }
+};
+
+exports.deleteEntries = async (req, res) => {
+    try {
+        const company_id = req.user?.company_id || req.query.company_id;
+        const { month_year } = req.query;
+
+        if (!company_id || !month_year) {
+            return res.status(400).json({ status: false, message: "Company ID and month_year are required" });
+        }
+
+        const deletedCount = await PackersEntry.destroy({
+            where: { company_id, month_year }
+        });
+
+        res.status(200).json({ 
+            status: true, 
+            message: `Deleted ${deletedCount} Packers entries for ${month_year}`,
+            deletedCount
+        });
+    } catch (error) {
+        console.error("Delete Entries Error:", error);
+        res.status(500).json({ status: false, message: "Failed to delete entries." });
     }
 };

@@ -4,7 +4,7 @@ const { Op } = require("sequelize");
 
 exports.getEntries = async (req, res) => {
     try {
-        const company_id = req.user?.company_id || req.query.company_id;
+        const company_id = req.query.company_id || req.user?.company_id;
         const { month_year } = req.query; // format: "YYYY-MM"
 
         if (!company_id || !month_year) {
@@ -20,6 +20,9 @@ exports.getEntries = async (req, res) => {
         const lastDayOfMonthStr = `${year}-${String(month).padStart(2, "0")}-${String(lastDayOfMonth.getDate()).padStart(2, "0")}`;
         const firstDayOfMonthStr = `${year}-${String(month).padStart(2, "0")}-01`;
 
+        console.log(`[DEBUG] getEntries called with company_id: ${company_id}, month_year: ${month_year}`);
+        console.log(`[DEBUG] Searching for BIDI MAKER with date_of_joining <= ${lastDayOfMonthStr}`);
+        
         // 1. Fetch active BIDI MAKER employees joined before or on the last day of the month
         const employees = await Employee.findAll({
             where: {
@@ -28,8 +31,10 @@ exports.getEntries = async (req, res) => {
                 date_of_joining: { [Op.lte]: lastDayOfMonthStr },
                 status: true,
             },
-            attributes: ["id", "name", "uan", "member_id", "gender", "status", "date_of_joining", "contractor_id"]
+            attributes: ["id", "name", "uan", "member_id", "gender", "status", "date_of_joining", "contractor_id", "company_id"]
         });
+
+        console.log(`[DEBUG] Found ${employees.length} BIDI MAKER employees.`);
 
         if (!employees.length) {
             return res.status(200).json({ status: true, data: [] });
@@ -51,7 +56,7 @@ exports.getEntries = async (req, res) => {
         });
 
         // 3. Fetch Bidi Roller Wages (Rates and Bonuses) for the month
-        const bidiRollerWage = await BidiRollerWage.findOne({
+        let bidiRollerWage = await BidiRollerWage.findOne({
             where: {
                 company_id,
                 start_date: { [Op.lte]: firstDayOfMonthStr }
@@ -59,10 +64,14 @@ exports.getEntries = async (req, res) => {
             order: [["start_date", "DESC"]]
         });
 
-        const rate1 = bidiRollerWage ? parseFloat(bidiRollerWage.rate_1) : 0;
-        const rate2 = bidiRollerWage ? parseFloat(bidiRollerWage.rate_2) : 0;
-        const bonus1 = bidiRollerWage ? parseFloat(bidiRollerWage.bonus_1) : 0;
-        const bonus2 = bidiRollerWage ? parseFloat(bidiRollerWage.bonus_2) : 0;
+        if (!bidiRollerWage) {
+            bidiRollerWage = { rate_1: 0, rate_2: 0, bonus_1: 0, bonus_2: 0 };
+        }
+
+        const rate1 = parseFloat(bidiRollerWage.rate_1);
+        const rate2 = parseFloat(bidiRollerWage.rate_2);
+        const bonus1 = parseFloat(bidiRollerWage.bonus_1);
+        const bonus2 = parseFloat(bidiRollerWage.bonus_2);
 
         // 4. Fetch ChallanSetup for ESIC & PF rates
         const challanSetup = await ChallanSetup.findOne({
@@ -155,8 +164,8 @@ exports.getEntries = async (req, res) => {
 exports.saveEntries = async (req, res) => {
     const transaction = await db.sequelize.transaction();
     try {
-        const company_id = req.user?.company_id || req.body.company_id;
-        const { month_year, entries } = req.body; // array of objects
+        const { company_id: bodyCompanyId, month_year, entries } = req.body;
+        const company_id = bodyCompanyId || req.user?.company_id;
 
         if (!company_id || !month_year || !Array.isArray(entries)) {
             return res.status(400).json({ status: false, message: "Invalid payload" });
@@ -230,5 +239,29 @@ exports.saveEntries = async (req, res) => {
         await transaction.rollback();
         console.error("Error saving bidi roller entries:", error);
         res.status(500).json({ status: false, message: "Internal Server Error" });
+    }
+};
+
+exports.deleteEntries = async (req, res) => {
+    try {
+        const company_id = req.user?.company_id || req.query.company_id;
+        const { month_year } = req.query;
+
+        if (!company_id || !month_year) {
+            return res.status(400).json({ status: false, message: "Company ID and month_year are required" });
+        }
+
+        const deletedCount = await BidiRollerEntry.destroy({
+            where: { company_id, month_year }
+        });
+
+        res.status(200).json({ 
+            status: true, 
+            message: `Deleted ${deletedCount} Bidi Roller entries for ${month_year}`,
+            deletedCount
+        });
+    } catch (error) {
+        console.error("Delete Entries Error:", error);
+        res.status(500).json({ status: false, message: "Failed to delete entries." });
     }
 };

@@ -20,8 +20,8 @@ const bidiRollerEntryRoutes = require("./modules/Entry/BidiRollerEntry/bidiRolle
 const challanDateEntryRoutes = require("./modules/Entry/ChallanDateEntry/challanDateEntry.routes");
 const resignationRoutes = require("./modules/Entry/Resignation/resignation.routes");
 const noteRoutes = require("./modules/Todo List/Note/note.routes");
-const attendanceRoutes = require("./modules/Attendance/attendance.routes");
-const leaveRequestRoutes = require("./modules/Attendance/Leave/leaveRequest.routes");
+// const attendanceRoutes = require("./modules/Attendance/attendance.routes");
+// const leaveRequestRoutes = require("./modules/Attendance/Leave/leaveRequest.routes");
 const reportRoutes = require("./modules/Report/report.routes");
 
 router.get("/v1/test", (req, res) => {
@@ -57,5 +57,8 @@ router.use("/v1/notes", noteRoutes);
 router.use("/v1/attendance", attendanceRoutes);
 router.use("/v1/leaves", leaveRequestRoutes);
 router.use("/v1/reports", reportRoutes);
+router.use("/v1/utility/backup", require("./modules/Utility/Backup/backup.routes"));
+router.use("/v1/utility/restore", require("./modules/Utility/Restore/restore.routes"));
+router.use("/v1/utility/uan-to-ip", require("./modules/Utility/UanToIp/uanToIp.routes"));
 
 module.exports = router;

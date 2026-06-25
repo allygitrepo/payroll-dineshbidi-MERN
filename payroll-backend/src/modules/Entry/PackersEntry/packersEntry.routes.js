@@ -8,4 +8,7 @@ router.get("/company", authenticateJWT, PackersEntryController.getEntries);
 // Save (create or update) multiple entries
 router.post("/company", authenticateJWT, PackersEntryController.saveEntries);
 
+// Delete entries
+router.delete("/company", authenticateJWT, PackersEntryController.deleteEntries);
+
 module.exports = router;

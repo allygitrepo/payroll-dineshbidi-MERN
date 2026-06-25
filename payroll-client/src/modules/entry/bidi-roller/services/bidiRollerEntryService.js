@@ -3,10 +3,11 @@ import apiClient from '../../../../shared/services/apiClient';
 /**
  * Fetch entry data for a given month (YYYY-MM).
  */
-export const getBidiRollerEntry = async (monthYear) => {
+export const getBidiRollerEntry = async (monthYear, companyId) => {
   try {
+    const cid = companyId || localStorage.getItem('selectedCompany');
     const response = await apiClient.get('/bidi-roller-entries/company', {
-      params: { month_year: monthYear }
+      params: { month_year: monthYear, company_id: cid }
     });
     return response.data; // Expected { status, data: [], config: {} }
   } catch (error) {
@@ -18,10 +19,12 @@ export const getBidiRollerEntry = async (monthYear) => {
 /**
  * Save entry data for a given month
  */
-export const saveBidiRollerEntry = async (monthYear, rows) => {
+export const saveBidiRollerEntry = async (monthYear, rows, companyId) => {
   try {
+    const cid = companyId || localStorage.getItem('selectedCompany');
     const response = await apiClient.post('/bidi-roller-entries/company', {
       month_year: monthYear,
+      company_id: cid,
       entries: rows
     });
     return response.data;

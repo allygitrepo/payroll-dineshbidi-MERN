@@ -1,25 +1,19 @@
-import React, { useState, useMemo } from 'react';
-import { Link, Download, FileSpreadsheet, Eye, Save, AlertCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Download, Eye, Save } from 'lucide-react';
 import { useToast } from '../../../../shared/components';
-import { getEmployees, saveEmployee } from '../../../master/employee/services/employeeService';
+import { getEmployees } from '../../../master/employee/services/employeeService';
+import { bulkUpdateIpMapping } from '../services/uanToIpService';
+import * as XLSX from 'xlsx';
 import styles from '../components/UanToIpMappingPage.module.css';
-
-// Preloaded mock Excel records for simulation
-const MOCK_TEMPLATE_RECORDS = [
-  { uan: '100188684022', ipNumber: '7431081699' }, // Kandan Kumar (Update)
-  { uan: '102008788327', ipNumber: '7431095833' }, // Sadhana Mahato (Update)
-  { uan: '102318950034', ipNumber: '7431102938' }, // Namita Mahato (New mapping)
-  { uan: '102318088496', ipNumber: '7431109938' }, // Rekha Kumar (New mapping)
-  { uan: '102318063813', ipNumber: '7431108273' }, // Niyati Machhuar (New mapping)
-  { uan: '101556427344', ipNumber: '7431103982' }, // Rahul Kumar (New mapping)
-  { uan: '999999999999', ipNumber: '7431999999' }  // Invalid/Not found employee
-];
 
 const UanToIpMappingPage = () => {
   const addToast = useToast();
+  const fileInputRef = useRef(null);
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -32,70 +26,116 @@ const UanToIpMappingPage = () => {
       });
       setSelectedFile(null);
       setShowPreview(false);
+      setPreviewData([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     setSelectedFile(file);
     setShowPreview(false);
+    setPreviewData([]);
   };
-
-  // Compile preview mapping records matching live employees database
-  const previewData = useMemo(() => {
-    if (!selectedFile) return [];
-
-    const dbEmployees = getEmployees() || [];
-    const dbMap = new Map(dbEmployees.map(emp => [emp.uan, emp]));
-
-    return MOCK_TEMPLATE_RECORDS.map((row, idx) => {
-      const employee = dbMap.get(row.uan);
-      
-      let employeeName = 'Employee Not Found';
-      let status = 'INVALID UAN';
-      let badgeStyle = styles.badgeWarning;
-
-      if (employee) {
-        employeeName = employee.memberName;
-        if (employee.ipNumber === row.ipNumber) {
-          status = 'CURRENT MATCH';
-          badgeStyle = styles.badgeInfo;
-        } else {
-          status = 'READY TO MAP';
-          badgeStyle = styles.badgeSuccess;
-        }
-      }
-
-      return {
-        id: `row_${idx}`,
-        uan: row.uan,
-        ipNumber: row.ipNumber,
-        employeeName,
-        status,
-        badgeStyle,
-        employeeObj: employee
-      };
-    });
-  }, [selectedFile]);
 
   const handlePreview = () => {
     if (!selectedFile) {
-      addToast({
-        type: 'error',
-        message: 'Please choose an Excel spreadsheet to preview.'
-      });
+      addToast({ type: 'error', message: 'Please choose an Excel spreadsheet to preview.' });
       return;
     }
-    setShowPreview(true);
-    addToast({
-      type: 'success',
-      message: 'Excel spreadsheet parsed successfully. Review mappings below.'
-    });
+
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'error', message: 'No active company context. Please select a company first.' });
+      return;
+    }
+
+    setIsProcessing(true);
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Ensure standard object format mapping columns
+        // Expecting Column A -> UAN, Column B -> IP Number (or header names)
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        // Remove empty rows
+        const rows = jsonData.filter(row => row.length >= 2 && row[0] && row[1]);
+        
+        // Skip header row if it contains text like "UAN"
+        let dataRows = rows;
+        if (rows.length > 0 && String(rows[0][0]).toLowerCase().includes('uan')) {
+            dataRows = rows.slice(1);
+        }
+
+        if (dataRows.length === 0) {
+            throw new Error("No data found in the spreadsheet.");
+        }
+
+        // Fetch live employees to cross-reference
+        const dbEmployees = await getEmployees(companyId);
+        const dbMap = new Map();
+        
+        dbEmployees.forEach(emp => {
+            if (emp.uan) {
+                // Ensure uan is a string without decimals
+                dbMap.set(String(emp.uan).replace('.0', ''), emp);
+            }
+        });
+
+        const mappedPreview = dataRows.map((row, idx) => {
+          const rowUan = String(row[0]).trim().replace('.0', '');
+          const rowIp = String(row[1]).trim().replace('.0', '');
+
+          const employee = dbMap.get(rowUan);
+          
+          let employeeName = 'Employee Not Found';
+          let status = 'INVALID UAN';
+          let badgeStyle = styles.badgeWarning;
+
+          if (employee) {
+            employeeName = employee.memberName;
+            if (employee.ipNumber === rowIp) {
+              status = 'CURRENT MATCH';
+              badgeStyle = styles.badgeInfo;
+            } else {
+              status = 'READY TO MAP';
+              badgeStyle = styles.badgeSuccess;
+            }
+          }
+
+          return {
+            id: `row_${idx}`,
+            uan: rowUan,
+            ipNumber: rowIp,
+            employeeName,
+            status,
+            badgeStyle
+          };
+        });
+
+        setPreviewData(mappedPreview);
+        setShowPreview(true);
+        addToast({
+          type: 'success',
+          message: 'Excel spreadsheet parsed successfully. Review mappings below.'
+        });
+
+      } catch (err) {
+        addToast({ type: 'error', message: err.message || 'Failed to parse Excel file.' });
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+    reader.readAsArrayBuffer(selectedFile);
   };
 
   const handleDownloadTemplate = () => {
     try {
-      const csvContent = "Universal Account Number (UAN),Insurance Number (IP)\n" + 
-        MOCK_TEMPLATE_RECORDS.map(r => `${r.uan},${r.ipNumber}`).join("\n");
-      
+      const csvContent = "Universal Account Number (UAN),Insurance Number (IP)\n100188684022,7431081699\n102008788327,7431095833";
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -106,46 +146,57 @@ const UanToIpMappingPage = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      addToast({
-        type: 'success',
-        message: 'UAN to IP mapping template downloaded successfully.'
-      });
+      addToast({ type: 'success', message: 'UAN to IP mapping template downloaded successfully.' });
     } catch (err) {
-      addToast({
-        type: 'error',
-        message: 'Failed to download template file.'
-      });
+      addToast({ type: 'error', message: 'Failed to download template file.' });
     }
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (previewData.length === 0) return;
 
-    let successCount = 0;
-    previewData.forEach(row => {
-      if (row.employeeObj && row.status === 'READY TO MAP') {
-        const updated = {
-          ...row.employeeObj,
-          ipNumber: row.ipNumber
-        };
-        saveEmployee(updated);
-        successCount++;
-      }
-    });
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) return;
 
-    addToast({
-      type: 'success',
-      message: `Successfully mapped and updated ${successCount} employee IP details in database.`
-    });
+    const payload = previewData
+        .filter(row => row.status === 'READY TO MAP')
+        .map(row => ({
+            uan: row.uan,
+            ipNumber: row.ipNumber
+        }));
 
-    // Reset controls
-    setSelectedFile(null);
-    setShowPreview(false);
+    if (payload.length === 0) {
+        addToast({ type: 'info', message: 'No new mappings found to import.' });
+        return;
+    }
+
+    try {
+        setIsProcessing(true);
+        const res = await bulkUpdateIpMapping(companyId, payload);
+        
+        addToast({
+            type: 'success',
+            message: res.message || 'Successfully bulk-updated IP details in database.'
+        });
+
+        // Reset controls
+        setSelectedFile(null);
+        setShowPreview(false);
+        setPreviewData([]);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+
+    } catch (err) {
+        addToast({
+            type: 'error',
+            message: err.message || 'Failed to update database mappings.'
+        });
+    } finally {
+        setIsProcessing(false);
+    }
   };
 
   return (
     <div className={styles.container}>
-      {/* Page header */}
       <div className={styles.headerSection}>
         <div>
           <h2 className={styles.title}>UAN to IP Mapping</h2>
@@ -155,7 +206,6 @@ const UanToIpMappingPage = () => {
         </div>
       </div>
 
-      {/* Upload card panel */}
       <div className={styles.card}>
         <div className={styles.cardHeader}>
           Upload Excel Sheet (UAN and IP columns)
@@ -172,9 +222,11 @@ const UanToIpMappingPage = () => {
               </span>
               <input
                 type="file"
+                ref={fileInputRef}
                 onChange={handleFileChange}
                 accept=".xlsx, .xls, .csv"
                 className={styles.realInput}
+                disabled={isProcessing}
               />
             </div>
           </div>
@@ -184,16 +236,17 @@ const UanToIpMappingPage = () => {
               type="button"
               className={styles.previewBtn}
               onClick={handlePreview}
-              disabled={!selectedFile}
+              disabled={!selectedFile || isProcessing}
             >
               <Eye size={16} />
-              Preview
+              {isProcessing ? 'Analyzing...' : 'Preview'}
             </button>
 
             <button
               type="button"
               className={styles.templateBtn}
               onClick={handleDownloadTemplate}
+              disabled={isProcessing}
             >
               <Download size={16} />
               Download Template
@@ -204,17 +257,16 @@ const UanToIpMappingPage = () => {
                 type="button"
                 className={styles.importBtn}
                 onClick={handleImport}
+                disabled={isProcessing}
               >
                 <Save size={16} />
-                Import Mapping
+                {isProcessing ? 'Saving...' : 'Import Mapping'}
               </button>
             )}
           </div>
-
         </div>
       </div>
 
-      {/* Preview data table */}
       {showPreview && (
         <div className={styles.tableCard}>
           <h3 className={styles.tableTitle}>Data Grid Preview</h3>
@@ -239,10 +291,8 @@ const UanToIpMappingPage = () => {
                 ) : (
                   previewData.map((row, index) => (
                     <tr key={row.id}>
-                      <td style={{ textAlign: 'center', fontWeight: '500' }}>
-                        {index + 1}
-                      </td>
-                      <td style={{ fontWeight: '600', color: row.employeeObj ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                      <td style={{ textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
+                      <td style={{ fontWeight: '600', color: row.status === 'INVALID UAN' ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                         {row.employeeName}
                       </td>
                       <td style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{row.uan}</td>

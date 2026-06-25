@@ -220,6 +220,19 @@ export const getEmployees = async (companyId) => {
   return [];
 };
 
+export const getMissingDetails = async (companyId, fields) => {
+  if (!companyId || !fields || fields.length === 0) return [];
+  const fieldsStr = fields.join(',');
+  const response = await apiClient.get(`employees/company/${companyId}/missing-details?fields=${encodeURIComponent(fieldsStr)}`);
+  if ((response.data?.status || response.data?.success) && response.data?.data) {
+    return response.data.data.map(e => ({
+      ...mapToFrontend(e),
+      missingFields: e.missingFields || []
+    }));
+  }
+  return [];
+};
+
 export const saveEmployee = async (employee, companyId, addresses = [], contractors = []) => {
   const payload = mapToBackend(employee, companyId, addresses, contractors);
   let savedEmpId = employee.id;

@@ -16,7 +16,7 @@ const calculatePTAmount = (grossSalary, slabs) => {
 
 exports.getEntries = async (req, res) => {
     try {
-        const company_id = req.user?.company_id || req.query.company_id;
+        const company_id = req.query.company_id || req.user?.company_id;
         const { month_year } = req.query; // format: "YYYY-MM"
 
         if (!company_id || !month_year) {
@@ -211,8 +211,8 @@ exports.getEntries = async (req, res) => {
 exports.saveEntries = async (req, res) => {
     const t = await db.sequelize.transaction();
     try {
-        const company_id = req.user?.company_id || req.body.company_id;
-        const { month_year, entries } = req.body;
+        const { company_id: bodyCompanyId, month_year, entries } = req.body;
+        const company_id = bodyCompanyId || req.user?.company_id;
 
         if (!company_id || !month_year || !Array.isArray(entries)) {
             return res.status(400).json({ status: false, message: "Invalid payload" });
@@ -256,5 +256,29 @@ exports.saveEntries = async (req, res) => {
         await t.rollback();
         console.error(error);
         res.status(500).json({ status: false, message: error.message });
+    }
+};
+
+exports.deleteEntries = async (req, res) => {
+    try {
+        const company_id = req.user?.company_id || req.query.company_id;
+        const { month_year } = req.query;
+
+        if (!company_id || !month_year) {
+            return res.status(400).json({ status: false, message: "Company ID and month_year are required" });
+        }
+
+        const deletedCount = await OfficeStaffEntry.destroy({
+            where: { company_id, month_year }
+        });
+
+        res.status(200).json({ 
+            status: true, 
+            message: `Deleted ${deletedCount} Office Staff entries for ${month_year}`,
+            deletedCount
+        });
+    } catch (error) {
+        console.error("Delete Entries Error:", error);
+        res.status(500).json({ status: false, message: "Failed to delete entries." });
     }
 };
