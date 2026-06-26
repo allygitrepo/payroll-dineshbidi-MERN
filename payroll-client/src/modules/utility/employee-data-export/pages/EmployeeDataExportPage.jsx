@@ -4,20 +4,6 @@ import { useToast, MonthYearPicker } from '../../../../shared/components';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import styles from '../components/EmployeeDataExportPage.module.css';
 
-// Extra mock database to match the screenshot style values
-const EXTRA_MOCK_EMPLOYEES = [
-  { id: 'm1', uan: '100338110653', ipNumber: '7431114905', memberId: '', memberName: 'SARALA KUMAR', dob: '1980-04-04', dateOfJoining: '2026-04-01', gender: 'FEMALE', fatherHusbandName: 'SABYASACHI KUMAR', relation: 'HUSBAND', mobile: '9749186606', email: '73207821' },
-  { id: 'm2', uan: '100633293469', ipNumber: '7431118458', memberId: '', memberName: 'CHINU RAJAK', dob: '1981-01-01', dateOfJoining: '2026-04-01', gender: 'FEMALE', fatherHusbandName: 'AJAY RAJAK', relation: 'HUSBAND', mobile: '9083409625', email: '26702454' },
-  { id: 'm3', uan: '101144955160', ipNumber: '7431115042', memberId: '', memberName: 'USHA MAHATO', dob: '1982-01-03', dateOfJoining: '2026-04-01', gender: 'FEMALE', fatherHusbandName: 'BISWANATH MAHATO', relation: 'HUSBAND', mobile: '8016358185', email: '93831697' },
-  { id: 'm4', uan: '101163039151', ipNumber: '7431116157', memberId: '', memberName: 'SHIKHA MAHATO', dob: '1993-10-24', dateOfJoining: '2026-04-01', gender: 'FEMALE', fatherHusbandName: 'MANIK MAHATO', relation: 'FATHER', mobile: '7384732552', email: '20535442' },
-  { id: 'm5', uan: '101556427344', ipNumber: '7431114891', memberId: '', memberName: 'RAHUL KUMAR', dob: '2002-01-01', dateOfJoining: '2026-04-01', gender: 'MALE', fatherHusbandName: 'GOPINATH KUMAR', relation: 'FATHER', mobile: '8348273207', email: '80459666' },
-  { id: 'm6', uan: '101887464712', ipNumber: '7431115047', memberId: '', memberName: 'KAILASH KUMAR', dob: '2003-12-08', dateOfJoining: '2026-04-01', gender: 'MALE', fatherHusbandName: 'KRISHNA KUMAR', relation: 'FATHER', mobile: '7865009525', email: '48695099' },
-  { id: 'm7', uan: '101934723705', ipNumber: '7431118450', memberId: '', memberName: 'ROHIT KUMAR', dob: '2002-10-15', dateOfJoining: '2026-04-01', gender: 'MALE', fatherHusbandName: 'NIRMAL KUMAR', relation: 'FATHER', mobile: '7501337320', email: '34606073' },
-  { id: 'm8', uan: '102200508885', ipNumber: '7431115062', memberId: '', memberName: 'DIBAKAR KUMAR', dob: '2007-02-03', dateOfJoining: '2026-04-01', gender: 'MALE', fatherHusbandName: 'KRISHNA KUMAR', relation: 'FATHER', mobile: '7810923604', email: '23890942' },
-  { id: 'm9', uan: '102316622517', ipNumber: '7431117582', memberId: '', memberName: 'MONARANJAN MAHATO', dob: '1988-09-12', dateOfJoining: '2026-04-01', gender: 'MALE', fatherHusbandName: 'HARIPADA MAHATO', relation: 'FATHER', mobile: '8001541175', email: '36193131' },
-  { id: 'm10', uan: '102318049633', ipNumber: '7431114843', memberId: '', memberName: 'BASANTI MAHATO', dob: '1994-03-02', dateOfJoining: '2026-04-01', gender: 'FEMALE', fatherHusbandName: 'RAJEN MAHATO', relation: 'HUSBAND', mobile: '6297541459', email: '94231891' }
-];
-
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -36,7 +22,7 @@ const EmployeeDataExportPage = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const addToast = useToast();
-  
+
   const [dbEmployees, setDbEmployees] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -61,26 +47,19 @@ const EmployeeDataExportPage = () => {
     fetchEmployees();
   }, []);
 
-  // Load database employees combined with extra mockup rows
-  const allEmployees = useMemo(() => {
-    const dbUans = new Set(dbEmployees.map(e => e.uan));
-    const uniqueMocks = EXTRA_MOCK_EMPLOYEES.filter(e => !dbUans.has(e.uan));
-    return [...dbEmployees, ...uniqueMocks];
-  }, [dbEmployees]);
-
   // Filter employees based on joining date <= selected month
   const filteredByMonth = useMemo(() => {
-    if (!searchTriggeredMonth) return allEmployees;
+    if (!searchTriggeredMonth) return dbEmployees;
 
     // Filter joining dates up to the selected searchTriggeredMonth
-    const result = allEmployees.filter(emp => {
+    const result = dbEmployees.filter(emp => {
       if (!emp.dateOfJoining) return true;
       const joinMonth = emp.dateOfJoining.substring(0, 7);
       return joinMonth <= searchTriggeredMonth;
     });
 
     return result;
-  }, [allEmployees, searchTriggeredMonth]);
+  }, [dbEmployees, searchTriggeredMonth]);
 
   // Handle local text search query input
   const searchedData = useMemo(() => {
@@ -136,7 +115,7 @@ const EmployeeDataExportPage = () => {
   const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalEntries);
-  
+
   const paginatedData = useMemo(() => {
     return searchedData.slice(startIndex, endIndex);
   }, [searchedData, startIndex, endIndex]);
@@ -171,9 +150,9 @@ const EmployeeDataExportPage = () => {
     }
 
     if (type === 'Excel' || type === 'CSV') {
-      const headers = ['UAN', 'IP Number', 'Previous Member Id', 'Member Name', 'Date Of Birth', 'DateOfJoining', 'Gender', 'Father/Husband Name', 'Relationship with the Member', 'Mobile Number', 'EmailId'];
+      const headers = ['UAN', 'IP Number', 'Previous Member Id', 'Member Name', 'Date Of Birth', 'DateOfJoining', 'Gender', 'Father/Husband Name', 'Relationship with the Member', 'Mobile Number', 'EmailId', 'Status'];
       let csvContent = headers.join(',') + '\n';
-      
+
       searchedData.forEach(emp => {
         const row = [
           `"${emp.uan || ''}"`,
@@ -186,7 +165,8 @@ const EmployeeDataExportPage = () => {
           `"${emp.fatherHusbandName || ''}"`,
           `"${emp.relation || 'FATHER'}"`,
           `"${emp.mobile || emp.mobileNumber || ''}"`,
-          `"${emp.email || emp.emailId || ''}"`
+          `"${emp.email || emp.emailId || ''}"`,
+          `"${(!emp.status || emp.status === '0') ? 1 : emp.status}"`
         ];
         csvContent += row.join(',') + '\n';
       });
@@ -200,9 +180,9 @@ const EmployeeDataExportPage = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       addToast({ type: 'success', message: `${type} file downloaded successfully!` });
-    } 
+    }
     else if (type === 'Print' || type === 'PDF') {
       const printWindow = window.open('', '_blank');
       if (printWindow) {
@@ -225,12 +205,12 @@ const EmployeeDataExportPage = () => {
               <thead>
                 <tr>
                   <th>UAN</th><th>IP Number</th><th>Member Name</th><th>Date Of Birth</th><th>Date Of Joining</th>
-                  <th>Gender</th><th>Father/Husband Name</th><th>Relation</th><th>Mobile</th><th>Email</th>
+                  <th>Gender</th><th>Father/Husband Name</th><th>Relation</th><th>Mobile</th><th>Email</th><th>Status</th>
                 </tr>
               </thead>
               <tbody>
         `;
-        
+
         searchedData.forEach(emp => {
           html += `
             <tr>
@@ -244,10 +224,11 @@ const EmployeeDataExportPage = () => {
               <td>${emp.relation || 'FATHER'}</td>
               <td>${emp.mobile || emp.mobileNumber || ''}</td>
               <td>${emp.email || emp.emailId || ''}</td>
+              <td>${(!emp.status || emp.status === '0') ? 1 : emp.status}</td>
             </tr>
           `;
         });
-        
+
         html += `
               </tbody>
             </table>
@@ -259,7 +240,7 @@ const EmployeeDataExportPage = () => {
           </body>
           </html>
         `;
-        
+
         printWindow.document.write(html);
         printWindow.document.close();
         addToast({ type: 'success', message: `${type} document generated successfully!` });
@@ -268,8 +249,8 @@ const EmployeeDataExportPage = () => {
       }
     }
     else if (type === 'Copy') {
-      const text = searchedData.map(emp => 
-        `${emp.uan || ''}\t${emp.ipNumber || ''}\t${emp.memberName || ''}\t${formatDate(emp.dob)}\t${formatDate(emp.dateOfJoining)}\t${emp.mobile || emp.mobileNumber || ''}`
+      const text = searchedData.map(emp =>
+        `${emp.uan || ''}\t${emp.ipNumber || ''}\t${emp.memberName || ''}\t${formatDate(emp.dob)}\t${formatDate(emp.dateOfJoining)}\t${emp.mobile || emp.mobileNumber || ''}\t${(!emp.status || emp.status === '0') ? 1 : emp.status}`
       ).join('\n');
       navigator.clipboard.writeText(text);
       addToast({ type: 'success', message: 'Copied filtered employees list to clipboard!' });
@@ -290,8 +271,8 @@ const EmployeeDataExportPage = () => {
         </div>
         <div className={styles.headerActions}>
           <div className={styles.dropdownContainer} ref={dropdownRef}>
-            <button 
-              className={styles.downloadBtn} 
+            <button
+              className={styles.downloadBtn}
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             >
               <Download size={18} /> Download
@@ -329,7 +310,7 @@ const EmployeeDataExportPage = () => {
               onChange={setSelectedMonth}
             />
           </div>
-          
+
           <button
             type="button"
             className={styles.searchBtn}
@@ -383,6 +364,7 @@ const EmployeeDataExportPage = () => {
                 <th>Relationship with the Member</th>
                 <th>Mobile Number</th>
                 <th>EmailId</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -412,6 +394,7 @@ const EmployeeDataExportPage = () => {
                     <td>{emp.relation || 'FATHER'}</td>
                     <td>{emp.mobile || emp.mobileNumber || '-'}</td>
                     <td>{emp.email || emp.emailId || '-'}</td>
+                    <td>{(!emp.status || emp.status === '0') ? 1 : emp.status}</td>
                   </tr>
                 ))
               )}

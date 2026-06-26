@@ -161,16 +161,31 @@ const EmployeeDataImportPage = () => {
           const memberName = String(row['Member Name'] || '');
           const dob = parseDate(row['Date Of Birth']);
           const doj = parseDate(row['Date Of Joining']);
+          const ipNumber = String(row['IP Number'] || '').replace(/\D/g, '');
+          const aadhar = String(row['Aadhaar Number'] || '').replace(/\D/g, '');
+          const mobile = String(row['Mobile Number'] || '').replace(/\D/g, '');
 
           if (!uan || uan.length !== 12 || !memberName || !dob || !doj) {
             summary.failed.push({ rowNumber: i + 2, name: memberName || 'Unknown', reason: "Missing required fields (Name, 12-digit UAN, DOB, or DOJ)." });
+            continue;
+          }
+          if (!ipNumber || ipNumber.length < 10 || ipNumber.length > 20) {
+            summary.failed.push({ rowNumber: i + 2, name: memberName, reason: "IP Number is missing or invalid (must be 10-20 digits)." });
+            continue;
+          }
+          if (!aadhar || aadhar.length !== 12) {
+            summary.failed.push({ rowNumber: i + 2, name: memberName, reason: "Aadhaar Number must be exactly 12 digits." });
+            continue;
+          }
+          if (!mobile || mobile.length < 10 || mobile.length > 15) {
+            summary.failed.push({ rowNumber: i + 2, name: memberName, reason: "Mobile Number is missing or invalid (must be 10-15 digits)." });
             continue;
           }
 
           const employeeObj = {
             memberName,
             uan,
-            ipNumber: String(row['IP Number'] || '').replace(/\D/g, ''),
+            ipNumber: ipNumber,
             memberId: String(row['Previous Member Id'] || ''),
             contractor: String(row['Contractor Name'] || 'SELF'),
             employeeType: String(row['Type Of Employee'] || 'BIDI MAKER'),
@@ -180,9 +195,9 @@ const EmployeeDataImportPage = () => {
             fatherHusbandName: String(row['Father/Husband Name'] || ''),
             relation: String(row['Relationship'] || ''),
             maritalStatus: String(row['Marital Status'] || 'SINGLE'),
-            mobile: String(row['Mobile Number'] || '').replace(/\D/g, ''),
+            mobile: mobile,
             email: String(row['Email Id'] || ''),
-            aadhaarCard: String(row['Aadhaar Number'] || '').replace(/\D/g, ''),
+            aadhaarCard: aadhar,
             nationality: String(row['Nationality'] || 'INDIAN'),
             pmrpy: (row['PMRPY'] || 'NO').toUpperCase(),
             address_id: defaultAddressId,
@@ -228,6 +243,7 @@ const EmployeeDataImportPage = () => {
 
     let processed = 0;
     let failCount = 0;
+    const failedReasons = [];
     const { companyId, addressesList, contractorsList } = analysisSummary;
 
     const processList = [...analysisSummary.added, ...analysisSummary.updated];
@@ -238,6 +254,7 @@ const EmployeeDataImportPage = () => {
       } catch (err) {
         console.error("Failed to save employee", emp, err?.response?.data || err);
         failCount++;
+        failedReasons.push(`${emp.memberName}: ${err?.response?.data?.messageToShow || err?.response?.data?.message || err.message}`);
       }
       processed++;
       setProgress(Math.round((processed / totalToProcess) * 100));
@@ -249,10 +266,18 @@ const EmployeeDataImportPage = () => {
     setPreviewData({ columns: [], rows: [] });
     if (fileInputRef.current) fileInputRef.current.value = '';
 
-    addToast({
-      type: 'success',
-      message: `Import complete! Processed ${processed - failCount} entries successfully. ${failCount > 0 ? `Failed to save: ${failCount}` : ''}`
-    });
+    if (failCount > 0) {
+      addToast({
+        type: 'error',
+        message: `Import finished with errors. Saved ${processed - failCount}. Failed ${failCount} (Check console for details).`
+      });
+      console.warn("Backend Import Failures:", failedReasons);
+    } else {
+      addToast({
+        type: 'success',
+        message: `Import complete! Processed ${processed} entries successfully.`
+      });
+    }
   };
 
   const handleDownloadTemplate = () => {
