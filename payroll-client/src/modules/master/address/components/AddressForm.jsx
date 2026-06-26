@@ -31,22 +31,12 @@ const AddressForm = ({ address, onSave, onCancel }) => {
   }, [address]);
 
   const validateField = (name, value) => {
-    if (name === 'pincode') {
-      if (value && value.trim()) {
-        const pinRegex = /^[0-9]{6}$/;
-        return !pinRegex.test(value) ? 'Pincode must be exactly 6 digits!' : '';
-      }
-    }
     return '';
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     let finalValue = value;
-
-    if (name === 'pincode') {
-      finalValue = value.replace(/\D/g, '').slice(0, 6);
-    }
 
     setFormData((prev) => ({ ...prev, [name]: finalValue }));
 

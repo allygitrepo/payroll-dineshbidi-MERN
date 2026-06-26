@@ -204,12 +204,20 @@ class EmployeeService {
         // 2. Validate Uniqueness
         await validateUniqueness(employeeData);
 
-        // 3. Normalize strings
-        if (kyc_details) {
-            if (kyc_details.pan) kyc_details.pan = kyc_details.pan.trim().toUpperCase();
-            if (kyc_details.ifsc) kyc_details.ifsc = kyc_details.ifsc.trim().toUpperCase();
-            if (kyc_details.bank_ac) kyc_details.bank_ac = kyc_details.bank_ac.trim();
-        }
+        // 3. Normalize strings (Uppercase Enforcement)
+        const toUpper = (obj) => {
+            if (!obj) return;
+            for (const key in obj) {
+                if (typeof obj[key] === 'string' && key !== 'image_path' && key !== 'email') {
+                    obj[key] = obj[key].toUpperCase();
+                }
+            }
+        };
+
+        toUpper(personalDetails);
+        if (kyc_details) toUpper(kyc_details);
+        if (nominees && Array.isArray(nominees)) nominees.forEach(toUpper);
+        if (family_members && Array.isArray(family_members)) family_members.forEach(toUpper);
 
         // Execute as a database transaction
         const t = await sequelize.transaction();
@@ -439,12 +447,20 @@ class EmployeeService {
         // Validate uniqueness excluding this employee
         await validateUniqueness({ ...employee.toJSON(), ...updateData }, id);
 
-        // Normalize
-        if (kyc_details) {
-            if (kyc_details.pan) kyc_details.pan = kyc_details.pan.trim().toUpperCase();
-            if (kyc_details.ifsc) kyc_details.ifsc = kyc_details.ifsc.trim().toUpperCase();
-            if (kyc_details.bank_ac) kyc_details.bank_ac = kyc_details.bank_ac.trim();
-        }
+        // Normalize strings (Uppercase Enforcement)
+        const toUpper = (obj) => {
+            if (!obj) return;
+            for (const key in obj) {
+                if (typeof obj[key] === 'string' && key !== 'image_path' && key !== 'email') {
+                    obj[key] = obj[key].toUpperCase();
+                }
+            }
+        };
+
+        toUpper(personalDetails);
+        if (kyc_details) toUpper(kyc_details);
+        if (nominees && Array.isArray(nominees)) nominees.forEach(toUpper);
+        if (family_members && Array.isArray(family_members)) family_members.forEach(toUpper);
 
         const t = await sequelize.transaction();
 

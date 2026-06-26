@@ -140,9 +140,11 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
       return !uanRegex.test(value) ? 'UAN must be exactly 12 digits!' : '';
     }
     if (name === 'ipNumber') {
-      if (!value.trim()) return 'IP Number is required!';
-      const ipRegex = /^[0-9]{10}$/;
-      return !ipRegex.test(value) ? 'IP Number must be exactly 10 digits!' : '';
+      if (value && value.trim()) {
+        const ipRegex = /^[0-9]{10}$/;
+        return !ipRegex.test(value) ? 'IP Number must be exactly 10 digits!' : '';
+      }
+      return '';
     }
     if (name === 'memberName') {
       return !value.trim() ? 'Employee Name is required!' : '';
@@ -176,14 +178,32 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
       return '';
     }
     if (name === 'mobile') {
-      if (!value.trim()) return 'Mobile is required!';
-      const mobileRegex = /^[0-9]{10}$/;
-      return !mobileRegex.test(value) ? 'Mobile must be exactly 10 digits' : '';
+      if (value && value.trim()) {
+        const mobileRegex = /^[0-9]{10}$/;
+        return !mobileRegex.test(value) ? 'Mobile must be exactly 10 digits' : '';
+      }
+      return '';
     }
     if (name === 'aadhaarCard') {
-      if (!value || !value.trim()) return 'Aadhar Card Number is required!';
-      const aadhaarRegex = /^[0-9]{12}$/;
-      return !aadhaarRegex.test(value) ? 'Aadhar Card Number must be exactly 12 digits!' : '';
+      if (value && value.trim()) {
+        const aadhaarRegex = /^[0-9]{12}$/;
+        return !aadhaarRegex.test(value) ? 'Aadhar Card Number must be exactly 12 digits!' : '';
+      }
+      return '';
+    }
+    if (name === 'dob') {
+      if (!value) return ''; // Let's not make it mandatory here if it wasn't before, but the warning should be there. Wait, they said "invalid Age".
+      const birthDate = new Date(value);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      if (age < 18 || age > 55) {
+        return 'invalid Age (Must be between 18 and 55)';
+      }
+      return '';
     }
     return '';
   };
@@ -316,6 +336,48 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
       return;
     }
 
+    // Duplicate Entry Check for KYC
+    const isDuplicate = formData.kycDetails.some(
+      (k) => k.documentType === kycInput.documentType
+    );
+    if (isDuplicate) {
+      addToast({ type: 'error', message: 'This Document Type is already added!' });
+      return;
+    }
+
+    // Format Checks
+    if (kycInput.documentType === 'AADHAAR') {
+      if (!/^[0-9]{12}$/.test(kycInput.documentNumber)) {
+        addToast({ type: 'error', message: 'Aadhaar Card must be exactly 12 digits.' });
+        return;
+      }
+    } else if (kycInput.documentType === 'PAN') {
+      if (!/^[a-zA-Z]{5}[0-9]{4}[a-zA-Z]{1}$/.test(kycInput.documentNumber)) {
+        addToast({ type: 'error', message: 'Invalid PAN Card format.' });
+        return;
+      }
+    } else if (kycInput.documentType === 'BANK PASSBOOK') {
+      if (!/^[0-9]{10,20}$/.test(kycInput.documentNumber)) {
+        addToast({ type: 'error', message: 'Bank Account No must be 10 to 20 digits.' });
+        return;
+      }
+      if (!/^[a-zA-Z0-9]{11}$/.test(kycInput.ifsc)) {
+        addToast({ type: 'error', message: 'IFSC Code must be exactly 11 alphanumeric characters.' });
+        return;
+      }
+    } else {
+      // Other IDs (UAN, Voter ID, etc.)
+      if (!/^[a-zA-Z0-9]{5,20}$/.test(kycInput.documentNumber)) {
+        addToast({ type: 'error', message: 'Document Number must be 5 to 20 alphanumeric characters.' });
+        return;
+      }
+    }
+
+    if (!/^[a-zA-Z ]{1,100}$/.test(kycInput.nameAsPerDocument)) {
+      addToast({ type: 'error', message: 'Name as per document can only contain letters and spaces.' });
+      return;
+    }
+
     const newKyc = {
       ...kycInput,
       id: 'k_' + Date.now()
@@ -386,6 +448,34 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
       return;
     }
 
+    if (!/^[0-9]{12}$/.test(nomineeInput.aadhaarNumber)) {
+      addToast({ type: 'error', message: 'Nominee Aadhaar must be exactly 12 digits' });
+      return;
+    }
+
+    // Duplicate Check
+    const isDuplicate = formData.nomineeDetails.some((n) => n.aadhaarNumber === nomineeInput.aadhaarNumber);
+    if (isDuplicate) {
+      addToast({ type: 'error', message: 'Entered Aadhaar No. Already Exist !!!' });
+      return;
+    }
+
+    if (nomineeInput.dob) {
+      const birthDate = new Date(nomineeInput.dob);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      if (age < 18) {
+        if (!nomineeInput.guardianName || !nomineeInput.guardianAddress) {
+          addToast({ type: 'error', message: 'Guardian Name and Address are mandatory for Minors (Age < 18)' });
+          return;
+        }
+      }
+    }
+
     const newNominee = {
       ...nomineeInput,
       id: 'n_' + Date.now()
@@ -433,8 +523,15 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
       addToast({ type: 'warning', message: 'Family Member Name is required' });
       return;
     }
-    if (!familyInput.aadhaarNumber.trim() || familyInput.aadhaarNumber.length !== 12) {
+    if (!/^[0-9]{12}$/.test(familyInput.aadhaarNumber)) {
       addToast({ type: 'warning', message: 'Aadhaar Card number must be 12 digits' });
+      return;
+    }
+
+    // Duplicate Check
+    const isDuplicate = formData.familyDetails.some((f) => f.aadhaarNumber === familyInput.aadhaarNumber);
+    if (isDuplicate) {
+      addToast({ type: 'error', message: 'Entered Aadhaar No. Already Exist !!!' });
       return;
     }
 
@@ -467,12 +564,12 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
     e.preventDefault();
     
     const tempErrors = {};
-    const keysToValidate = [
-      'uan', 'ipNumber', 'memberName', 'gender', 'dateOfJoining', 
-      'address', 'postOffice', 'district', 'pincode', 'email', 'mobile', 'aadhaarCard'
+    const personalFields = [
+      'uan', 'memberName', 'gender', 'dateOfJoining', 
+      'address', 'postOffice', 'district', 'pincode'
     ];
 
-    keysToValidate.forEach((key) => {
+    personalFields.forEach((key) => {
       const error = validateField(key, formData[key] || '');
       if (error) {
         tempErrors[key] = error;
@@ -482,7 +579,6 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
     if (Object.keys(tempErrors).length > 0) {
       setErrors(tempErrors);
       // Switch to Personal Info tab if there are errors there
-      const personalFields = ['uan', 'ipNumber', 'memberName', 'gender', 'dateOfJoining', 'address', 'postOffice', 'district', 'pincode', 'email', 'mobile', 'aadhaarCard'];
       const hasPersonalError = Object.keys(tempErrors).some(k => personalFields.includes(k));
       if (hasPersonalError) {
         setActiveTab('Personal Info');
@@ -562,7 +658,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
             <div className={styles.field}>
               <label className={styles.label}>
-                IP Number <span className={styles.required}>*</span>
+                IP Number {/* <span className={styles.required}>*</span> */}
               </label>
               <input
                 type="text"
@@ -573,7 +669,6 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
                 placeholder="ENTER IP NUMBER"
                 maxLength={10}
                 className={styles.input}
-                required
               />
               {errors.ipNumber && <span className={styles.errorText}>{errors.ipNumber}</span>}
             </div>
@@ -614,11 +709,12 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
               value={formData.dob}
               onChange={handleChange}
             />
+            {errors.dob && <span className={styles.errorText}>{errors.dob}</span>}
             </div>
 
             <div className={styles.field}>
               <label className={styles.label}>
-                Aadhar Card Number <span className={styles.required}>*</span>
+                Aadhaar Number
               </label>
               <input
                 type="text"
@@ -626,7 +722,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
                 value={formData.aadhaarCard || ''}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                placeholder="AADHAR CARD NUMBER"
+                placeholder="AADHAAR CARD NUMBER"
                 maxLength={12}
                 className={styles.input}
               />
@@ -697,7 +793,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
             <div className={styles.field}>
               <label className={styles.label}>
-                Mobile <span className={styles.required}>*</span>
+                Mobile {/* <span className={styles.required}>*</span> */}
               </label>
               <input
                 type="text"
@@ -708,7 +804,6 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
                 placeholder="ENTER MOBILE"
                 maxLength={10}
                 className={styles.input}
-                required
               />
               {errors.mobile && <span className={styles.errorText}>{errors.mobile}</span>}
             </div>
@@ -1147,29 +1242,49 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
                 />
               </div>
 
-              <div className={styles.field}>
-                <label className={styles.label}>Guardian Name</label>
-                <input
-                  type="text"
-                  name="guardianName"
-                  value={nomineeInput.guardianName}
-                  onChange={handleNomineeInputChange}
-                  placeholder="ENTER GUARDIAN NAME"
-                  className={styles.input}
-                />
-              </div>
+              {(() => {
+                let isMinor = false;
+                if (nomineeInput.dob) {
+                  const birthDate = new Date(nomineeInput.dob);
+                  const today = new Date();
+                  let age = today.getFullYear() - birthDate.getFullYear();
+                  const m = today.getMonth() - birthDate.getMonth();
+                  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                  }
+                  if (age < 18) isMinor = true;
+                }
+                
+                if (!isMinor) return null;
 
-              <div className={styles.fieldHalf}>
-                <label className={styles.label}>Guardian Address</label>
-                <input
-                  type="text"
-                  name="guardianAddress"
-                  value={nomineeInput.guardianAddress}
-                  onChange={handleNomineeInputChange}
-                  placeholder="ENTER GUARDIAN ADDRESS"
-                  className={styles.input}
-                />
-              </div>
+                return (
+                  <>
+                    <div className={styles.field}>
+                      <label className={styles.label}>Guardian Name <span className={styles.required}>*</span></label>
+                      <input
+                        type="text"
+                        name="guardianName"
+                        value={nomineeInput.guardianName}
+                        onChange={handleNomineeInputChange}
+                        placeholder="ENTER GUARDIAN NAME"
+                        className={styles.input}
+                      />
+                    </div>
+
+                    <div className={styles.fieldHalf}>
+                      <label className={styles.label}>Guardian Address <span className={styles.required}>*</span></label>
+                      <input
+                        type="text"
+                        name="guardianAddress"
+                        value={nomineeInput.guardianAddress}
+                        onChange={handleNomineeInputChange}
+                        placeholder="ENTER GUARDIAN ADDRESS"
+                        className={styles.input}
+                      />
+                    </div>
+                  </>
+                );
+              })()}
 
               <div className={styles.field} style={{ justifyContent: 'flex-end' }}>
                 <button

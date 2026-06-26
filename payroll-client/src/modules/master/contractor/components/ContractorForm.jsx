@@ -81,38 +81,18 @@ const ContractorForm = ({ contractor, addresses = [], onSave, onCancel }) => {
       return !value ? 'Date of Joining is required!' : '';
     }
     if (name === 'pan') {
-      if (value && value.trim()) {
-        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-        return !panRegex.test(value.toUpperCase()) ? 'Invalid PAN format! (e.g. ABCDE1234F)' : '';
-      }
       return '';
     }
     if (name === 'aadhaar') {
-      if (value && value.trim()) {
-        const aadhaarRegex = /^[0-9]{12}$/;
-        return !aadhaarRegex.test(value) ? 'Aadhaar must be exactly 12 digits!' : '';
-      }
       return '';
     }
     if (name === 'ifsc') {
-      if (value && value.trim()) {
-        const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-        return !ifscRegex.test(value.toUpperCase()) ? 'Invalid IFSC format! (e.g. SBIN0001234)' : '';
-      }
       return '';
     }
     if (name === 'gstNo') {
-      if (value && value.trim()) {
-        const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-        return !gstRegex.test(value.toUpperCase()) ? 'Invalid GST format! (e.g. 22AAAAA0000A1Z5)' : '';
-      }
       return '';
     }
     if (name === 'bankAccount') {
-      if (value && value.trim()) {
-        const accountRegex = /^[0-9]{9,18}$/;
-        return !accountRegex.test(value) ? 'Bank Account must be between 9 to 18 digits!' : '';
-      }
       return '';
     }
     return '';
@@ -124,19 +104,15 @@ const ContractorForm = ({ contractor, addresses = [], onSave, onCancel }) => {
 
     if (type !== 'checkbox') {
       if (name === 'pan') {
-        finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
-      } else if (name === 'aadhaar') {
-        finalValue = value.replace(/\D/g, '').slice(0, 12);
+        finalValue = value.toUpperCase();
       } else if (name === 'ifsc') {
-        finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+        finalValue = value.toUpperCase();
       } else if (name === 'gstNo') {
-        finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
-      } else if (name === 'bankAccount') {
-        finalValue = value.replace(/\D/g, '').slice(0, 18);
+        finalValue = value.toUpperCase();
       } else if (name === 'pfCode') {
-        finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 22);
+        finalValue = value.toUpperCase();
       } else if (name === 'ccode') {
-        finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
+        finalValue = value.toUpperCase();
       }
     }
 

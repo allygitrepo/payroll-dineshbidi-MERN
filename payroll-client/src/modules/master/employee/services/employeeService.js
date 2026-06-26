@@ -129,7 +129,10 @@ const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
   let contractorId = null;
   if (e.contractor && e.contractor !== 'SELF') {
     const matchingContractor = contractors.find(c => safeStr(c.name) === safeStr(e.contractor));
-    contractorId = matchingContractor?.id || e.contractor_id || e.contractor;
+    contractorId = matchingContractor?.id || e.contractor_id || null;
+    if (contractorId && !uuidRegex.test(contractorId)) {
+      contractorId = null;
+    }
   }
 
   const panDoc = e.kycDetails?.find(k => k.documentType === 'PAN')?.documentNumber || null;

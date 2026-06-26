@@ -30,6 +30,13 @@ class AddressService {
      * Creates a new address for a company.
      */
     static async createAddress(addressData, userId) {
+        // Convert all string fields to uppercase
+        for (const key in addressData) {
+            if (typeof addressData[key] === 'string') {
+                addressData[key] = addressData[key].toUpperCase();
+            }
+        }
+
         const { company_id } = addressData;
         await verifyCompanyOwnership(company_id, userId);
 
@@ -113,6 +120,13 @@ class AddressService {
             error.errorCode = "ACCESS_DENIED";
             error.messageToShow = "Access denied.";
             throw error;
+        }
+
+        // Convert all string fields to uppercase
+        for (const key in updateData) {
+            if (typeof updateData[key] === 'string') {
+                updateData[key] = updateData[key].toUpperCase();
+            }
         }
 
         // Perform the update

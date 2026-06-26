@@ -99,14 +99,10 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
       return !value.trim() ? 'Under EPFO Office is required!' : '';
     }
     if (name === 'linNo') {
-      if (!value.trim()) return 'LIN No. is required!';
-      const linRegex = /^[0-9]{10}$/;
-      return !linRegex.test(value) ? 'LIN No. must be exactly 10 digits!' : '';
+      return '';
     }
     if (name === 'esicId') {
-      if (!value.trim()) return 'ESIC ID is required!';
-      const esicRegex = /^[0-9]{17}$/;
-      return !esicRegex.test(value) ? 'ESIC ID must be exactly 17 digits!' : '';
+      return '';
     }
     if (name === 'address') {
       return !value ? 'Address is required!' : '';
@@ -121,33 +117,21 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
       return !value.trim() ? 'Pincode is required!' : '';
     }
     if (name === 'pan') {
-      if (!value.trim()) return 'PAN is required!';
-      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-      return !panRegex.test(value.toUpperCase()) ? 'Invalid PAN Format (e.g., ABCDE1234F)' : '';
+      return !value.trim() ? 'PAN is required!' : '';
     }
     if (name === 'tan') {
-      if (!value.trim()) return 'TAN is required!';
-      const tanRegex = /^[A-Z]{4}[0-9]{5}[A-Z]{1}$/;
-      return !tanRegex.test(value.toUpperCase()) ? 'Invalid TAN Format (e.g., ABCD12345E)' : '';
+      return !value.trim() ? 'TAN is required!' : '';
     }
     if (name === 'ptax') {
-      return !value.trim() ? 'P. Tax is required!' : '';
+      return '';
     }
     if (name === 'email') {
-      if (!value.trim()) return 'Primary Email Id is required!';
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return !emailRegex.test(value) ? 'Invalid Email Address Format!' : '';
+      return !value.trim() ? 'Primary Email Id is required!' : '';
     }
     if (name === 'phone') {
-      if (!value.trim()) return 'Phone is required!';
-      const phoneRegex = /^[0-9]{10}$/;
-      return !phoneRegex.test(value) ? 'Phone number must be exactly 10 digits!' : '';
+      return !value.trim() ? 'Phone is required!' : '';
     }
     if (name === 'website') {
-      if (value && value.trim()) {
-        const websiteRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/;
-        return !websiteRegex.test(value) ? 'Invalid Website URL Format!' : '';
-      }
       return '';
     }
     return '';
@@ -157,14 +141,8 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
     const { name, value } = e.target;
     let finalValue = value;
 
-    if (name === 'phone') {
-      finalValue = value.replace(/\D/g, '').slice(0, 10);
-    } else if (name === 'linNo') {
-      finalValue = value.replace(/\D/g, '').slice(0, 10);
-    } else if (name === 'esicId') {
-      finalValue = value.replace(/\D/g, '').slice(0, 17);
-    } else if (name === 'pan' || name === 'tan') {
-      finalValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+    if (name === 'pan' || name === 'tan') {
+      finalValue = value.toUpperCase();
     }
 
     setFormData((prev) => ({

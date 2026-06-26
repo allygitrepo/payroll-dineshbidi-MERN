@@ -37,3 +37,12 @@
   color: #ffffff !important;
   border-color: var(--primary) !important;
 }
+
+.dots {
+  border: none;
+  background: transparent;
+  pointer-events: none;
+  min-width: 24px;
+  padding: 0;
+  opacity: 0.6;
+}

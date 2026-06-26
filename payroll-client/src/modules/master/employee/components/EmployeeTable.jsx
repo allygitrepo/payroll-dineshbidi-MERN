@@ -201,15 +201,39 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
             Previous
           </button>
 
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentPage(i + 1)}
-              className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
-            >
-              {i + 1}
-            </button>
-          ))}
+          {(() => {
+            const pages = [];
+            if (totalPages <= 7) {
+              for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+              if (currentPage <= 4) {
+                for (let i = 1; i <= 5; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+              } else if (currentPage >= totalPages - 3) {
+                pages.push(1);
+                pages.push('...');
+                for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+              } else {
+                pages.push(1);
+                pages.push('...');
+                for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+              }
+            }
+            return pages.map((p, i) => (
+              <button
+                key={i}
+                onClick={() => p !== '...' && setCurrentPage(p)}
+                disabled={p === '...'}
+                className={`${styles.pageBtn} ${currentPage === p ? styles.activePageBtn : ''} ${p === '...' ? styles.dotsBtn : ''}`}
+                style={p === '...' ? { border: 'none', background: 'transparent', cursor: 'default' } : {}}
+              >
+                {p}
+              </button>
+            ));
+          })()}
 
           <button
             onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}

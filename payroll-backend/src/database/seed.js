@@ -9,6 +9,43 @@ const seedUsers = async () => {
         console.log("Database Connected. Syncing models...");
         await db.sequelize.sync({ alter: true });
 
+        console.log("Seeding Roles...");
+        let adminRole = await db.Role.findOne({ where: { name: "Admin" } });
+        if (!adminRole) {
+            adminRole = await db.Role.create({
+                name: "Admin",
+                permissions: {
+                    all: true,
+                    full_access: true,
+                    dashboard: ["read", "write", "update", "delete"],
+                    users: ["create", "read", "update", "delete"],
+                    roles: ["create", "read", "update", "delete"],
+                    company: ["create", "read", "update", "delete"],
+                    employee: ["create", "read", "update", "delete"],
+                    contractor: ["create", "read", "update", "delete"],
+                    attendance: ["create", "read", "update", "delete"],
+                    setup: ["create", "read", "update", "delete"],
+                    reports: ["read", "export"]
+                },
+                status: true
+            });
+            console.log("Created Admin role");
+        }
+
+        let userRole = await db.Role.findOne({ where: { name: "User" } });
+        if (!userRole) {
+            userRole = await db.Role.create({
+                name: "User",
+                permissions: {
+                    dashboard: ["read"],
+                    employee: ["read"],
+                    attendance: ["read"]
+                },
+                status: true
+            });
+            console.log("Created User role");
+        }
+
         console.log("Seeding sample users...");
         const saltRounds = 10;
 
@@ -17,19 +54,19 @@ const seedUsers = async () => {
                 user_name: "System Admin",
                 user_id: "admin01",
                 password: "adminPassword123",
-                role: "admin",
+                role_id: adminRole.id,
             },
             {
                 user_name: "HR Manager",
                 user_id: "manager01",
                 password: "managerPassword123",
-                role: "user",
+                role_id: userRole.id,
             },
             {
                 user_name: "Payroll Executive",
                 user_id: "payroll01",
                 password: "payrollPassword123",
-                role: "user",
+                role_id: userRole.id,
             },
         ];
 
@@ -37,7 +74,8 @@ const seedUsers = async () => {
             // Check if user already exists
             const exists = await db.User.findOne({ where: { user_id: userData.user_id } });
             if (exists) {
-                console.log(`User ${userData.user_id} already exists, skipping...`);
+                console.log(`User ${userData.user_id} already exists, updating role_id...`);
+                await exists.update({ role_id: userData.role_id });
                 continue;
             }
 
@@ -49,7 +87,7 @@ const seedUsers = async () => {
                 user_name: userData.user_name,
                 user_id: userData.user_id,
                 password: hashedPassword,
-                role: userData.role,
+                role_id: userData.role_id,
                 status: true,
             });
             console.log(`Created user: ${userData.user_name} (${userData.user_id})`);

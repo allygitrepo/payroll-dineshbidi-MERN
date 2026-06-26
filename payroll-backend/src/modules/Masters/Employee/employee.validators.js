@@ -77,11 +77,10 @@ const createEmployeeSchema = Joi.object({
         "string.pattern.base": "UAN must be exactly 12 digits.",
         "any.required": "UAN is required.",
     }),
-    ip_number: Joi.string().pattern(/^[0-9]+$/).min(10).max(20).required().messages({
+    ip_number: Joi.string().pattern(/^[0-9]+$/).min(10).max(20).optional().allow(null, "").messages({
         "string.pattern.base": "IP Number must contain digits only.",
         "string.min": "IP Number must be at least 10 digits.",
         "string.max": "IP Number cannot exceed 20 digits.",
-        "any.required": "IP Number is required.",
     }),
     member_id: Joi.string().max(50).optional().allow(null, ""),
     name: Joi.string().min(3).max(200).required().messages({
@@ -92,9 +91,8 @@ const createEmployeeSchema = Joi.object({
         "string.pattern.base": "Date of Birth must be in YYYY-MM-DD format.",
         "any.required": "Date of Birth is required.",
     }),
-    aadhar: Joi.string().pattern(/^[0-9]{12}$/).required().messages({
+    aadhar: Joi.string().pattern(/^[0-9]{12}$/).optional().allow(null, "").messages({
         "string.pattern.base": "Aadhar card number must be exactly 12 digits.",
-        "any.required": "Aadhar card number is required.",
     }),
     gender: Joi.string().valid("Male", "Female", "Other").required().messages({
         "any.only": "Gender must be either Male, Female, or Other.",
@@ -103,9 +101,8 @@ const createEmployeeSchema = Joi.object({
     father_or_husband_name: Joi.string().max(200).optional().allow(null, ""),
     relation: Joi.string().max(50).optional().allow(null, ""),
     marital_status: Joi.string().max(50).optional().allow(null, ""),
-    mobile: Joi.string().pattern(/^[0-9]{10,15}$/).required().messages({
+    mobile: Joi.string().pattern(/^[0-9]{10,15}$/).optional().allow(null, "").messages({
         "string.pattern.base": "Mobile number must be between 10 and 15 digits.",
-        "any.required": "Mobile number is required.",
     }),
     qualification: Joi.string().max(100).optional().allow(null, ""),
     date_of_joining: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required().messages({
@@ -130,6 +127,9 @@ const createEmployeeSchema = Joi.object({
 });
 
 const updateEmployeeSchema = Joi.object({
+    company_id: Joi.string().guid().optional().messages({
+        "string.guid": "Company ID must be a valid UUID.",
+    }),
     contractor_id: Joi.string().guid().optional().allow(null, ""),
     address_id: Joi.string().guid().optional().messages({
         "string.guid": "Address ID must be a valid UUID.",
@@ -138,7 +138,7 @@ const updateEmployeeSchema = Joi.object({
     uan: Joi.string().pattern(/^[0-9]{12}$/).optional().messages({
         "string.pattern.base": "UAN must be exactly 12 digits.",
     }),
-    ip_number: Joi.string().pattern(/^[0-9]+$/).min(10).max(20).optional().messages({
+    ip_number: Joi.string().pattern(/^[0-9]+$/).min(10).max(20).optional().allow(null, "").messages({
         "string.pattern.base": "IP Number must contain digits only.",
     }),
     member_id: Joi.string().max(50).optional().allow(null, ""),
@@ -146,14 +146,14 @@ const updateEmployeeSchema = Joi.object({
     dob: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional().messages({
         "string.pattern.base": "Date of Birth must be in YYYY-MM-DD format.",
     }),
-    aadhar: Joi.string().pattern(/^[0-9]{12}$/).optional().messages({
+    aadhar: Joi.string().pattern(/^[0-9]{12}$/).optional().allow(null, "").messages({
         "string.pattern.base": "Aadhar card number must be exactly 12 digits.",
     }),
     gender: Joi.string().valid("Male", "Female", "Other").optional(),
     father_or_husband_name: Joi.string().max(200).optional().allow(null, ""),
     relation: Joi.string().max(50).optional().allow(null, ""),
     marital_status: Joi.string().max(50).optional().allow(null, ""),
-    mobile: Joi.string().pattern(/^[0-9]{10,15}$/).optional(),
+    mobile: Joi.string().pattern(/^[0-9]{10,15}$/).optional().allow(null, ""),
     qualification: Joi.string().max(100).optional().allow(null, ""),
     date_of_joining: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional().messages({
         "string.pattern.base": "Date of Joining must be in YYYY-MM-DD format.",

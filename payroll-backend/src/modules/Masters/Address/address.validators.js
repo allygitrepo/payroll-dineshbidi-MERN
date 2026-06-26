@@ -26,10 +26,9 @@ const createAddressSchema = Joi.object({
         "string.max": "District cannot exceed 100 characters.",
         "any.required": "District is required.",
     }),
-    pincode: Joi.string().pattern(/^[0-9]{6}$/).required().messages({
+    pincode: Joi.string().required().messages({
         "string.base": "Pincode must be a string.",
         "string.empty": "Pincode is required.",
-        "string.pattern.base": "Pincode must be exactly 6 digits.",
         "any.required": "Pincode is required.",
     }),
 });
@@ -45,9 +44,7 @@ const updateAddressSchema = Joi.object({
     district: Joi.string().max(100).optional().messages({
         "string.max": "District cannot exceed 100 characters.",
     }),
-    pincode: Joi.string().pattern(/^[0-9]{6}$/).optional().messages({
-        "string.pattern.base": "Pincode must be exactly 6 digits.",
-    }),
+    pincode: Joi.string().optional(),
     status: Joi.boolean().optional(),
 });
 

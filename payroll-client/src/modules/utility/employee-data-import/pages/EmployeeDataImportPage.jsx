@@ -3,7 +3,7 @@ import { FileUp, FileSpreadsheet, Download, Loader2, X, CheckCircle2 } from 'luc
 import { useToast } from '../../../../shared/components';
 import * as XLSX from 'xlsx';
 import { saveEmployee, getEmployees } from '../../../master/employee/services/employeeService';
-import { getContractors } from '../../../master/contractor/services/contractorService';
+import { getContractors, saveContractor } from '../../../master/contractor/services/contractorService';
 import { getAddresses } from '../../../master/address/services/addressService';
 import styles from '../components/EmployeeDataImportPage.module.css';
 
@@ -129,12 +129,38 @@ const EmployeeDataImportPage = () => {
         const parseDate = (d) => {
           if (!d) return '';
           const str = String(d).trim();
-          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-          const parts = str.split(/[\/\-]/);
-          if (parts.length === 3 && parts[2].length === 4) {
-            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          
+          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+            if (!isNaN(new Date(str).getTime())) return str;
+            return '';
           }
-          return str;
+
+          let parsedStr = str;
+          const parts = str.split(/[\/\-]/);
+          if (parts.length === 3) {
+            let year = parts[2];
+            if (year.length === 2) {
+              year = parseInt(year, 10) > 30 ? '19' + year : '20' + year;
+            }
+            if (year.length === 4) {
+              parsedStr = `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+              if (/^\d{4}-\d{2}-\d{2}$/.test(parsedStr)) {
+                if (!isNaN(new Date(parsedStr).getTime())) return parsedStr;
+                // Try swapping day and month for MM/DD/YYYY formats
+                const swappedStr = `${year}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                if (!isNaN(new Date(swappedStr).getTime())) return swappedStr;
+              }
+            }
+          }
+          
+          // Excel serial date check
+          if (!isNaN(str) && Number(str) > 20000) {
+            const date = new Date(Math.round((Number(str) - 25569) * 86400 * 1000));
+            if (!isNaN(date.getTime())) {
+              return date.toISOString().split('T')[0];
+            }
+          }
+          return ''; // Return empty string for invalid dates to trigger required error
         };
 
         const companyId = localStorage.getItem('selectedCompany');
@@ -153,7 +179,7 @@ const EmployeeDataImportPage = () => {
 
         const existingEmployees = await getEmployees(companyId);
 
-        const summary = { added: [], updated: [], failed: [] };
+        const summary = { added: [], updated: [], failed: [], missingContractors: new Set() };
 
         for (let i = 0; i < totalRows; i++) {
           const row = jsonData[i];
@@ -161,25 +187,37 @@ const EmployeeDataImportPage = () => {
           const memberName = String(row['Member Name'] || '');
           const dob = parseDate(row['Date Of Birth']);
           const doj = parseDate(row['Date Of Joining']);
-          const ipNumber = String(row['IP Number'] || '').replace(/\D/g, '');
+          let ipNumber = String(row['IP Number'] || '').replace(/\D/g, '');
           const aadhar = String(row['Aadhaar Number'] || '').replace(/\D/g, '');
-          const mobile = String(row['Mobile Number'] || '').replace(/\D/g, '');
+          let mobile = String(row['Mobile Number'] || '').replace(/\D/g, '');
+          let email = String(row['Email Id'] || row['Email'] || '').trim().toUpperCase();
+          if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            email = ''; // Clear invalid email to prevent validation failure
+          }
+          const contractorName = String(row['Contractor Name'] || 'SELF').trim().toUpperCase();
 
           if (!uan || uan.length !== 12 || !memberName || !dob || !doj) {
-            summary.failed.push({ rowNumber: i + 2, name: memberName || 'Unknown', reason: "Missing required fields (Name, 12-digit UAN, DOB, or DOJ)." });
+            summary.failed.push({ rowNumber: i + 2, name: memberName || 'Unknown', reason: "Missing required fields or invalid date (Name, 12-digit UAN, DOB, DOJ)." });
             continue;
           }
-          if (!ipNumber || ipNumber.length < 10 || ipNumber.length > 20) {
-            summary.failed.push({ rowNumber: i + 2, name: memberName, reason: "IP Number is missing or invalid (must be 10-20 digits)." });
-            continue;
+          
+          if (contractorName !== 'SELF') {
+            const match = contractorsList.find(c => String(c.name).trim().toUpperCase() === contractorName);
+            if (!match) {
+              summary.missingContractors.add(contractorName);
+            }
           }
-          if (!aadhar || aadhar.length !== 12) {
+
+          if (aadhar && aadhar.length !== 12) {
             summary.failed.push({ rowNumber: i + 2, name: memberName, reason: "Aadhaar Number must be exactly 12 digits." });
             continue;
           }
-          if (!mobile || mobile.length < 10 || mobile.length > 15) {
-            summary.failed.push({ rowNumber: i + 2, name: memberName, reason: "Mobile Number is missing or invalid (must be 10-15 digits)." });
-            continue;
+          
+          if (mobile && (mobile.length < 10 || mobile.length > 15)) {
+            mobile = ''; // Clear invalid optional field
+          }
+          if (ipNumber && (ipNumber.length < 10 || ipNumber.length > 20)) {
+            ipNumber = ''; // Clear invalid optional field
           }
 
           const employeeObj = {
@@ -196,7 +234,7 @@ const EmployeeDataImportPage = () => {
             relation: String(row['Relationship'] || ''),
             maritalStatus: String(row['Marital Status'] || 'SINGLE'),
             mobile: mobile,
-            email: String(row['Email Id'] || ''),
+            email: email || '',
             aadhaarCard: aadhar,
             nationality: String(row['Nationality'] || 'INDIAN'),
             pmrpy: (row['PMRPY'] || 'NO').toUpperCase(),
@@ -244,7 +282,27 @@ const EmployeeDataImportPage = () => {
     let processed = 0;
     let failCount = 0;
     const failedReasons = [];
-    const { companyId, addressesList, contractorsList } = analysisSummary;
+    const { companyId, addressesList } = analysisSummary;
+    let contractorsList = analysisSummary.contractorsList;
+
+    if (analysisSummary.missingContractors && analysisSummary.missingContractors.size > 0) {
+      const defaultAddressId = addressesList.length > 0 ? addressesList[0].id : null;
+      for (const cName of analysisSummary.missingContractors) {
+        try {
+          await saveContractor({
+            name: cName,
+            ccode: 'AUTO-' + Math.floor(Math.random() * 100000),
+            pfCode: 'N/A',
+            dateOfJoining: new Date().toISOString().split('T')[0],
+            status: 'Active',
+            address_id: defaultAddressId
+          }, companyId, addressesList);
+        } catch (e) {
+          console.error("Failed to auto-create contractor", cName, e);
+        }
+      }
+      contractorsList = await getContractors(companyId);
+    }
 
     const processList = [...analysisSummary.added, ...analysisSummary.updated];
 
@@ -252,7 +310,7 @@ const EmployeeDataImportPage = () => {
       try {
         await saveEmployee(emp, companyId, addressesList, contractorsList);
       } catch (err) {
-        console.error("Failed to save employee", emp, err?.response?.data || err);
+        console.error("Failed to save employee", emp, JSON.stringify(err?.response?.data || err?.message));
         failCount++;
         failedReasons.push(`${emp.memberName}: ${err?.response?.data?.messageToShow || err?.response?.data?.message || err.message}`);
       }
@@ -447,6 +505,12 @@ const EmployeeDataImportPage = () => {
               </div>
             </div>
             
+            {analysisSummary.missingContractors && analysisSummary.missingContractors.size > 0 && (
+              <div style={{ padding: '1rem', background: '#e0f2fe', color: '#0369a1', borderRadius: '4px', marginBottom: '1rem', border: '1px solid #bae6fd' }}>
+                <strong>Notice:</strong> {analysisSummary.missingContractors.size} missing contractors found in the Excel sheet. They will be automatically created in the database during import.
+              </div>
+            )}
+
             {analysisSummary.failed.length > 0 && (
               <div style={{ marginTop: '10px', fontSize: '13px', color: '#7f1d1d' }}>
                 <strong>Issues detected:</strong>

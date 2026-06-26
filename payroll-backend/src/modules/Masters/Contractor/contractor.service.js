@@ -43,21 +43,17 @@ const verifyAddressAssociation = async (addressId, companyId) => {
 };
 
 /**
- * Normalizes empty strings in optional fields to null to avoid unique constraint issues.
+ * Normalizes empty strings to null and converts all strings to uppercase.
  */
 const normalizeOptionalFields = (data) => {
-    const fields = ["pan", "aadhar", "gst_no", "bank_ac", "bank_name", "ifsc"];
-    fields.forEach(field => {
-        if (data[field] === "" || data[field] === undefined || data[field] === null) {
-            data[field] = null;
-        } else if (typeof data[field] === "string") {
-            data[field] = data[field].trim();
-            // Uppercase document numbers for consistency
-            if (["pan", "gst_no", "ifsc"].includes(field)) {
-                data[field] = data[field].toUpperCase();
+    for (const key in data) {
+        if (typeof data[key] === "string") {
+            data[key] = data[key].trim().toUpperCase();
+            if (data[key] === "") {
+                data[key] = null;
             }
         }
-    });
+    }
 };
 
 /**
@@ -84,6 +80,9 @@ const validateUniqueness = async (data, excludeId = null) => {
 
     // Check ccode uniqueness
     await checkField("ccode", data.ccode, "Contractor Code");
+    
+    // Check name uniqueness
+    await checkField("name", data.name, "Contractor Name");
     
     // Check PAN uniqueness
     await checkField("pan", data.pan, "PAN Number");

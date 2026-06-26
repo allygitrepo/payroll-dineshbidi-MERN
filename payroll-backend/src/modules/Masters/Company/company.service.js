@@ -5,6 +5,13 @@ class CompanyService {
      * Creates a new company.
      */
     static async createCompany(companyData) {
+        // Convert all string fields to uppercase
+        for (const key in companyData) {
+            if (typeof companyData[key] === 'string') {
+                companyData[key] = companyData[key].toUpperCase();
+            }
+        }
+
         const { establishment_id } = companyData;
 
         // Check if company already exists
@@ -58,6 +65,13 @@ class CompanyService {
      * Updates an existing company's details.
      */
     static async updateCompany(id, userId, updateData) {
+        // Convert all string fields to uppercase
+        for (const key in updateData) {
+            if (typeof updateData[key] === 'string') {
+                updateData[key] = updateData[key].toUpperCase();
+            }
+        }
+
         const company = await Company.findOne({ where: { id, user_id: userId, cstatus: true } });
         if (!company) {
             const error = new Error("Company not found.");
