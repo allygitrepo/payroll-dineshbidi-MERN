@@ -1,3 +1,9 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .wrapper {
   position: relative;
   display: flex;
@@ -27,6 +33,14 @@
   box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.1);
 }
 
+.inputError {
+  border-color: #ef4444 !important;
+}
+
+.inputError:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
 /* Chrome/Safari AutoFill styling overrides */
 .input:-webkit-autofill,
 .input:-webkit-autofill:hover, 
@@ -54,4 +68,31 @@
 .input:focus ~ .iconWrapper {
   color: var(--primary);
   opacity: 1;
+}
+
+.toggleBtn {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--icon-default);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.toggleBtn:hover {
+  color: var(--text-primary);
+}
+
+.errorText {
+  color: #ef4444;
+  font-size: 0.8rem;
+  margin-top: 4px;
+  margin-left: 2px;
 }

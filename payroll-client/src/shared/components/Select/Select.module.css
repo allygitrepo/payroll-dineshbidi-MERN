@@ -1,3 +1,9 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .wrapper {
   position: relative;
   display: flex;
@@ -29,6 +35,14 @@
   box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.1);
 }
 
+.selectError {
+  border-color: #ef4444 !important;
+}
+
+.selectError:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
 .select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -53,4 +67,11 @@
 
 .chevronIcon {
   flex-shrink: 0;
+}
+
+.errorText {
+  color: #ef4444;
+  font-size: 0.8rem;
+  margin-top: 4px;
+  margin-left: 2px;
 }

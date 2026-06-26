@@ -11,34 +11,38 @@ const Select = ({
   disabled = false,
   icon: Icon,
   className = '',
+  error,
   ...props
 }) => {
   return (
-    <div className={`${styles.wrapper} ${className}`}>
-      <select
-        id={name}
-        name={name}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        className={styles.select}
-        {...props}
-      >
-        {placeholder && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      <div className={styles.iconWrapper}>
-        {Icon && <Icon size={16} className={styles.mainIcon} />}
-        <ChevronDown size={14} className={styles.chevronIcon} />
+    <div className={`${styles.container} ${className}`}>
+      <div className={styles.wrapper}>
+        <select
+          id={name}
+          name={name}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          className={`${styles.select} ${error ? styles.selectError : ''}`}
+          {...props}
+        >
+          {placeholder && (
+            <option value="" disabled>
+              {placeholder}
+            </option>
+          )}
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <div className={styles.iconWrapper}>
+          {Icon && <Icon size={16} className={styles.mainIcon} />}
+          <ChevronDown size={14} className={styles.chevronIcon} />
+        </div>
       </div>
+      {error && <span className={styles.errorText}>{error}</span>}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Building2 } from 'lucide-react';
+import { User, Lock, Building2 } from 'lucide-react';
 import { Input, Button, Select, useToast } from '../../../shared/components';
 import authService from '../services/authService';
 import mobileImage from '../../../assets/Images/mobile.png';
@@ -15,6 +15,7 @@ const LoginPage = () => {
   const [companyOptions, setCompanyOptions] = useState([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
   const addToast = useToast();
 
   useEffect(() => {
@@ -46,8 +47,19 @@ const LoginPage = () => {
     fetchCompanies();
   }, [addToast]);
 
+  const validate = () => {
+    const newErrors = {};
+    if (!username.trim()) newErrors.username = 'User ID is required!';
+    if (!password) newErrors.password = 'Password is required!';
+    if (!company) newErrors.company = 'Company is required!';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validate()) return;
+    
     setIsSubmitting(true);
     try {
       const response = await authService.login(username, password, company);
@@ -107,16 +119,19 @@ const LoginPage = () => {
             <p className={styles.formSubTitle}>Secure sign in to continue.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className={styles.form}>
+          <form onSubmit={handleSubmit} className={styles.form} noValidate>
             <div className={styles.fieldGroup}>
               <Input
                 name="username"
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  if (errors.username) setErrors(prev => ({ ...prev, username: '' }));
+                }}
                 placeholder="Enter User Id"
-                icon={Mail}
-                required
+                icon={User}
+                error={errors.username}
                 disabled={isSubmitting}
               />
             </div>
@@ -126,10 +141,13 @@ const LoginPage = () => {
                 name="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
+                }}
                 placeholder="Password"
                 icon={Lock}
-                required
+                error={errors.password}
                 disabled={isSubmitting}
               />
             </div>
@@ -138,12 +156,15 @@ const LoginPage = () => {
               <Select
                 name="company"
                 value={company}
-                onChange={(e) => setCompany(e.target.value)}
+                onChange={(e) => {
+                  setCompany(e.target.value);
+                  if (errors.company) setErrors(prev => ({ ...prev, company: '' }));
+                }}
                 options={companyOptions}
                 placeholder={loadingCompanies ? "Loading companies..." : "Select Company"}
                 disabled={loadingCompanies || isSubmitting}
                 icon={Building2}
-                required
+                error={errors.company}
               />
             </div>
 
