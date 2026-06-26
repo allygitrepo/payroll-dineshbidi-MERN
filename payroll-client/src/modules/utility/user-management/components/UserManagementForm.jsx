@@ -31,9 +31,9 @@ const PERMISSION_GROUPS = [
   {
     title: 'Attendance',
     items: [
-      { slug: 'office-attendance', label: 'Office Attendance' },
-      { slug: 'packing-attendance', label: 'Packing Attendance' },
-      { slug: 'bidi-roller-attendance', label: 'Bidi Roller Attendance' }
+      { slug: 'attendence-list', label: 'Attendance List' },
+      { slug: 'leave-management', label: 'Leave Management' },
+      { slug: 'face-attendance-self', label: 'Face Attendance (Self)' }
     ]
   },
   {
@@ -98,7 +98,7 @@ const ALL_PERMISSION_SLUGS = [
   'dashboard',
   'company', 'employee', 'kyc-update', 'contractor', 'address',
   'packing-wages', 'bidi-roller-wages', 'professional-tax', 'office-staff-salary', 'challan-setup',
-  'office-attendance', 'packing-attendance', 'bidi-roller-attendance',
+  'attendence-list', 'leave-management', 'face-attendance-self',
   'office-staff', 'packers', 'bidi-roller', 'epf-challan-date', 'resignation',
   'salary-sheet', 'form-2', 'ecr-report', 'esic-report', 'pmrpy-report', 'pf-challan-yearly', 'epf-challan', 'pf-summary', 'payment-advice', 'bonus-sheet', 'gratuity-calculation', 'report-pt',
   'calender', 'user-management', 'employee-data-import', 'employee-data-export', 'kyc-export', 'attendance-printing', 'missing-information', 'delete-month-entry', 'backup', 'restore',

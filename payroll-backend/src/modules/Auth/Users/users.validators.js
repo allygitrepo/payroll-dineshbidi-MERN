@@ -45,9 +45,15 @@ const loginSchema = Joi.object({
 
 // Update validation schema
 const updateSchema = Joi.object({
+    id: Joi.string().optional(),
     user_name: Joi.string().min(3).max(50).optional().messages({
         "string.min": "User name must be at least 3 characters long.",
         "string.max": "User name cannot exceed 50 characters.",
+    }),
+    user_id: Joi.string().min(3).max(30).alphanum().optional().messages({
+        "string.min": "User ID must be at least 3 characters long.",
+        "string.max": "User ID cannot exceed 30 characters.",
+        "string.alphanum": "User ID must only contain alphanumeric characters.",
     }),
     password: Joi.string().min(6).optional().messages({
         "string.min": "Password must be at least 6 characters long.",
