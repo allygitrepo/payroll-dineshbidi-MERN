@@ -135,7 +135,7 @@ const EmployeePage = () => {
       abryApplicable: !employee.abryApplicable
     };
 
-    const updatedList = saveEmployee(updatedEmployee);
+    const updatedList = employees.map(e => e.id === employeeId ? updatedEmployee : e);
     setEmployees(updatedList);
 
     addToast({
