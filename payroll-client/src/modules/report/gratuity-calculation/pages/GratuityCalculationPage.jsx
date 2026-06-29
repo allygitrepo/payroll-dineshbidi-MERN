@@ -121,7 +121,7 @@ const GratuityCalculationPage = () => {
         const allMonths = Array.from(monthsToFetch);
 
         const [dbEmployees, dbResignations, officeSalariesRes] = await Promise.all([
-          getEmployees(companyId).then(list => list ? list.filter(e => e.status === 'Active') : []).catch(() => []),
+          getEmployees(companyId).then(list => list ? list.filter(e => e.status === 'Active' || e.status === true) : []).catch(() => []),
           getResignations(companyId).catch(() => []),
           searchTriggeredType === 'OFFICE STAFF' ? getOfficeStaffSalaries(companyId).catch(() => []) : Promise.resolve([])
         ]);

@@ -175,6 +175,25 @@
   box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.15);
 }
 
+.dateInput {
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  height: 42px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dateInput:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(39, 214, 138, 0.15);
+}
+
 .excelBtn {
   display: flex;
   align-items: center;

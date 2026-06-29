@@ -52,8 +52,11 @@ const KycExportPage = () => {
   // Map to Tall format as requested (P, A, B rows for every employee)
   const allKycRecords = useMemo(() => {
     const parsedKyc = [];
+    
+    // Only include Active employees
+    const activeEmployees = dbEmployees.filter(emp => emp.status === true || emp.status === 'Active' || emp.status === 1 || emp.status === '1');
 
-    dbEmployees.forEach((emp) => {
+    activeEmployees.forEach((emp) => {
       const panDoc = emp.kycDetails?.find(k => k.documentType === 'PAN');
       const bankDoc = emp.kycDetails?.find(k => k.documentType === 'BANK PASSBOOK');
       const aadharNum = emp.aadhar || emp.kycDetails?.find(k => k.documentType === 'AADHAAR')?.documentNumber;

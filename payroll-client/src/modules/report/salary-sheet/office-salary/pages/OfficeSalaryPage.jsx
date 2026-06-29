@@ -36,7 +36,7 @@ const OfficeSalaryPage = () => {
       const companyId = localStorage.getItem('selectedCompany');
       try {
         let dbList = await getEmployees(companyId) || [];
-        dbList = dbList.filter(emp => emp.status === 'Active');
+        dbList = dbList.filter(emp => emp.status === 'Active' || emp.status === true);
         const dbOfficeStaff = dbList.filter(emp => emp.employeeType === 'OFFICE STAFF');
 
         const mappedDbRecords = dbOfficeStaff.map(emp => {

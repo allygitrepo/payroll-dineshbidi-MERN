@@ -48,7 +48,7 @@ const EsicReportPage = () => {
       const companyId = localStorage.getItem('selectedCompany');
       try {
         let dbList = await getEmployees(companyId) || [];
-        dbList = dbList.filter(emp => emp.status === 'Active');
+        dbList = dbList.filter(emp => emp.status === 'Active' || emp.status === true);
         const resignationsList = await getResignations(companyId) || [];
         const officeRes = await getOfficeStaffEntry(searchTriggeredMonth, companyId);
         const packersRes = await getPackersEntry(searchTriggeredMonth, companyId);

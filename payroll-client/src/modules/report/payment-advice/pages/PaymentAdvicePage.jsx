@@ -96,7 +96,7 @@ const PaymentAdvicePage = () => {
         }
 
         let dbEmployees = await getEmployees(companyId) || [];
-        dbEmployees = dbEmployees.filter(e => e.status === 'Active');
+        dbEmployees = dbEmployees.filter(e => e.status === 'Active' || e.status === true);
 
         // Map rows to retrieve bank account and IFSC from kycDetails
         const mapped = rawEntries.map(row => {

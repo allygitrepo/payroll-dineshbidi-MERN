@@ -47,16 +47,18 @@ const EmployeeDataExportPage = () => {
     fetchEmployees();
   }, []);
 
-  // Filter employees based on joining date <= selected month
-  const filteredByMonth = useMemo(() => {
-    if (!searchTriggeredMonth) return dbEmployees;
+  // Filter employees based on joining date or dob matching selected month
+  const filteredData = useMemo(() => {
+    // Only include Active employees
+    let result = dbEmployees.filter(emp => emp.status === true || emp.status === 'Active' || emp.status === 1 || emp.status === '1');
 
-    // Filter joining dates up to the selected searchTriggeredMonth
-    const result = dbEmployees.filter(emp => {
-      if (!emp.dateOfJoining) return true;
-      const joinMonth = emp.dateOfJoining.substring(0, 7);
-      return joinMonth <= searchTriggeredMonth;
-    });
+    if (searchTriggeredMonth) {
+      result = result.filter(emp => {
+        const joinMonth = emp.dateOfJoining ? emp.dateOfJoining.substring(0, 7) : '';
+        const dobMonth = emp.dob ? emp.dob.substring(0, 7) : '';
+        return joinMonth === searchTriggeredMonth || dobMonth === searchTriggeredMonth;
+      });
+    }
 
     return result;
   }, [dbEmployees, searchTriggeredMonth]);
@@ -64,9 +66,9 @@ const EmployeeDataExportPage = () => {
   // Handle local text search query input
   const searchedData = useMemo(() => {
     const query = localSearch.toLowerCase().trim();
-    if (!query) return filteredByMonth;
+    if (!query) return filteredData;
 
-    return filteredByMonth.filter(emp => {
+    return filteredData.filter(emp => {
       const formattedDob = formatDate(emp.dob).toLowerCase();
       const formattedDoj = formatDate(emp.dateOfJoining).toLowerCase();
       const mobileStr = (emp.mobile || emp.mobileNumber || '').toLowerCase();
@@ -87,7 +89,7 @@ const EmployeeDataExportPage = () => {
         (genderStr && genderStr.includes(query))
       );
     });
-  }, [filteredByMonth, localSearch]);
+  }, [filteredData, localSearch]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -125,7 +127,7 @@ const EmployeeDataExportPage = () => {
     const mStr = selectedMonth ? selectedMonth.split('-')[1] + '/' + selectedMonth.split('-')[0] : 'all';
     addToast({
       type: 'success',
-      message: `Search query completed for wage month: ${mStr}`
+      message: `Search query applied successfully.`
     });
   };
 

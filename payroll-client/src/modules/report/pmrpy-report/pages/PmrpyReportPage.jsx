@@ -32,7 +32,7 @@ const PmrpyReportPage = () => {
       const companyId = localStorage.getItem('selectedCompany');
       try {
         let dbList = await getEmployees(companyId) || [];
-        dbList = dbList.filter(emp => emp.status === 'Active');
+        dbList = dbList.filter(emp => emp.status === 'Active' || emp.status === true);
         const dbPmrpy = dbList.filter(emp => emp.pmrpy === 'YES');
 
     const mappedDb = dbPmrpy.map(emp => {

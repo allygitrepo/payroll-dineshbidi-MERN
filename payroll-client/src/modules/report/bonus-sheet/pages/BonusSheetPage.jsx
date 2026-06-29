@@ -69,7 +69,7 @@ const BonusSheetPage = () => {
       try {
         const companyId = localStorage.getItem('selectedCompany');
         const [dbEmployees, bidiWages, officeSalaries, packingWages] = await Promise.all([
-          getEmployees(companyId).then(list => list ? list.filter(e => e.status === 'Active') : []).catch(() => []),
+          getEmployees(companyId).then(list => list ? list.filter(e => e.status === 'Active' || e.status === true) : []).catch(() => []),
           getBidiRollerWages(companyId).catch(() => []),
           getOfficeStaffSalaries(companyId).catch(() => []),
           getPackingWages(companyId).catch(() => [])
