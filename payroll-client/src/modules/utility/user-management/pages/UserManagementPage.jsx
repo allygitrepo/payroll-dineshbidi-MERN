@@ -39,17 +39,43 @@ const UserManagementPage = () => {
         getRoles()
       ]);
       // Map backend fields to frontend fields for backwards compatibility
-      const mappedUsers = fetchedUsers.map(u => ({
-        ...u,
-        id: u.id,
-        userName: u.user_name,
-        userId: u.user_id,
-        designation: u.role ? u.role.name : 'Unknown',
-        role_id: u.role_id,
-        permissions: u.role ? u.role.permissions : {}
-      }));
+      const mappedUsers = fetchedUsers.map(u => {
+        let rawPerms = u.role ? u.role.permissions : {};
+        if (typeof rawPerms === 'string') {
+          try {
+            rawPerms = JSON.parse(rawPerms);
+          } catch (e) {
+            rawPerms = {};
+          }
+        }
+        return {
+          ...u,
+          id: u.id,
+          userName: u.user_name,
+          userId: u.user_id,
+          designation: u.role ? u.role.name : 'Unknown',
+          role_id: u.role_id,
+          permissions: rawPerms
+        };
+      });
       setUsers(mappedUsers);
-      setRoles(fetchedRoles);
+
+      const mappedRoles = fetchedRoles.map(r => {
+        let rawPerms = r.permissions || {};
+        if (typeof rawPerms === 'string') {
+          try {
+            rawPerms = JSON.parse(rawPerms);
+          } catch (e) {
+            rawPerms = {};
+          }
+        }
+        return {
+          ...r,
+          permissions: rawPerms
+        };
+      });
+      setRoles(mappedRoles);
+
     } catch (err) {
       console.error(err);
       addToast({ type: 'error', message: 'Failed to load user management data.' });

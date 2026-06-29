@@ -44,6 +44,9 @@ class CompanyController {
      * Creates a new company.
      */
     static async create(req, res) {
+        // Delete company_id if injected by auth middleware, as Company does not use it
+        delete req.body.company_id;
+
         const { error, value } = createCompanySchema.validate(req.body);
         if (error) {
             const friendlyMessage = formatJoiMessage(error.details[0].message);

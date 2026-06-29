@@ -231,14 +231,20 @@ const Sidebar = ({ sidebarCollapsed }) => {
   if (userStr) {
     try {
       const userObj = JSON.parse(userStr);
+      let rawPermissions = null;
       if (userObj.role && userObj.role.permissions) {
-        permissions = userObj.role.permissions;
+        rawPermissions = userObj.role.permissions;
       } else if (userObj.permissions) {
         // Fallback for old mock format if any
-        permissions = userObj.permissions;
+        rawPermissions = userObj.permissions;
+      }
+
+      if (rawPermissions) {
+        permissions = typeof rawPermissions === 'string' ? JSON.parse(rawPermissions) : rawPermissions;
       }
     } catch(e) {}
   }
+
 
   // Filter menuItems based on permissions
   const filteredMenuItems = menuItems.map(item => {
