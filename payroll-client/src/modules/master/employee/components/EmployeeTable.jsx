@@ -55,9 +55,9 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
             }}
           >
             <option value="">ALL EMPLOYEE TYPES</option>
+            <option value="BIDI MAKER">BIDI MAKER</option>
+            <option value="BIDI PACKER">BIDI PACKER</option>
             <option value="OFFICE STAFF">OFFICE STAFF</option>
-            <option value="PACKING STAFF">PACKING STAFF</option>
-            <option value="BIDI ROLLER">BIDI ROLLER</option>
           </select>
 
           <select
