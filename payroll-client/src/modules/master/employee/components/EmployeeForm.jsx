@@ -276,7 +276,27 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
   // KYC Helpers
   const handleKycInputChange = (e) => {
     const { name, value } = e.target;
-    setKycInput((prev) => ({ ...prev, [name]: value }));
+    if (name === 'documentType') {
+      if (value === 'AADHAAR') {
+        setKycInput({
+          documentType: value,
+          documentNumber: formData.aadhaarCard || '',
+          nameAsPerDocument: formData.memberName || '',
+          ifsc: '',
+          kycImage: ''
+        });
+      } else {
+        setKycInput({
+          documentType: value,
+          documentNumber: '',
+          nameAsPerDocument: '',
+          ifsc: '',
+          kycImage: ''
+        });
+      }
+    } else {
+      setKycInput((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleKycFileChange = (e) => {
@@ -954,7 +974,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
           <div>
             <div className={styles.inlineRow}>
               <div className={styles.inlineField}>
-                <label className={styles.label}>Document Type *</label>
+                <label className={styles.label}>Document Type <span className={styles.required}>*</span></label>
                 <select
                   name="documentType"
                   value={kycInput.documentType}
@@ -969,7 +989,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
               </div>
 
               <div className={styles.inlineField}>
-                <label className={styles.label}>Document Number *</label>
+                <label className={styles.label}>Document Number <span className={styles.required}>*</span></label>
                 <input
                   type="text"
                   name="documentNumber"
@@ -981,7 +1001,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
               </div>
 
               <div className={styles.inlineField}>
-                <label className={styles.label}>Name as Per Document *</label>
+                <label className={styles.label}>Name as Per Document <span className={styles.required}>*</span></label>
                 <input
                   type="text"
                   name="nameAsPerDocument"
@@ -993,7 +1013,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
               </div>
 
               <div className={styles.inlineField}>
-                <label className={styles.label}>IFSC *</label>
+                <label className={styles.label}>IFSC <span className={styles.required}>*</span></label>
                 <input
                   type="text"
                   name="ifsc"

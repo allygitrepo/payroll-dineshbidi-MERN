@@ -5,7 +5,7 @@ import { useToast } from '../../../../shared/components';
 
 const DOC_TYPES = ['AADHAAR', 'PAN', 'UAN', 'BANK PASSBOOK', 'VOTER ID'];
 
-const KycForm = ({ kycDetails, onAddKyc, onRemoveKyc, onSave, onCancel }) => {
+const KycForm = ({ activeEmployee, kycDetails, onAddKyc, onRemoveKyc, onSave, onCancel }) => {
   const addToast = useToast();
 
   // Local inputs state
@@ -87,7 +87,13 @@ const KycForm = ({ kycDetails, onAddKyc, onRemoveKyc, onSave, onCancel }) => {
     setKycInput((prev) => {
       const nextInput = { ...prev, [name]: finalValue };
       if (name === 'documentType') {
-        nextInput.documentNumber = '';
+        if (value === 'AADHAAR') {
+          nextInput.documentNumber = activeEmployee?.aadhaarCard || '';
+          nextInput.nameAsPerDocument = activeEmployee?.memberName || '';
+        } else {
+          nextInput.documentNumber = '';
+          nextInput.nameAsPerDocument = '';
+        }
         nextInput.ifsc = '';
         setErrors({});
       }
