@@ -52,7 +52,7 @@ const deleteEmployeeImage = (imagePath) => {
     }
 };
 
-const verifyCompanyOwnership = async (companyId, userId) => {
+const verifyCompanyAccess = async (companyId, user) => {
     const company = await Company.findOne({ where: { id: companyId, cstatus: true } });
     if (!company) {
         const error = new Error("Company not found.");
@@ -62,12 +62,30 @@ const verifyCompanyOwnership = async (companyId, userId) => {
         throw error;
     }
 
-    if (company.user_id !== userId) {
-        const error = new Error("Access denied.");
-        error.statusCode = 403;
-        error.errorCode = "ACCESS_DENIED";
-        error.messageToShow = "Access denied.";
-        throw error;
+    if (user.role_name === 'Contractor') {
+        if (!user.contractor_id) {
+            const error = new Error("Contractor profile not found.");
+            error.statusCode = 403;
+            error.errorCode = "CONTRACTOR_PROFILE_NOT_FOUND";
+            error.messageToShow = "Contractor profile not found.";
+            throw error;
+        }
+        const contractor = await Contractor.findOne({ where: { id: user.contractor_id, company_id: companyId, status: true } });
+        if (!contractor) {
+            const error = new Error("Access denied. Contractor does not belong to this company.");
+            error.statusCode = 403;
+            error.errorCode = "ACCESS_DENIED";
+            error.messageToShow = "Access denied.";
+            throw error;
+        }
+    } else {
+        if (company.user_id !== user.id) {
+            const error = new Error("Access denied.");
+            error.statusCode = 403;
+            error.errorCode = "ACCESS_DENIED";
+            error.messageToShow = "Access denied.";
+            throw error;
+        }
     }
 
     return company;
@@ -181,7 +199,7 @@ class EmployeeService {
     /**
      * Creates a new employee master record spanning all 4 tables inside a database transaction.
      */
-    static async createEmployee(employeeData, userId) {
+    static async createEmployee(employeeData, user) {
         const {
             company_id,
             address_id,
@@ -197,10 +215,15 @@ class EmployeeService {
             personalDetails.image_path = null;
         }
 
+        // If the user is a contractor, strictly enforce their contractor_id
+        if (user.role_name === 'Contractor' && user.contractor_id) {
+            employeeData.contractor_id = user.contractor_id;
+        }
+
         // 1. Verify Company, Address, and Contractor
-        await verifyCompanyOwnership(company_id, userId);
+        await verifyCompanyAccess(company_id, user);
         await verifyAddressAssociation(address_id, company_id);
-        await verifyContractorAssociation(contractor_id, company_id);
+        await verifyContractorAssociation(employeeData.contractor_id, company_id);
 
         // 2. Validate Uniqueness
         await validateUniqueness(employeeData);
@@ -230,7 +253,7 @@ class EmployeeService {
                     ...personalDetails,
                     company_id,
                     address_id,
-                    contractor_id,
+                    contractor_id: employeeData.contractor_id,
                 },
                 { transaction: t }
             );
@@ -287,7 +310,7 @@ class EmployeeService {
 
             await t.commit();
 
-            return await EmployeeService.getEmployeeById(employeeId, userId);
+            return await EmployeeService.getEmployeeById(employeeId, user);
         } catch (err) {
             await t.rollback();
             throw err;
@@ -297,11 +320,16 @@ class EmployeeService {
     /**
      * Retrieves all active employees for a company.
      */
-    static async getAllEmployees(companyId, userId) {
-        await verifyCompanyOwnership(companyId, userId);
+    static async getAllEmployees(companyId, user) {
+        await verifyCompanyAccess(companyId, user);
+
+        const whereClause = { company_id: companyId, status: true };
+        if (user.role_name === 'Contractor' && user.contractor_id) {
+            whereClause.contractor_id = user.contractor_id;
+        }
 
         return await Employee.findAll({
-            where: { company_id: companyId, status: true },
+            where: whereClause,
             include: [
                 { model: EmployeeKycDetail, as: "kycDetail", where: { status: true }, required: false },
                 { model: EmployeeNomineeDetail, as: "nomineeDetails", where: { status: true }, required: false },
@@ -316,14 +344,19 @@ class EmployeeService {
     /**
      * Gets employees missing requested details dynamically.
      */
-    static async getMissingDetails(companyId, fieldsStr, userId) {
-        await verifyCompanyOwnership(companyId, userId);
+    static async getMissingDetails(companyId, fieldsStr, user) {
+        await verifyCompanyAccess(companyId, user);
 
         const fields = fieldsStr ? fieldsStr.split(',').map(f => f.trim().toLowerCase()) : [];
         if (fields.length === 0) return [];
 
+        const whereClause = { company_id: companyId, status: true };
+        if (user.role_name === 'Contractor' && user.contractor_id) {
+            whereClause.contractor_id = user.contractor_id;
+        }
+
         const employees = await Employee.findAll({
-            where: { company_id: companyId, status: true },
+            where: whereClause,
             include: [
                 { model: EmployeeKycDetail, as: "kycDetail", where: { status: true }, required: false },
             ],
@@ -355,7 +388,7 @@ class EmployeeService {
     /**
      * Retrieves a single employee by ID.
      */
-    static async getEmployeeById(id, userId) {
+    static async getEmployeeById(id, user) {
         const employee = await Employee.findOne({
             where: { id, status: true },
             include: [
@@ -376,7 +409,11 @@ class EmployeeService {
             throw error;
         }
 
-        if (!employee.company || employee.company.user_id !== userId) {
+        // Check if user has access to this employee's company
+        await verifyCompanyAccess(employee.company_id, user);
+
+        // If contractor, check if this employee belongs to them
+        if (user.role_name === 'Contractor' && user.contractor_id && employee.contractor_id !== user.contractor_id) {
             const error = new Error("Access denied.");
             error.statusCode = 403;
             error.errorCode = "ACCESS_DENIED";
@@ -390,7 +427,7 @@ class EmployeeService {
     /**
      * Updates an employee and related KYC, Nominees, and Family Members details in a transaction.
      */
-    static async updateEmployee(id, userId, updateData) {
+    static async updateEmployee(id, user, updateData) {
         const employee = await Employee.findOne({
             where: { id, status: true },
             include: [{ model: Company, as: "company", attributes: ["id", "user_id"] }],
@@ -404,7 +441,9 @@ class EmployeeService {
             throw error;
         }
 
-        if (!employee.company || employee.company.user_id !== userId) {
+        await verifyCompanyAccess(employee.company_id, user);
+
+        if (user.role_name === 'Contractor' && user.contractor_id && employee.contractor_id !== user.contractor_id) {
             const error = new Error("Access denied.");
             error.statusCode = 403;
             error.errorCode = "ACCESS_DENIED";
@@ -441,6 +480,12 @@ class EmployeeService {
         if (personalDetails.address_id && personalDetails.address_id !== employee.address_id) {
             await verifyAddressAssociation(personalDetails.address_id, employee.company_id);
         }
+
+        // Strictly enforce contractor_id for Contractors
+        if (user.role_name === 'Contractor' && user.contractor_id) {
+            personalDetails.contractor_id = user.contractor_id;
+        }
+
         if (personalDetails.contractor_id && personalDetails.contractor_id !== employee.contractor_id) {
             await verifyContractorAssociation(personalDetails.contractor_id, employee.company_id);
         }
@@ -552,7 +597,7 @@ class EmployeeService {
                 }
             }
 
-            return await EmployeeService.getEmployeeById(id, userId);
+            return await EmployeeService.getEmployeeById(id, user);
         } catch (err) {
             await t.rollback();
             throw err;
@@ -562,7 +607,7 @@ class EmployeeService {
     /**
      * Soft-deletes employee and related details.
      */
-    static async deleteEmployee(id, userId) {
+    static async deleteEmployee(id, user) {
         const employee = await Employee.findOne({
             where: { id, status: true },
             include: [{ model: Company, as: "company", attributes: ["id", "user_id"] }],
@@ -576,7 +621,9 @@ class EmployeeService {
             throw error;
         }
 
-        if (!employee.company || employee.company.user_id !== userId) {
+        await verifyCompanyAccess(employee.company_id, user);
+        
+        if (user.role_name === 'Contractor' && user.contractor_id && employee.contractor_id !== user.contractor_id) {
             const error = new Error("Access denied.");
             error.statusCode = 403;
             error.errorCode = "ACCESS_DENIED";

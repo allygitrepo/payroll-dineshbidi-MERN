@@ -31,14 +31,19 @@ exports.getEntries = async (req, res) => {
         const lastDayOfMonth = new Date(year, month, 0);
         const lastDayOfMonthStr = `${year}-${String(month).padStart(2, "0")}-${String(lastDayOfMonth.getDate()).padStart(2, "0")}`;
 
+        const employeeWhere = {
+            company_id,
+            employee_type: "OFFICE STAFF",
+            date_of_joining: { [Op.lte]: lastDayOfMonthStr },
+            status: true,
+        };
+        if (req.user?.role_name === 'Contractor' && req.user?.contractor_id) {
+            employeeWhere.contractor_id = req.user.contractor_id;
+        }
+
         // 1. Fetch active Office Staff employees joined before or on the last day of the month
         const employees = await Employee.findAll({
-            where: {
-                company_id,
-                employee_type: "OFFICE STAFF",
-                date_of_joining: { [Op.lte]: lastDayOfMonthStr },
-                status: true, // Assuming status true means not resigned, as we don't have Resignation model yet
-            },
+            where: employeeWhere,
             attributes: ["id", "name", "uan", "member_id", "gender", "status", "date_of_joining"]
         });
 
@@ -218,7 +223,20 @@ exports.saveEntries = async (req, res) => {
             return res.status(400).json({ status: false, message: "Invalid payload" });
         }
 
+        let allowedEmployeeIds = null;
+        if (req.user?.role_name === 'Contractor' && req.user?.contractor_id) {
+            const myEmployees = await Employee.findAll({
+                where: { company_id, contractor_id: req.user.contractor_id },
+                attributes: ["id"]
+            });
+            allowedEmployeeIds = new Set(myEmployees.map(e => e.id));
+        }
+
         const upsertPromises = entries.map(async (row) => {
+            if (allowedEmployeeIds && !allowedEmployeeIds.has(row.employeeId)) {
+                return Promise.resolve();
+            }
+
             const dataToSave = {
                 company_id,
                 employee_id: row.employeeId,
@@ -268,8 +286,22 @@ exports.deleteEntries = async (req, res) => {
             return res.status(400).json({ status: false, message: "Company ID and month_year are required" });
         }
 
+        const deleteWhere = { company_id, month_year };
+
+        if (req.user?.role_name === 'Contractor' && req.user?.contractor_id) {
+            const myEmployees = await Employee.findAll({
+                where: { company_id, contractor_id: req.user.contractor_id },
+                attributes: ["id"]
+            });
+            const myEmployeeIds = myEmployees.map(e => e.id);
+            if (myEmployeeIds.length === 0) {
+                return res.status(200).json({ status: true, message: "No entries to delete.", deletedCount: 0 });
+            }
+            deleteWhere.employee_id = { [Op.in]: myEmployeeIds };
+        }
+
         const deletedCount = await OfficeStaffEntry.destroy({
-            where: { company_id, month_year }
+            where: deleteWhere
         });
 
         res.status(200).json({ 

@@ -31,6 +31,7 @@ const createAddressSchema = Joi.object({
         "string.empty": "Pincode is required.",
         "any.required": "Pincode is required.",
     }),
+    status: Joi.boolean().optional(),
 });
 
 const updateAddressSchema = Joi.object({

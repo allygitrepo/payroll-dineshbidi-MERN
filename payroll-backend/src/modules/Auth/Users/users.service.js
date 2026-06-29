@@ -87,7 +87,14 @@ class UsersService {
 
         // Generate tokens
         const accessToken = jwt.sign(
-            { id: user.id, user_id: user.user_id, role_id: user.role_id, company_id },
+            { 
+                id: user.id, 
+                user_id: user.user_id, 
+                role_id: user.role_id, 
+                role_name: user.role?.name || null,
+                contractor_id: user.contractor_id,
+                company_id 
+            },
             process.env.JWT_ACCESS_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
         );
@@ -120,8 +127,11 @@ class UsersService {
      * Select a company and get new tokens.
      */
     static async selectCompany(userId, companyId) {
-        const user = await User.findByPk(userId);
-        if (!user || !user.status) {
+        const user = await User.findOne({ 
+            where: { id: userId, status: true },
+            include: [{ model: Role, as: 'role' }]
+        });
+        if (!user) {
             const error = new Error("User not found or inactive.");
             error.statusCode = 404;
             error.errorCode = "USER_NOT_FOUND";
@@ -131,7 +141,14 @@ class UsersService {
 
         // Generate tokens
         const accessToken = jwt.sign(
-            { id: user.id, user_id: user.user_id, role_id: user.role_id, company_id: companyId },
+            { 
+                id: user.id, 
+                user_id: user.user_id, 
+                role_id: user.role_id, 
+                role_name: user.role?.name || null,
+                contractor_id: user.contractor_id,
+                company_id: companyId 
+            },
             process.env.JWT_ACCESS_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
         );
@@ -193,7 +210,10 @@ class UsersService {
             const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
             
             // Get user
-            const user = await User.findOne({ where: { id: decoded.id, status: true } });
+            const user = await User.findOne({ 
+                where: { id: decoded.id, status: true },
+                include: [{ model: Role, as: 'role' }]
+            });
             if (!user) {
                 const error = new Error("User associated with this token not found or inactive.");
                 error.statusCode = 401;
@@ -204,7 +224,14 @@ class UsersService {
 
             // Generate new pair (Refresh Token Rotation)
             const newAccessToken = jwt.sign(
-                { id: user.id, user_id: user.user_id, role: user.role, company_id: decoded.company_id },
+                { 
+                    id: user.id, 
+                    user_id: user.user_id, 
+                    role_id: user.role_id, 
+                    role_name: user.role?.name || null,
+                    contractor_id: user.contractor_id,
+                    company_id: decoded.company_id 
+                },
                 process.env.JWT_ACCESS_SECRET,
                 { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
             );

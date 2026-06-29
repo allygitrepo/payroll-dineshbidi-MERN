@@ -3,7 +3,8 @@ import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Briefca
 import styles from '../components/ContractorPage.module.css';
 import ContractorForm from '../components/ContractorForm';
 import ContractorTable from '../components/ContractorTable';
-import { getContractors, saveContractor, deleteContractor } from '../services/contractorService';
+import ContractorLoginModal from '../components/ContractorLoginModal';
+import { getContractors, saveContractor, deleteContractor, createContractorLogin, getContractorLogin } from '../services/contractorService';
 import { getAddresses } from '../../address/services/addressService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
@@ -23,6 +24,11 @@ const ContractorPage = () => {
   // Confirm delete states
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
+
+  // Login Modal states
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginTargetContractor, setLoginTargetContractor] = useState(null);
+  const [existingLogin, setExistingLogin] = useState(null);
 
   const dropdownRef = useRef(null);
 
@@ -125,6 +131,40 @@ const ContractorPage = () => {
   const handleCancel = () => {
     setIsFormOpen(false);
     setEditingContractor(null);
+  };
+
+  const handleCreateLoginClick = async (contractor) => {
+    setLoginTargetContractor(contractor);
+    try {
+      const loginInfo = await getContractorLogin(contractor.id);
+      setExistingLogin(loginInfo);
+    } catch (err) {
+      setExistingLogin(null);
+    }
+    setIsLoginModalOpen(true);
+  };
+
+  const handleLoginModalClose = () => {
+    setIsLoginModalOpen(false);
+    setLoginTargetContractor(null);
+    setExistingLogin(null);
+  };
+
+  const handleLoginModalSave = async (credentials) => {
+    if (!loginTargetContractor) return;
+    try {
+      await createContractorLogin(loginTargetContractor.id, credentials);
+      addToast({ type: 'success', message: 'Contractor login saved successfully!' });
+      setIsLoginModalOpen(false);
+      setLoginTargetContractor(null);
+      setExistingLogin(null);
+    } catch (err) {
+      console.error('Error creating contractor login:', err);
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to create login.'
+      });
+    }
   };
 
   // Filtered listing based on Search and Status Filter
@@ -243,6 +283,15 @@ const ContractorPage = () => {
         onStatusFilterChange={setStatusFilter}
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
+        onCreateLogin={handleCreateLoginClick}
+      />
+
+      <ContractorLoginModal
+        isOpen={isLoginModalOpen}
+        onClose={handleLoginModalClose}
+        onSave={handleLoginModalSave}
+        contractorName={loginTargetContractor?.name || ''}
+        existingLogin={existingLogin}
       />
 
       {/* Reusable Confirm Delete Modal */}

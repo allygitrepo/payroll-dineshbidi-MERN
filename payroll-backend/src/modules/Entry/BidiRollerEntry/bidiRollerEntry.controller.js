@@ -23,14 +23,19 @@ exports.getEntries = async (req, res) => {
         console.log(`[DEBUG] getEntries called with company_id: ${company_id}, month_year: ${month_year}`);
         console.log(`[DEBUG] Searching for BIDI MAKER with date_of_joining <= ${lastDayOfMonthStr}`);
         
+        const employeeWhere = {
+            company_id,
+            employee_type: "BIDI MAKER",
+            date_of_joining: { [Op.lte]: lastDayOfMonthStr },
+            status: true,
+        };
+        if (req.user?.role_name === 'Contractor' && req.user?.contractor_id) {
+            employeeWhere.contractor_id = req.user.contractor_id;
+        }
+
         // 1. Fetch active BIDI MAKER employees joined before or on the last day of the month
         const employees = await Employee.findAll({
-            where: {
-                company_id,
-                employee_type: "BIDI MAKER",
-                date_of_joining: { [Op.lte]: lastDayOfMonthStr },
-                status: true,
-            },
+            where: employeeWhere,
             attributes: ["id", "name", "uan", "member_id", "gender", "status", "date_of_joining", "contractor_id", "company_id"]
         });
 
@@ -171,8 +176,24 @@ exports.saveEntries = async (req, res) => {
             return res.status(400).json({ status: false, message: "Invalid payload" });
         }
 
+        // Enforce contractor isolation if applicable
+        let allowedEmployeeIds = null;
+        if (req.user?.role_name === 'Contractor' && req.user?.contractor_id) {
+            const myEmployees = await Employee.findAll({
+                where: { company_id, contractor_id: req.user.contractor_id },
+                attributes: ["id"]
+            });
+            allowedEmployeeIds = new Set(myEmployees.map(e => e.id));
+        }
+
         for (const row of entries) {
             const employee_id = row.employeeId;
+
+            // Skip if contractor is trying to save for another contractor's employee
+            if (allowedEmployeeIds && !allowedEmployeeIds.has(employee_id)) {
+                continue;
+            }
+
             const no_of_days_worked = parseFloat(row.daysWorked) || 0;
             const leave_with_pay = parseFloat(row.leaveWithPay) || 0;
             const unit_1_days = parseFloat(row.unit1) || 0;
@@ -251,8 +272,23 @@ exports.deleteEntries = async (req, res) => {
             return res.status(400).json({ status: false, message: "Company ID and month_year are required" });
         }
 
+        const deleteWhere = { company_id, month_year };
+
+        // Enforce contractor isolation
+        if (req.user?.role_name === 'Contractor' && req.user?.contractor_id) {
+            const myEmployees = await Employee.findAll({
+                where: { company_id, contractor_id: req.user.contractor_id },
+                attributes: ["id"]
+            });
+            const myEmployeeIds = myEmployees.map(e => e.id);
+            if (myEmployeeIds.length === 0) {
+                return res.status(200).json({ status: true, message: "No entries to delete.", deletedCount: 0 });
+            }
+            deleteWhere.employee_id = { [Op.in]: myEmployeeIds };
+        }
+
         const deletedCount = await BidiRollerEntry.destroy({
-            where: { company_id, month_year }
+            where: deleteWhere
         });
 
         res.status(200).json({ 

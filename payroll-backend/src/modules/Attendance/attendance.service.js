@@ -3,6 +3,7 @@ const sequelize = require("../../config/database");
 const Attendance = require("./attendance.model");
 const Employee = require("../Masters/Employee/employee.model");
 const Company = require("../Masters/Company/company.model");
+const Contractor = require("../Masters/Contractor/contractor.model");
 const fs = require("fs");
 const path = require("path");
 
@@ -38,7 +39,7 @@ function saveBase64Image(base64Str, subfolder, filename) {
 /**
  * Helper to verify company exists and belongs to the user.
  */
-const verifyCompanyOwnership = async (companyId, userId) => {
+const verifyCompanyAccess = async (companyId, user) => {
     const company = await Company.findOne({ where: { id: companyId, cstatus: true } });
     if (!company) {
         const error = new Error("Company not found.");
@@ -48,13 +49,32 @@ const verifyCompanyOwnership = async (companyId, userId) => {
         throw error;
     }
 
-    if (company.user_id !== userId) {
-        const error = new Error("Access denied.");
-        error.statusCode = 403;
-        error.errorCode = "ACCESS_DENIED";
-        error.messageToShow = "Access denied.";
-        throw error;
+    if (user.role_name === 'Contractor') {
+        if (!user.contractor_id) {
+            const error = new Error("Contractor profile not found.");
+            error.statusCode = 403;
+            error.errorCode = "CONTRACTOR_PROFILE_NOT_FOUND";
+            error.messageToShow = "Contractor profile not found.";
+            throw error;
+        }
+        const contractor = await Contractor.findOne({ where: { id: user.contractor_id, company_id: companyId, status: true } });
+        if (!contractor) {
+            const error = new Error("Access denied. Contractor does not belong to this company.");
+            error.statusCode = 403;
+            error.errorCode = "ACCESS_DENIED";
+            error.messageToShow = "Access denied.";
+            throw error;
+        }
+    } else {
+        if (company.user_id !== user.id) {
+            const error = new Error("Access denied.");
+            error.statusCode = 403;
+            error.errorCode = "ACCESS_DENIED";
+            error.messageToShow = "Access denied.";
+            throw error;
+        }
     }
+
     return company;
 };
 
@@ -203,8 +223,8 @@ class AttendanceService {
     /**
      * Admin: Creates a new manual attendance record.
      */
-    static async createManualRecord(companyId, userId, data) {
-        await verifyCompanyOwnership(companyId, userId);
+    static async createManualRecord(companyId, user, data) {
+        await verifyCompanyAccess(companyId, user);
 
         const { employee_id, date, sign_in_time, sign_out_time, status, location, sign_in_location, sign_out_location } = data;
         if (!employee_id || !date) {
@@ -222,6 +242,14 @@ class AttendanceService {
             error.statusCode = 404;
             error.errorCode = "EMPLOYEE_NOT_FOUND";
             error.messageToShow = "Employee not found.";
+            throw error;
+        }
+
+        if (user.role_name === 'Contractor' && emp.contractor_id !== user.contractor_id) {
+            const error = new Error("Access denied.");
+            error.statusCode = 403;
+            error.errorCode = "ACCESS_DENIED";
+            error.messageToShow = "Access denied.";
             throw error;
         }
 
@@ -243,8 +271,8 @@ class AttendanceService {
     /**
      * Admin: Retrieves all records for a company (filtered by month/year).
      */
-    static async getAllRecords(companyId, userId, { month, year }) {
-        await verifyCompanyOwnership(companyId, userId);
+    static async getAllRecords(companyId, user, { month, year }) {
+        await verifyCompanyAccess(companyId, user);
 
         let where = {};
         if (month && year) {
@@ -258,13 +286,18 @@ class AttendanceService {
             }
         }
 
+        const employeeWhere = { company_id: companyId, status: true };
+        if (user.role_name === 'Contractor' && user.contractor_id) {
+            employeeWhere.contractor_id = user.contractor_id;
+        }
+
         return await Attendance.findAll({
             where,
             include: [
                 {
                     model: Employee,
                     as: "employee",
-                    where: { company_id: companyId, status: true },
+                    where: employeeWhere,
                     attributes: ["id", "name", "email", "employee_type"],
                 },
             ],
@@ -275,8 +308,8 @@ class AttendanceService {
     /**
      * Admin: Deletes an attendance record.
      */
-    static async deleteRecord(companyId, userId, recordId) {
-        await verifyCompanyOwnership(companyId, userId);
+    static async deleteRecord(companyId, user, recordId) {
+        await verifyCompanyAccess(companyId, user);
 
         const record = await Attendance.findByPk(recordId, {
             include: [{ model: Employee, as: "employee" }],
@@ -292,6 +325,14 @@ class AttendanceService {
 
         // Verify record belongs to the company
         if (record.employee?.company_id !== companyId) {
+            const error = new Error("Access denied.");
+            error.statusCode = 403;
+            error.errorCode = "ACCESS_DENIED";
+            error.messageToShow = "Access denied.";
+            throw error;
+        }
+
+        if (user.role_name === 'Contractor' && record.employee?.contractor_id !== user.contractor_id) {
             const error = new Error("Access denied.");
             error.statusCode = 403;
             error.errorCode = "ACCESS_DENIED";

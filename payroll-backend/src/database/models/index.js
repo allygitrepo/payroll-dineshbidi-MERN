@@ -78,6 +78,15 @@ db.RefreshToken.belongsTo(db.User, {
     as: "user",
 });
 
+db.User.belongsTo(db.Contractor, {
+    foreignKey: "contractor_id",
+    as: "contractor_profile",
+});
+db.Contractor.hasOne(db.User, {
+    foreignKey: "contractor_id",
+    as: "user_account",
+});
+
 db.User.hasMany(db.Company, {
     foreignKey: "user_id",
     as: "companies",

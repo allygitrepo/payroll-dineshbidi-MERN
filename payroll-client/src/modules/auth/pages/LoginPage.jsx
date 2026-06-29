@@ -16,6 +16,7 @@ const LoginPage = () => {
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
   const addToast = useToast();
 
   useEffect(() => {
@@ -49,6 +50,32 @@ const LoginPage = () => {
     };
     fetchCompanies();
   }, [addToast]);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    // Show the install prompt
+    deferredPrompt.prompt();
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    // We've used the prompt, and can't use it again, throw it away
+    setDeferredPrompt(null);
+  };
 
   const validate = () => {
     const newErrors = {};
@@ -186,6 +213,14 @@ const LoginPage = () => {
               Self-Attendance Kiosk
             </a>
           </div>
+
+          {deferredPrompt && (
+            <div className={styles.installBtnContainer}>
+              <Button type="button" variant="outline" onClick={handleInstallClick} style={{ width: '100%', borderColor: 'var(--primary)', color: 'var(--primary)' }}>
+                Install Desktop/Mobile App
+              </Button>
+            </div>
+          )}
         </div>
 
       </div>

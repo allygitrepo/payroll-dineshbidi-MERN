@@ -194,7 +194,7 @@ class AttendanceController {
                 );
             }
 
-            const newRecord = await AttendanceService.createManualRecord(company_id, req.user.id, recordData);
+            const newRecord = await AttendanceService.createManualRecord(company_id, req.user, recordData);
             return res.status(201).json(
                 successResponse(
                     "ATTENDANCE_CREATED",
@@ -233,7 +233,7 @@ class AttendanceController {
                 );
             }
 
-            const records = await AttendanceService.getAllRecords(companyId, req.user.id, { month, year });
+            const records = await AttendanceService.getAllRecords(companyId, req.user, { month, year });
             return res.status(200).json(
                 successResponse(
                     "ATTENDANCE_LIST_RETRIEVED",
@@ -272,7 +272,7 @@ class AttendanceController {
                 );
             }
 
-            await AttendanceService.deleteRecord(company_id, req.user.id, id);
+            await AttendanceService.deleteRecord(company_id, req.user, id);
             return res.status(200).json(
                 successResponse(
                     "ATTENDANCE_DELETED",
