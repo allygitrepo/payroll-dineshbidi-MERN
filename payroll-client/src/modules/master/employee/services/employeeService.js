@@ -50,7 +50,7 @@ const mapToFrontend = (e) => {
 
   return {
     id: e.id,
-    abryApplicable: false,
+    abryApplicable: e.abry_applicable || false,
     uan: e.uan,
     ipNumber: e.ip_number,
     memberId: e.member_id || '',
@@ -77,6 +77,7 @@ const mapToFrontend = (e) => {
     isInternationalWorker: e.is_international_worker ? 'YES' : 'NO',
     physicalHandicap: e.physical_handicap ? 'YES' : 'NO',
     pmrpy: e.pmrpy ? 'YES' : 'NO',
+    status: e.status !== undefined ? e.status : true,
     employeeImage: e.image_path || '',
     faceDescriptorPath: e.face_descriptor_path || null,
     kycDetails: kycDetails,
@@ -208,6 +209,8 @@ const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
     is_international_worker: e.isInternationalWorker === 'YES',
     physical_handicap: e.physicalHandicap === 'YES',
     pmrpy: e.pmrpy === 'YES',
+    abry_applicable: e.abryApplicable || false,
+    status: e.status !== undefined ? e.status : true,
     kyc_details: kycDetailsPayload,
     nominees: nomineesPayload,
     family_members: familyMembersPayload
@@ -333,5 +336,10 @@ export const saveEmployee = async (employee, companyId, addresses = [], contract
 
 export const deleteEmployee = async (id, companyId) => {
   await apiClient.delete(`employees/${id}`);
+  return await getEmployees(companyId);
+};
+
+export const toggleAbryStatus = async (id, currentStatus, companyId) => {
+  await apiClient.put(`employees/${id}`, { abry_applicable: !currentStatus });
   return await getEmployees(companyId);
 };

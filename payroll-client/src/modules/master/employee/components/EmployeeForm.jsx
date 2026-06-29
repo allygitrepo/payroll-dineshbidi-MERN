@@ -830,7 +830,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
                 disabled={isContractor}
               >
                 {!isContractor && <option value="SELF">SELF</option>}
-                {contractors.map((c) => (
+                {contractors.filter(c => c.status === 'Active').map((c) => (
                   <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>

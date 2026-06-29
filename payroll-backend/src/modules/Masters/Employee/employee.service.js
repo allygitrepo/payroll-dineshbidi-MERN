@@ -22,14 +22,14 @@ const saveEmployeeImage = (base64Str, employeeId) => {
         const ext = match ? match[1] : "jpg";
         const filename = `${employeeId}_${Date.now()}.${ext}`;
         const dir = path.join(__dirname, "..", "..", "..", "..", "uploads", "employee_image");
-        
+
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
 
         const base64Data = base64Str.replace(/^data:image\/[a-zA-Z0-9+]+;base64,/, "");
         fs.writeFileSync(path.join(dir, filename), base64Data, "base64");
-        
+
         return `uploads/employee_image/${filename}`;
     } catch (error) {
         console.error("Error saving employee image:", error);
@@ -323,7 +323,7 @@ class EmployeeService {
     static async getAllEmployees(companyId, user) {
         await verifyCompanyAccess(companyId, user);
 
-        const whereClause = { company_id: companyId, status: true };
+        const whereClause = { company_id: companyId };
         if (user.role_name === 'Contractor' && user.contractor_id) {
             whereClause.contractor_id = user.contractor_id;
         }
@@ -390,7 +390,7 @@ class EmployeeService {
      */
     static async getEmployeeById(id, user) {
         const employee = await Employee.findOne({
-            where: { id, status: true },
+            where: { id },
             include: [
                 { model: Company, as: "company", attributes: ["id", "user_id"] },
                 { model: EmployeeKycDetail, as: "kycDetail", where: { status: true }, required: false },
@@ -429,7 +429,7 @@ class EmployeeService {
      */
     static async updateEmployee(id, user, updateData) {
         const employee = await Employee.findOne({
-            where: { id, status: true },
+            where: { id },
             include: [{ model: Company, as: "company", attributes: ["id", "user_id"] }],
         });
 
@@ -609,7 +609,7 @@ class EmployeeService {
      */
     static async deleteEmployee(id, user) {
         const employee = await Employee.findOne({
-            where: { id, status: true },
+            where: { id },
             include: [{ model: Company, as: "company", attributes: ["id", "user_id"] }],
         });
 
@@ -622,7 +622,7 @@ class EmployeeService {
         }
 
         await verifyCompanyAccess(employee.company_id, user);
-        
+
         if (user.role_name === 'Contractor' && user.contractor_id && employee.contractor_id !== user.contractor_id) {
             const error = new Error("Access denied.");
             error.statusCode = 403;
@@ -634,17 +634,17 @@ class EmployeeService {
         const t = await sequelize.transaction();
 
         try {
-            // Soft delete Employee
-            await employee.update({ status: false }, { transaction: t });
+            // Hard delete Employee
+            await employee.destroy({ transaction: t });
 
-            // Soft delete KYC details
-            await EmployeeKycDetail.update({ status: false }, { where: { employee_id: id }, transaction: t });
+            // Hard delete KYC details
+            await EmployeeKycDetail.destroy({ where: { employee_id: id }, transaction: t });
 
-            // Soft delete Nominee Details
-            await EmployeeNomineeDetail.update({ status: false }, { where: { employee_id: id }, transaction: t });
+            // Hard delete Nominee Details
+            await EmployeeNomineeDetail.destroy({ where: { employee_id: id }, transaction: t });
 
-            // Soft delete Family members
-            await EmployeeFamilyMember.update({ status: false }, { where: { employee_id: id }, transaction: t });
+            // Hard delete Family members
+            await EmployeeFamilyMember.destroy({ where: { employee_id: id }, transaction: t });
 
             await t.commit();
 
