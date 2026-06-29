@@ -1,3 +1,4 @@
+import { Pagination } from '../../../../shared/components';
 import React, { useState, useMemo } from 'react';
 import { Edit, Trash2, Search, Key } from 'lucide-react';
 import styles from './ContractorPage.module.css';
