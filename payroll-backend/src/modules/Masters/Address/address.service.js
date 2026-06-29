@@ -30,14 +30,10 @@ class AddressService {
      * Creates a new address for a company.
      */
     static async createAddress(addressData, userId) {
-        // Convert all string fields to uppercase, except IDs which should be normalized to lowercase
+        // Convert all string fields to uppercase, but exclude IDs
         for (const key in addressData) {
-            if (typeof addressData[key] === 'string') {
-                if (key.endsWith('_id') || key === 'id') {
-                    addressData[key] = addressData[key].trim().toLowerCase();
-                } else {
-                    addressData[key] = addressData[key].toUpperCase();
-                }
+            if (typeof addressData[key] === 'string' && !key.toLowerCase().endsWith('id')) {
+                addressData[key] = addressData[key].toUpperCase();
             }
         }
 
@@ -126,14 +122,10 @@ class AddressService {
             throw error;
         }
 
-        // Convert all string fields to uppercase, except IDs which should be normalized to lowercase
+        // Convert all string fields to uppercase, but exclude IDs
         for (const key in updateData) {
-            if (typeof updateData[key] === 'string') {
-                if (key.endsWith('_id') || key === 'id') {
-                    updateData[key] = updateData[key].trim().toLowerCase();
-                } else {
-                    updateData[key] = updateData[key].toUpperCase();
-                }
+            if (typeof updateData[key] === 'string' && !key.toLowerCase().endsWith('id')) {
+                updateData[key] = updateData[key].toUpperCase();
             }
         }
 

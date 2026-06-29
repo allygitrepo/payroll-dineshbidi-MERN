@@ -209,12 +209,8 @@ class EmployeeService {
         const toUpper = (obj) => {
             if (!obj) return;
             for (const key in obj) {
-                if (typeof obj[key] === 'string' && key !== 'image_path' && key !== 'email') {
-                    if (key.endsWith('_id') || key === 'id') {
-                        obj[key] = obj[key].trim().toLowerCase();
-                    } else {
-                        obj[key] = obj[key].toUpperCase();
-                    }
+                if (typeof obj[key] === 'string' && key !== 'image_path' && key !== 'email' && !key.toLowerCase().endsWith('id')) {
+                    obj[key] = obj[key].toUpperCase();
                 }
             }
         };
@@ -456,12 +452,8 @@ class EmployeeService {
         const toUpper = (obj) => {
             if (!obj) return;
             for (const key in obj) {
-                if (typeof obj[key] === 'string' && key !== 'image_path' && key !== 'email') {
-                    if (key.endsWith('_id') || key === 'id') {
-                        obj[key] = obj[key].trim().toLowerCase();
-                    } else {
-                        obj[key] = obj[key].toUpperCase();
-                    }
+                if (typeof obj[key] === 'string' && key !== 'image_path' && key !== 'email' && !key.toLowerCase().endsWith('id')) {
+                    obj[key] = obj[key].toUpperCase();
                 }
             }
         };
