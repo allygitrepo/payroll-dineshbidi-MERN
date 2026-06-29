@@ -13,6 +13,7 @@ router.post("/clock", AttendanceController.clockToggle);
 // Admin-scoped endpoints
 router.post("/", authenticateJWT, AttendanceController.createManual);
 router.get("/company/:companyId", authenticateJWT, AttendanceController.getAll);
+router.get("/summary/company/:companyId", authenticateJWT, AttendanceController.getSummary);
 router.delete("/:id", authenticateJWT, AttendanceController.delete);
 
 module.exports = router;

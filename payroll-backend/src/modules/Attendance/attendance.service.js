@@ -399,6 +399,42 @@ class AttendanceService {
         error.messageToShow = "You have already completed sign-in and sign-out for today.";
         throw error;
     }
+
+    /**
+     * Admin/System: Retrieves summary of present days for a company in a given month.
+     * Returns a map of { employee_id: total_present_days }
+     */
+    static async getSummary(companyId, monthYear) {
+        const [y, m] = monthYear.split('-');
+        if (!y || !m) {
+            throw new Error("Invalid monthYear format. Expected YYYY-MM");
+        }
+        const start = `${monthYear}-01`;
+        const lastDay = new Date(Date.UTC(parseInt(y, 10), parseInt(m, 10), 0)).getUTCDate();
+        const end = `${monthYear}-${String(lastDay).padStart(2, "0")}`;
+
+        const records = await Attendance.findAll({
+            where: {
+                date: { [Op.between]: [start, end] },
+                status: true
+            },
+            include: [{
+                model: Employee,
+                as: 'employee',
+                attributes: ['id'],
+                where: { company_id: companyId }
+            }],
+            attributes: ['employee_id']
+        });
+
+        const summaryMap = {};
+        records.forEach(record => {
+            const empId = record.employee_id;
+            summaryMap[empId] = (summaryMap[empId] || 0) + 1;
+        });
+
+        return summaryMap;
+    }
 }
 
 module.exports = AttendanceService;

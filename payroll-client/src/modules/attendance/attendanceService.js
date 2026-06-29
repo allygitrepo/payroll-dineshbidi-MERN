@@ -38,3 +38,17 @@ export const clockToggleEmployee = async (employeeId, locationStr, photoBase64) 
   const response = await apiClient.post('attendance/clock', payload);
   return response.data;
 };
+
+export const getAttendanceSummary = async (companyId, monthYear) => {
+  if (!companyId || !monthYear) return {};
+  try {
+    const response = await apiClient.get(`attendance/summary/company/${companyId}?month_year=${monthYear}`);
+    if (response.data?.status || response.data?.success) {
+      return response.data.data || {};
+    }
+    return {};
+  } catch (error) {
+    console.error("Failed to fetch attendance summary:", error);
+    return {};
+  }
+};

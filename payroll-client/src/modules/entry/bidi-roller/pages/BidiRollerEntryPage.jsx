@@ -3,9 +3,10 @@ import {
   Search, Save, Download, FileSpreadsheet, Copy, FileText, File, Printer, Users, CalendarDays, ChevronDown, Check, X
 } from 'lucide-react';
 import styles from './BidiRollerEntryPage.module.css';
-import { useToast, MonthYearPicker } from '../../../../shared/components';
+import { useToast, MonthYearPicker, Pagination } from '../../../../shared/components';
 import { getContractors } from '../../../master/contractor/services/contractorService';
 import { getBidiRollerEntry, saveBidiRollerEntry, recalculateBidiRollerRow } from '../services/bidiRollerEntryService';
+import { getAttendanceSummary } from '../../../attendance/attendanceService';
 
 /* ---- Helpers ---- */
 const formatMonthLabel = (monthYear) => {
@@ -42,6 +43,11 @@ const BidiRollerEntryPage = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState(null);
+
+  // Pagination & Search
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
 
   /* Load Contractors list on mount */
   useEffect(() => {
@@ -94,6 +100,8 @@ const BidiRollerEntryPage = () => {
         setConfig(response.config || null);
         setActiveMonth(selectedMonth);
         setHasSearched(true);
+        setCurrentPage(1);
+        setSearchQuery('');
         if (response.data?.length === 0) {
           addToast({ type: 'info', message: 'No Bidi Rollers found for this month' });
         }
@@ -156,29 +164,80 @@ const BidiRollerEntryPage = () => {
     }
   }, [activeMonth, rows, addToast]);
 
+  /* ---- Sync Attendance ---- */
+  const handleSyncAttendance = useCallback(async () => {
+    if (!activeMonth || rows.length === 0) {
+      addToast({ type: 'warning', message: 'Please search and load data for a month before syncing.' });
+      return;
+    }
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'error', message: 'No company selected.' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const summaryMap = await getAttendanceSummary(companyId, activeMonth);
+      if (Object.keys(summaryMap).length === 0) {
+        addToast({ type: 'info', message: 'No attendance records found for this month.' });
+        return;
+      }
+      
+      setRows(prev => prev.map(row => {
+        const presentDays = summaryMap[row.employeeId];
+        if (presentDays !== undefined) {
+          const updatedRow = { ...row, daysWorked: presentDays };
+          return config ? recalculateBidiRollerRow(updatedRow, config) : updatedRow;
+        }
+        return row;
+      }));
+      addToast({ type: 'success', message: 'Attendance synced successfully! Review the changes before saving.' });
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to sync attendance data.' });
+    } finally {
+      setLoading(false);
+    }
+  }, [activeMonth, rows.length, config, addToast]);
+
   /* ---- Displayed Rows ---- */
   const displayedRows = useMemo(() => {
     return rows.filter(r => selectedContractors.includes(r.contractorId || 'SELF'));
   }, [rows, selectedContractors]);
 
+  /* ---- Derived State ---- */
+  const filteredRows = useMemo(() => {
+    if (!searchQuery) return displayedRows;
+    const lowerQuery = searchQuery.toLowerCase();
+    return displayedRows.filter(row => 
+      row.employeeName?.toLowerCase().includes(lowerQuery) || 
+      row.employeeCode?.toLowerCase().includes(lowerQuery) ||
+      row.accountNo?.toLowerCase().includes(lowerQuery)
+    );
+  }, [displayedRows, searchQuery]);
+
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, currentPage, pageSize]);
+
   /* ---- Export ---- */
   const handleExport = (type) => {
     if (type === 'Copy') {
       const header = 'Employee Name.\tNo. of days\tUnit-1\tUnit-2\tLeave with pay\tRate-1\tRate-2\tBonus-1\tBonus-2\tWages\tBonus\tTotal\tPF\tPT\tESIC\tNet Wages';
-      const body = displayedRows.map(r =>
+      const body = filteredRows.map(r =>
         `${r.employeeName}\t${r.daysWorked}\t${r.unit1}\t${r.unit2}\t${r.leaveWithPay}\t${config?.rate1 || 0}\t${config?.rate2 || 0}\t${config?.bonus1 || 0}\t${config?.bonus2 || 0}\t${r.wages}\t${r.bonus}\t${r.gross}\t${r.pf}\t${r.pt}\t${r.esic}\t${r.netWages}`
       ).join('\n');
       navigator.clipboard.writeText(`${header}\n${body}`);
       addToast({ type: 'success', message: 'Copied to clipboard!' });
     } else {
-      addToast({ type: 'info', message: `${type} export started for ${displayedRows.length} records!` });
+      addToast({ type: 'info', message: `${type} export started for ${filteredRows.length} records!` });
     }
     setIsDropdownOpen(false);
   };
 
   /* ---- Totals ---- */
   const totals = useMemo(() => {
-    return displayedRows.reduce((acc, row) => ({
+    return filteredRows.reduce((acc, row) => ({
       daysWorked: acc.daysWorked + (parseFloat(row.daysWorked) || 0),
       unit1: acc.unit1 + (parseFloat(row.unit1) || 0),
       unit2: acc.unit2 + (parseFloat(row.unit2) || 0),
@@ -199,7 +258,7 @@ const BidiRollerEntryPage = () => {
       rate1: 0, rate2: 0, bonus1: 0, bonus2: 0,
       wages: 0, bonus: 0, gross: 0, pf: 0, pt: 0, esic: 0, netWages: 0
     });
-  }, [displayedRows, config]);
+  }, [filteredRows, config]);
 
   /* ================================================ */
   return (
@@ -313,8 +372,47 @@ const BidiRollerEntryPage = () => {
           <button type="button" className={styles.searchBtn} onClick={handleSearch} disabled={loading}>
             <Search size={16} /> {loading ? 'Loading...' : 'Search'}
           </button>
+          {hasSearched && (
+            <button 
+              type="button"
+              className={styles.searchBtn} 
+              style={{ backgroundColor: 'var(--success-color, #10b981)' }} 
+              onClick={handleSyncAttendance} 
+              disabled={loading}
+              title="Auto-fill No. of Days Worked from Attendance records"
+            >
+              Sync from Attendance
+            </button>
+          )}
         </div>
       </div>
+
+      {/* ---- Search & Filter Row ---- */}
+      {hasSearched && (
+        <div className={styles.tableCard} style={{ marginBottom: 16 }}>
+          <div className={styles.searchRow} style={{ padding: '16px' }}>
+            <div className={styles.searchContainer} style={{ width: '100%', maxWidth: '400px', display: 'flex', alignItems: 'center', position: 'relative' }}>
+              <Search size={16} style={{ position: 'absolute', left: 12, color: '#666' }} />
+              <input
+                type="text"
+                placeholder="Search by Employee Name or Code..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px 8px 36px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ---- Entry Table ---- */}
       {!hasSearched ? (
@@ -332,7 +430,7 @@ const BidiRollerEntryPage = () => {
           {/* Table Card Header */}
           <div className={styles.tableCardHeader}>
             <span className={styles.tableCardTitle}>
-              Bidi Roller Wages Entry — {displayedRows.length} Employee{displayedRows.length !== 1 ? 's' : ''}
+              Bidi Roller Wages Entry — {filteredRows.length} Employee{filteredRows.length !== 1 ? 's' : ''}
             </span>
             <span className={styles.monthBadge}>{formatMonthLabel(activeMonth)}</span>
           </div>
@@ -356,7 +454,7 @@ const BidiRollerEntryPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {displayedRows.map(row => (
+                {paginatedRows.map(row => (
                   <tr key={row.employeeId}>
                     {/* Employee info */}
                     <td>
@@ -397,7 +495,7 @@ const BidiRollerEntryPage = () => {
                 ))}
                 
                 {/* Totals Row */}
-                {displayedRows.length > 0 && (
+                {paginatedRows.length > 0 && (
                   <tr className={styles.totalRow}>
                     <td><strong>Total</strong></td>
                     <td style={{ textAlign: 'center' }}><strong>{totals.unit1}</strong></td>
@@ -420,6 +518,17 @@ const BidiRollerEntryPage = () => {
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(filteredRows.length / pageSize)}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+          />
 
           {/* Save Button */}
           <div className={styles.saveSection}>
