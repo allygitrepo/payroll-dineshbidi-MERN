@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Upload } from 'lucide-react';
 import styles from '../components/EmployeePage.module.css';
 import EmployeeForm from '../components/EmployeeForm';
 import EmployeeTable from '../components/EmployeeTable';
@@ -11,6 +12,7 @@ import { exportModuleData } from '../../../../shared/services/exportService';
 
 const EmployeePage = () => {
   const addToast = useToast();
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [addresses, setAddresses] = useState([]);
   const [contractors, setContractors] = useState([]);
@@ -207,6 +209,15 @@ const EmployeePage = () => {
               <Plus size={18} /> Employee
             </button>
           )}
+          
+          <button 
+            className={styles.addBtn} 
+            style={{ backgroundColor: 'var(--primary)', opacity: 0.9 }}
+            onClick={() => navigate('/utility/employee-data-import')}
+          >
+            <Upload size={18} /> Import
+          </button>
+
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
               className={styles.downloadBtn}
