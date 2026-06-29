@@ -171,15 +171,13 @@ const EmployeeDataImportPage = () => {
 
         const contractorsList = await getContractors(companyId);
         const addressesList = await getAddresses(companyId);
-        const defaultAddressId = addressesList.length > 0 ? addressesList[0].id : undefined;
-
-        if (!defaultAddressId) {
-          throw new Error("No addresses found for this company. Please create at least one address first.");
-        }
+        const defaultAddressId = addressesList.length > 0 ? addressesList[0].id : null;
 
         const existingEmployees = await getEmployees(companyId);
 
-        const summary = { added: [], updated: [], failed: [], missingContractors: new Set(), missingAddresses: new Set() };
+        const missingContractorsMap = new Map();
+        const missingAddressesMap = new Map();
+        const summary = { added: [], updated: [], failed: [] };
 
         for (let i = 0; i < totalRows; i++) {
           const row = jsonData[i];
@@ -201,18 +199,23 @@ const EmployeeDataImportPage = () => {
             summary.failed.push({ rowNumber: i + 2, name: memberName || 'Unknown', reason: "Missing required fields or invalid date (Name, 12-digit UAN, DOB, DOJ)." });
             continue;
           }
-          
-          if (contractorName !== 'SELF') {
-            const match = contractorsList.find(c => String(c.name).trim().toUpperCase() === contractorName);
-            if (!match) {
-              summary.missingContractors.add(contractorName);
-            }
-          }
 
           if (addressStr) {
             const match = addressesList.find(a => String(a.address).trim().toUpperCase() === addressStr);
-            if (!match) {
-              summary.missingAddresses.add(addressStr);
+            if (!match && !missingAddressesMap.has(addressStr)) {
+              missingAddressesMap.set(addressStr, {
+                address: addressStr,
+                postOffice: String(row['Post Office'] || 'UNKNOWN').trim().toUpperCase(),
+                district: String(row['District'] || 'UNKNOWN').trim().toUpperCase(),
+                pincode: String(row['Pincode'] || '000000').trim()
+              });
+            }
+          }
+
+          if (contractorName !== 'SELF') {
+            const match = contractorsList.find(c => String(c.name).trim().toUpperCase() === contractorName);
+            if (!match && !missingContractorsMap.has(contractorName)) {
+              missingContractorsMap.set(contractorName, addressStr);
             }
           }
 
@@ -265,7 +268,14 @@ const EmployeeDataImportPage = () => {
           }
         }
 
-        setAnalysisSummary({ ...summary, contractorsList, addressesList, companyId });
+        setAnalysisSummary({ 
+          ...summary, 
+          missingContractors: Array.from(missingContractorsMap.entries()),
+          missingAddresses: Array.from(missingAddressesMap.values()),
+          contractorsList, 
+          addressesList, 
+          companyId 
+        });
         setIsAnalyzing(false);
       } catch (error) {
         setIsAnalyzing(false);
@@ -295,34 +305,62 @@ const EmployeeDataImportPage = () => {
     let addressesList = analysisSummary.addressesList;
     let contractorsList = analysisSummary.contractorsList;
 
-    if (analysisSummary.missingAddresses && analysisSummary.missingAddresses.size > 0) {
-      for (const addrName of analysisSummary.missingAddresses) {
+    // 1. Create a default address if the database is completely empty and no missing addresses are parsed
+    if (addressesList.length === 0 && (!analysisSummary.missingAddresses || analysisSummary.missingAddresses.length === 0)) {
+      try {
+        await saveAddress({
+          address: 'COMPANY HEADQUARTERS',
+          postOffice: 'UNKNOWN',
+          district: 'UNKNOWN',
+          pincode: '000000',
+          status: 'Active'
+        }, companyId);
+        addressesList = await getAddresses(companyId);
+      } catch (e) {
+        console.error("Failed to create fallback address", e);
+      }
+    }
+
+    // 2. Auto-create missing addresses with real Excel details
+    if (analysisSummary.missingAddresses && analysisSummary.missingAddresses.length > 0) {
+      for (const addr of analysisSummary.missingAddresses) {
         try {
           await saveAddress({
-            address: addrName,
-            postOffice: 'UNKNOWN',
-            district: 'UNKNOWN',
-            pincode: '000000',
+            address: addr.address,
+            postOffice: addr.postOffice,
+            district: addr.district,
+            pincode: addr.pincode,
             status: 'Active'
           }, companyId);
         } catch (e) {
-          console.error("Failed to auto-create address", e);
+          console.error("Failed to auto-create address", addr.address, e);
         }
       }
       addressesList = await getAddresses(companyId);
     }
 
-    if (analysisSummary.missingContractors && analysisSummary.missingContractors.size > 0) {
-      const defaultAddressId = addressesList.length > 0 ? addressesList[0].id : null;
-      for (const cName of analysisSummary.missingContractors) {
+    // 3. Auto-create missing contractors linked to their corresponding address
+    if (analysisSummary.missingContractors && analysisSummary.missingContractors.length > 0) {
+      for (const [cName, addressStr] of analysisSummary.missingContractors) {
+        // Find corresponding address ID from newly created list
+        let contractorAddressId = null;
+        if (addressStr) {
+          const matchedAddr = addressesList.find(a => String(a.address).trim().toUpperCase() === addressStr.trim().toUpperCase());
+          contractorAddressId = matchedAddr?.id || null;
+        }
+        // Fallback to first available address if null
+        if (!contractorAddressId && addressesList.length > 0) {
+          contractorAddressId = addressesList[0].id;
+        }
+
         try {
           await saveContractor({
             name: cName,
-            ccode: 'AUTO-' + Math.floor(Math.random() * 100000),
+            ccode: 'AUTO-' + Math.floor(100000 + Math.random() * 900000),
             pfCode: 'N/A',
             dateOfJoining: new Date().toISOString().split('T')[0],
             status: 'Active',
-            address_id: defaultAddressId
+            address_id: contractorAddressId
           }, companyId, addressesList);
         } catch (e) {
           console.error("Failed to auto-create contractor", cName, e);
@@ -336,7 +374,7 @@ const EmployeeDataImportPage = () => {
 
     for (const emp of processList) {
       if (emp.addressStr) {
-        const matchedAddress = addressesList.find(a => String(a.address).trim().toUpperCase() === emp.addressStr);
+        const matchedAddress = addressesList.find(a => String(a.address).trim().toUpperCase() === emp.addressStr.trim().toUpperCase());
         if (matchedAddress) {
           emp.address_id = matchedAddress.id;
         } else {
@@ -545,14 +583,14 @@ const EmployeeDataImportPage = () => {
               </div>
             </div>
             
-            {analysisSummary.missingContractors?.size > 0 && (
+            {analysisSummary.missingContractors?.length > 0 && (
               <div className={styles.notice}>
-                <strong>Notice:</strong> {analysisSummary.missingContractors.size} missing contractors found in the Excel sheet. They will be automatically created in the database during import.
+                <strong>Notice:</strong> {analysisSummary.missingContractors.length} missing contractors found in the Excel sheet. They will be automatically created in the database during import.
               </div>
             )}
-            {analysisSummary.missingAddresses?.size > 0 && (
+            {analysisSummary.missingAddresses?.length > 0 && (
               <div className={styles.notice}>
-                <strong>Notice:</strong> {analysisSummary.missingAddresses.size} missing addresses found in the Excel sheet. They will be automatically created in the database during import.
+                <strong>Notice:</strong> {analysisSummary.missingAddresses.length} missing addresses found in the Excel sheet. They will be automatically created in the database during import.
               </div>
             )}
 

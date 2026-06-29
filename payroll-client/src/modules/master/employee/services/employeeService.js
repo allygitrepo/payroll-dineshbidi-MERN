@@ -107,7 +107,7 @@ const mapToFrontend = (e) => {
 
 const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
   const safeStr = (str) => (str || '').toString().trim().toLowerCase();
-  
+
   const matchingAddress = addresses.find(a => safeStr(a.address) === safeStr(e.address));
   const addressId = matchingAddress?.id || e.address_id || e.address;
 
@@ -120,7 +120,7 @@ const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
   console.log("Final Address ID resolved:", addressId);
 
   // Ensure addressId is a valid UUID format before sending
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (addressId && !uuidRegex.test(addressId)) {
     console.error("FATAL: Resolved addressId is not a valid UUID!", addressId);
     throw new Error(`Frontend Validation Failed: Could not resolve Address ID. Got: ${addressId}. Please select the Address from the dropdown again.`);
@@ -158,7 +158,7 @@ const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
   const nomineesPayload = (e.nomineeDetails || e.nominees || []).map(n => {
     const nAddress = addresses.find(a => safeStr(a.address) === safeStr(n.address));
     const nAddressId = nAddress?.id || n.address_id || n.address;
-    
+
     if (nAddressId && !uuidRegex.test(nAddressId)) {
       console.error("FATAL: Resolved Nominee Address ID is not a valid UUID!", nAddressId);
       throw new Error(`Frontend Validation Failed: Could not resolve Nominee Address ID. Got: ${nAddressId}. Please check the Nominee's address.`);
@@ -238,14 +238,14 @@ export const getMissingDetails = async (companyId, fields) => {
 
 export const saveEmployee = async (employee, companyId, addresses = [], contractors = []) => {
   const safeStr = (str) => (str || '').toString().trim().toLowerCase();
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   const resolveOrCreateAddress = async (addressStr, postOffice, district, pincode) => {
     if (!addressStr) return null;
     if (uuidRegex.test(addressStr)) return addressStr;
     const matchingAddress = addresses.find(a => safeStr(a.address) === safeStr(addressStr));
     if (matchingAddress) return matchingAddress.id;
-    
+
     try {
       const res = await apiClient.post('addresses', {
         company_id: companyId,
@@ -277,6 +277,9 @@ export const saveEmployee = async (employee, companyId, addresses = [], contract
         company_id: companyId,
         name: contractorStr.toUpperCase(),
         address_id: addrId || addresses[0]?.id || null,
+        ccode: 'AUTO-' + Math.floor(100000 + Math.random() * 900000),
+        pf_code: 'N/A',
+        date_of_joining: new Date().toISOString().split('T')[0],
         status: true
       });
       if (res.data?.data?.id) {
@@ -291,14 +294,14 @@ export const saveEmployee = async (employee, companyId, addresses = [], contract
 
   // Pre-resolve or auto-create related entities
   employee.address_id = await resolveOrCreateAddress(employee.address || employee.address_id, employee.postOffice, employee.district, employee.pincode);
-  
+
   if (employee.contractor && safeStr(employee.contractor) !== 'self') {
     employee.contractor_id = await resolveOrCreateContractor(employee.contractor, employee.address_id);
   }
 
   if (employee.nomineeDetails && employee.nomineeDetails.length > 0) {
     for (const nom of employee.nomineeDetails) {
-       nom.address_id = await resolveOrCreateAddress(nom.address || nom.address_id, employee.postOffice, employee.district, employee.pincode);
+      nom.address_id = await resolveOrCreateAddress(nom.address || nom.address_id, employee.postOffice, employee.district, employee.pincode);
     }
   }
 

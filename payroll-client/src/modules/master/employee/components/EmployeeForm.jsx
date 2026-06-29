@@ -513,10 +513,10 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     const tempErrors = {};
     const personalFields = [
-      'uan', 'memberName', 'gender', 'dateOfJoining', 
+      'uan', 'memberName', 'gender', 'dateOfJoining',
       'address', 'postOffice', 'district', 'pincode'
     ];
 
@@ -655,12 +655,12 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
             <div className={styles.field}>
               <label className={styles.label}>Date Of Birth As Per Aadhaar</label>
-            <DatePicker
-              name="dob"
-              value={formData.dob}
-              onChange={handleChange}
-            />
-            {errors.dob && <span className={styles.errorText}>{errors.dob}</span>}
+              <DatePicker
+                name="dob"
+                value={formData.dob}
+                onChange={handleChange}
+              />
+              {errors.dob && <span className={styles.errorText}>{errors.dob}</span>}
             </div>
 
             <div className={styles.field}>
@@ -1193,7 +1193,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
                   }
                   if (age < 18) isMinor = true;
                 }
-                
+
                 if (!isMinor) return null;
 
                 return (

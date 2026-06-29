@@ -42,13 +42,14 @@ const verifyAddressAssociation = async (addressId, companyId) => {
     return address;
 };
 
-/**
- * Normalizes empty strings to null and converts all strings to uppercase.
- */
 const normalizeOptionalFields = (data) => {
     for (const key in data) {
         if (typeof data[key] === "string") {
-            data[key] = data[key].trim().toUpperCase();
+            if (key.endsWith('_id') || key === 'id') {
+                data[key] = data[key].trim().toLowerCase();
+            } else {
+                data[key] = data[key].trim().toUpperCase();
+            }
             if (data[key] === "") {
                 data[key] = null;
             }
