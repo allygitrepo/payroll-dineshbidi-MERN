@@ -130,7 +130,7 @@ class CompanyService {
             throw error;
         }
 
-        await company.update({ cstatus: false });
+        await company.destroy();
         return true;
     }
 }
