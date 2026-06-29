@@ -16,6 +16,7 @@ const CompanyPage = () => {
   
   // Search state managed at page level to coordinate with dropdown exports
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Confirmation Modal state
@@ -138,6 +139,9 @@ const CompanyPage = () => {
   // Filtered data based on search term
   const filteredCompanies = useMemo(() => {
     return companies.filter(company => {
+      if (statusFilter === 'ACTIVE' && company.cstatus === false) return false;
+      if (statusFilter === 'INACTIVE' && company.cstatus === true) return false;
+      
       const search = searchTerm.toLowerCase();
       return (
         (company.estbId && company.estbId.toLowerCase().includes(search)) ||
@@ -153,7 +157,7 @@ const CompanyPage = () => {
         (company.pan && company.pan.toLowerCase().includes(search))
       );
     });
-  }, [companies, searchTerm]);
+  }, [companies, searchTerm, statusFilter]);
 
   // Export handlers at page level
   const handleExportClick = async (type) => {
@@ -233,6 +237,8 @@ const CompanyPage = () => {
         data={filteredCompanies}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+        selectedStatus={statusFilter}
+        onStatusFilterChange={setStatusFilter}
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
       />

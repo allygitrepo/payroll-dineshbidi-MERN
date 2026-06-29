@@ -510,22 +510,22 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
           </div>
 
           <div className={`${styles.field}`} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <label className={styles.label}>
-              Status
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+            <label className={styles.label}>Status</label>
+            <div className={styles.toggleContainer}>
+              <label className={styles.toggleSwitch}>
                 <input
                   type="checkbox"
-                  name="cstatus"
                   checked={formData.cstatus}
                   onChange={(e) => setFormData(prev => ({ ...prev, cstatus: e.target.checked }))}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
                 />
-                <span style={{ marginLeft: '8px', fontWeight: '500', color: formData.cstatus ? '#16a34a' : '#ef4444' }}>
-                  {formData.cstatus ? 'Active' : 'Inactive'}
-                </span>
+                <span className={styles.toggleSlider}></span>
               </label>
+              <span 
+                className={styles.toggleLabel}
+                style={{ color: formData.cstatus ? 'var(--primary)' : '#ef4444' }}
+              >
+                {formData.cstatus ? 'ACTIVE' : 'INACTIVE'}
+              </span>
             </div>
           </div>
 

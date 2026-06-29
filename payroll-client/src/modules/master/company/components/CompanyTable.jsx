@@ -3,14 +3,14 @@ import { Edit, Trash2, Search } from 'lucide-react';
 import styles from './CompanyPage.module.css';
 import { useToast } from '../../../../shared/components';
 
-const CompanyTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) => {
+const CompanyTable = ({ data, searchTerm, onSearchChange, selectedStatus, onStatusFilterChange, onEdit, onDelete }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Reset pagination if filter changes
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, pageSize]);
+  }, [searchTerm, pageSize, selectedStatus]);
 
   // Pagination calculations
   const totalEntries = data.length;
@@ -30,15 +30,38 @@ const CompanyTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
           Total Companies: {totalEntries}
         </div>
 
-        <div className={styles.searchWrapper}>
-          <Search size={16} className={styles.searchIcon} />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search..."
-            className={styles.searchInput}
-          />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <select
+            value={selectedStatus || ''}
+            onChange={(e) => onStatusFilterChange && onStatusFilterChange(e.target.value)}
+            className={styles.limitSelect}
+            style={{
+              height: '42px',
+              padding: '0 14px',
+              borderRadius: '8px',
+              border: '1px solid var(--border)',
+              outline: 'none',
+              backgroundColor: 'var(--card-bg)',
+              color: 'var(--text-primary)',
+              fontSize: '0.9rem',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="">ALL STATUS</option>
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
+
+          <div className={styles.searchWrapper}>
+            <Search size={16} className={styles.searchIcon} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search..."
+              className={styles.searchInput}
+            />
+          </div>
         </div>
       </div>
 
@@ -49,6 +72,7 @@ const CompanyTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
         <table className={styles.table}>
           <thead>
             <tr>
+              <th style={{ width: '100px', textAlign: 'center' }}>Actions</th>
               <th style={{ width: '60px', textAlign: 'center' }}>Sr. No.</th>
               <th>Estb ID</th>
               <th>Establishment Name</th>
@@ -62,7 +86,6 @@ const CompanyTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
               <th>Pincode</th>
               <th>PAN</th>
               <th style={{ textAlign: 'center' }}>Status</th>
-              <th style={{ width: '100px', textAlign: 'center' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -74,7 +97,32 @@ const CompanyTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
               </tr>
             ) : (
               paginatedData.map((company, index) => (
-                <tr key={company.id}>
+                <tr 
+                  key={company.id}
+                  onClick={() => onEdit(company)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <div className={styles.actionCell}>
+                      <button 
+                        onClick={() => onEdit(company)} 
+                        title="Edit Company"
+                        className={styles.editBtn}
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(company.id);
+                        }} 
+                        title="Delete Company"
+                        className={styles.deleteBtn}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
                   <td style={{ textAlign: 'center', fontWeight: '500' }}>
                     {startIndex + index + 1}
                   </td>
@@ -102,24 +150,6 @@ const CompanyTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
                     }}>
                       {company.cstatus ? 'Active' : 'Inactive'}
                     </span>
-                  </td>
-                  <td>
-                    <div className={styles.actionCell}>
-                      <button 
-                        onClick={() => onEdit(company)} 
-                        title="Edit Company"
-                        className={styles.editBtn}
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button 
-                        onClick={() => onDelete(company.id)} 
-                        title="Delete Company"
-                        className={styles.deleteBtn}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
                   </td>
                 </tr>
               ))
