@@ -137,6 +137,7 @@ const KycUpdatePage = () => {
 
       {/* KYC form and sub-grid table card */}
       <KycForm
+        activeEmployee={activeEmployee}
         kycDetails={localKycDetails}
         onAddKyc={handleAddKyc}
         onRemoveKyc={handleRemoveKyc}

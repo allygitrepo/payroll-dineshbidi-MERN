@@ -8,7 +8,7 @@ import styles from './FaceAttendanceSelfPage.module.css';
 const getPhotoUrl = (photoPath) => {
   if (!photoPath) return null;
   if (photoPath.startsWith('data:image')) return photoPath;
-  
+
   const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/payroll/v1/';
   const cleanBase = apiBase.replace(/\/v1\/?$/, '/');
   return `${cleanBase}${photoPath}`;
@@ -24,7 +24,7 @@ const FaceAttendanceSelfPage = () => {
   const [scannedResult, setScannedResult] = useState(null);
   const [gpsCoords, setGpsCoords] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   // Bulk Scan States
   const [isBulkActive, setIsBulkActive] = useState(false);
   const [bulkLog, setBulkLog] = useState([]);
@@ -174,7 +174,7 @@ const FaceAttendanceSelfPage = () => {
     setErrorMsg('');
     setGpsCoords('');
     await startCamera();
-    
+
     // Auto-trigger scanning loop
     setTimeout(() => {
       triggerScan();
@@ -185,15 +185,15 @@ const FaceAttendanceSelfPage = () => {
     if (!videoRef.current) return;
     setIsProcessing(true);
     setStatus('Scanning face & acquiring GPS...');
-    
+
     // Acquire GPS location simultaneously
     const locationPromise = getGeoLocation();
-    
+
     let faceDescriptor = null;
     let photoData = null;
     let attempts = 0;
     let multipleFacesDetected = false;
-    
+
     // Try to detect a face in 10 frames
     while (attempts < 10) {
       try {
@@ -237,7 +237,7 @@ const FaceAttendanceSelfPage = () => {
       setStatus('Matching face with registered employees...');
       // 1. Send descriptor to backend recognize API
       const recognizeResponse = await faceService.recognize(faceDescriptor);
-      
+
       if (!recognizeResponse.data?.data?.matched) {
         if (recognizeResponse.data?.data?.ambiguous) {
           setErrorMsg('Face match is ambiguous. Please scan again.');
@@ -445,7 +445,6 @@ const FaceAttendanceSelfPage = () => {
   return (
     <div className={styles.wrapper}>
       <div className={styles.header}>
-        <Sparkles size={24} style={{ color: 'var(--primary)' }} />
         <h2 className={styles.title}>Self-Attendance Terminal</h2>
       </div>
 
@@ -467,7 +466,7 @@ const FaceAttendanceSelfPage = () => {
                 <h4 className={styles.panelTitle} style={{ alignSelf: 'stretch', textAlign: 'center', fontSize: '1.25rem', marginBottom: '20px', color: 'var(--primary)', paddingBottom: '10px', borderBottom: '1px solid var(--border)' }}>
                   Clocking Match Result
                 </h4>
-                
+
                 <div className={styles.resultDetails} style={{ width: '100%' }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
                     <div className={styles.resultPhotoFrame}>
@@ -621,7 +620,7 @@ const FaceAttendanceSelfPage = () => {
                   {bulkLog.length} Scans
                 </span>
               </h3>
-              
+
               <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {bulkLog.length === 0 ? (
                   <div className={styles.emptyPanel}>

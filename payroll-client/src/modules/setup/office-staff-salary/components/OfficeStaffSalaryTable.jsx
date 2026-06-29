@@ -30,8 +30,12 @@ const OfficeStaffSalaryTable = ({ data, searchTerm, onSearchChange, onEdit, onDe
 
   return (
     <div className={styles.tableCard}>
-      {/* Search Controls right-aligned */}
-      <div className={styles.tableControls} style={{ justifyContent: 'flex-end' }}>
+      {/* Table controls containing Total Records count on left, Search on right */}
+      <div className={styles.tableControls}>
+        <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+          Total Office Staff Salary: {totalEntries}
+        </div>
+
         <div className={styles.searchWrapper}>
           <Search size={16} className={styles.searchIcon} />
           <input

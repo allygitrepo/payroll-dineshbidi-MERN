@@ -591,6 +591,38 @@ const AttendanceListPage = () => {
     setIsImageModalOpen(true);
   };
 
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+      
+      if (currentPage <= 3) {
+        end = 4;
+      }
+      if (currentPage >= totalPages - 2) {
+        start = totalPages - 3;
+      }
+      
+      if (start > 2) {
+        pages.push('...');
+      }
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      if (end < totalPages - 1) {
+        pages.push('...');
+      }
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
   return (
     <div className={styles.pageContainer}>
       {/* Main Page Header */}
@@ -631,36 +663,34 @@ const AttendanceListPage = () => {
         {/* Toolbar */}
         <div className={styles.toolbar}>
           <div className={styles.leftControls}>
+            <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem', marginRight: '10px' }}>
+              Total Records: {filteredRecords.length}
+            </div>
+
             {/* Calendar Date Picker Filter */}
             <div className={styles.dateFilter}>
-              <span className={styles.controlLabel}>
-                <Calendar size={14} style={{ marginRight: '4px', verticalAlign: 'middle', color: 'var(--primary)' }} />
-                Date Filter
-              </span>
-              <div className={styles.dateInputWrapper}>
-                <DatePicker
-                  name="selectedDate"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className={styles.datePickerInput}
-                />
-                <button
-                  type="button"
-                  className={`${styles.quickBtn} ${selectedDate === todayStr ? styles.activeQuickBtn : ''}`}
-                  onClick={() => setSelectedDate(todayStr)}
-                  title="Go to Today"
-                >
-                  Today
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.quickBtn} ${!selectedDate ? styles.activeQuickBtn : ''}`}
-                  onClick={() => setSelectedDate('')}
-                  title="Show All Dates"
-                >
-                  All
-                </button>
-              </div>
+              <DatePicker
+                name="selectedDate"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className={styles.datePickerInput}
+              />
+              <button
+                type="button"
+                className={`${styles.quickBtn} ${selectedDate === todayStr ? styles.activeQuickBtn : ''}`}
+                onClick={() => setSelectedDate(todayStr)}
+                title="Go to Today"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                className={`${styles.quickBtn} ${!selectedDate ? styles.activeQuickBtn : ''}`}
+                onClick={() => setSelectedDate('')}
+                title="Show All Dates"
+              >
+                All
+              </button>
             </div>
 
             {/* Category Selector */}
@@ -835,15 +865,34 @@ const AttendanceListPage = () => {
           >
             Previous
           </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              className={`${styles.pageBtn} ${currentPage === p ? styles.activePageBtn : ''}`}
-              onClick={() => setCurrentPage(p)}
-            >
-              {p}
-            </button>
-          ))}
+          {getPageNumbers().map((p, idx) => {
+            if (p === '...') {
+              return (
+                <span
+                  key={`dots-${idx}`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    color: 'var(--text-muted)',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  ...
+                </span>
+              );
+            }
+            return (
+              <button
+                key={p}
+                className={`${styles.pageBtn} ${currentPage === p ? styles.activePageBtn : ''}`}
+                onClick={() => setCurrentPage(p)}
+              >
+                {p}
+              </button>
+            );
+          })}
           <button
             onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
             disabled={currentPage === totalPages || totalPages === 0}

@@ -228,7 +228,7 @@ class EmployeeService {
         // 2. Validate Uniqueness
         await validateUniqueness(employeeData);
 
-        // 3. Normalize strings (Uppercase Enforcement)
+        // 3. Normalize strings (Uppercase Enforcement & ID lowercase normalization)
         const toUpper = (obj) => {
             if (!obj) return;
             for (const key in obj) {
@@ -493,7 +493,7 @@ class EmployeeService {
         // Validate uniqueness excluding this employee
         await validateUniqueness({ ...employee.toJSON(), ...updateData }, id);
 
-        // Normalize strings (Uppercase Enforcement)
+        // Normalize strings (Uppercase Enforcement & ID lowercase normalization)
         const toUpper = (obj) => {
             if (!obj) return;
             for (const key in obj) {

@@ -290,7 +290,27 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
   // KYC Helpers
   const handleKycInputChange = (e) => {
     const { name, value } = e.target;
-    setKycInput((prev) => ({ ...prev, [name]: value }));
+    if (name === 'documentType') {
+      if (value === 'AADHAAR') {
+        setKycInput({
+          documentType: value,
+          documentNumber: formData.aadhaarCard || '',
+          nameAsPerDocument: formData.memberName || '',
+          ifsc: '',
+          kycImage: ''
+        });
+      } else {
+        setKycInput({
+          documentType: value,
+          documentNumber: '',
+          nameAsPerDocument: '',
+          ifsc: '',
+          kycImage: ''
+        });
+      }
+    } else {
+      setKycInput((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleKycFileChange = (e) => {
@@ -527,10 +547,10 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     const tempErrors = {};
     const personalFields = [
-      'uan', 'memberName', 'gender', 'dateOfJoining', 
+      'uan', 'memberName', 'gender', 'dateOfJoining',
       'address', 'postOffice', 'district', 'pincode'
     ];
 
@@ -669,12 +689,12 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
             <div className={styles.field}>
               <label className={styles.label}>Date Of Birth As Per Aadhaar</label>
-            <DatePicker
-              name="dob"
-              value={formData.dob}
-              onChange={handleChange}
-            />
-            {errors.dob && <span className={styles.errorText}>{errors.dob}</span>}
+              <DatePicker
+                name="dob"
+                value={formData.dob}
+                onChange={handleChange}
+              />
+              {errors.dob && <span className={styles.errorText}>{errors.dob}</span>}
             </div>
 
             <div className={styles.field}>
@@ -989,7 +1009,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
           <div>
             <div className={styles.inlineRow}>
               <div className={styles.inlineField}>
-                <label className={styles.label}>Document Type *</label>
+                <label className={styles.label}>Document Type <span className={styles.required}>*</span></label>
                 <select
                   name="documentType"
                   value={kycInput.documentType}
@@ -1004,7 +1024,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
               </div>
 
               <div className={styles.inlineField}>
-                <label className={styles.label}>Document Number *</label>
+                <label className={styles.label}>Document Number <span className={styles.required}>*</span></label>
                 <input
                   type="text"
                   name="documentNumber"
@@ -1016,7 +1036,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
               </div>
 
               <div className={styles.inlineField}>
-                <label className={styles.label}>Name as Per Document *</label>
+                <label className={styles.label}>Name as Per Document <span className={styles.required}>*</span></label>
                 <input
                   type="text"
                   name="nameAsPerDocument"
@@ -1028,7 +1048,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
               </div>
 
               <div className={styles.inlineField}>
-                <label className={styles.label}>IFSC *</label>
+                <label className={styles.label}>IFSC <span className={styles.required}>*</span></label>
                 <input
                   type="text"
                   name="ifsc"
@@ -1228,7 +1248,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
                   }
                   if (age < 18) isMinor = true;
                 }
-                
+
                 if (!isMinor) return null;
 
                 return (

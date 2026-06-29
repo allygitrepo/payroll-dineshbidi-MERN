@@ -26,8 +26,12 @@ const UserManagementTable = ({ data, searchTerm, onSearchChange, onEdit, onDelet
 
   return (
     <div className={styles.tableCard}>
-      {/* Table Top Controls Bar */}
-      <div className={styles.tableControls} style={{ justifyContent: 'flex-end' }}>
+      {/* Table controls containing Total Records count on left, Search on right */}
+      <div className={styles.tableControls}>
+        <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+          Total Users: {totalEntries}
+        </div>
+
         {/* Local Search box */}
         <div className={styles.searchWrapper}>
           <Search size={16} className={styles.searchIcon} />

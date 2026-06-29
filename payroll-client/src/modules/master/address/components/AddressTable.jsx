@@ -23,43 +23,21 @@ const AddressTable = ({ data, searchTerm, onSearchChange, statusFilter, onStatus
   return (
     <div className={styles.tableCard}>
       {/* Table controls (Status Filter on left, Search on right) */}
+      {/* Table controls containing Total Addresses on left, Search on right */}
       <div className={styles.tableControls}>
         <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
           Total Addresses: {totalEntries}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <select
-            value={statusFilter}
-            onChange={(e) => onStatusFilterChange(e.target.value)}
-            className={styles.limitSelect}
-            style={{
-              height: '42px',
-              padding: '0 14px',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              outline: 'none',
-              backgroundColor: 'var(--card-bg)',
-              color: 'var(--text-primary)',
-              fontSize: '0.9rem',
-              cursor: 'pointer'
-            }}
-          >
-            <option value="Active">ACTIVE</option>
-            <option value="Inactive">INACTIVE</option>
-            <option value="All">ALL STATUSES</option>
-          </select>
-
-          <div className={styles.searchWrapper}>
-            <Search size={16} className={styles.searchIcon} />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search..."
-              className={styles.searchInput}
-            />
-          </div>
+        <div className={styles.searchWrapper}>
+          <Search size={16} className={styles.searchIcon} />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search..."
+            className={styles.searchInput}
+          />
         </div>
       </div>
 
@@ -86,7 +64,7 @@ const AddressTable = ({ data, searchTerm, onSearchChange, statusFilter, onStatus
               </tr>
             ) : (
               paginatedData.map((addr, index) => (
-                <tr 
+                <tr
                   key={addr.id}
                   onClick={() => onEdit(addr)}
                   style={{ cursor: 'pointer' }}
