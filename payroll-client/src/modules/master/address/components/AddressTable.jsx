@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Edit, Trash2, Search } from 'lucide-react';
 import styles from './AddressPage.module.css';
 
-const AddressTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) => {
+const AddressTable = ({ data, searchTerm, onSearchChange, statusFilter, onStatusFilterChange, onEdit, onDelete }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -22,17 +22,44 @@ const AddressTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
 
   return (
     <div className={styles.tableCard}>
-      {/* Table controls (Search on right) */}
-      <div className={styles.tableControls} style={{ justifyContent: 'flex-end' }}>
-        <div className={styles.searchWrapper}>
-          <Search size={16} className={styles.searchIcon} />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search..."
-            className={styles.searchInput}
-          />
+      {/* Table controls (Status Filter on left, Search on right) */}
+      <div className={styles.tableControls}>
+        <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+          Total Addresses: {totalEntries}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <select
+            value={statusFilter}
+            onChange={(e) => onStatusFilterChange(e.target.value)}
+            className={styles.limitSelect}
+            style={{
+              height: '42px',
+              padding: '0 14px',
+              borderRadius: '8px',
+              border: '1px solid var(--border)',
+              outline: 'none',
+              backgroundColor: 'var(--card-bg)',
+              color: 'var(--text-primary)',
+              fontSize: '0.9rem',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="Active">ACTIVE</option>
+            <option value="Inactive">INACTIVE</option>
+            <option value="All">ALL STATUSES</option>
+          </select>
+
+          <div className={styles.searchWrapper}>
+            <Search size={16} className={styles.searchIcon} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search..."
+              className={styles.searchInput}
+            />
+          </div>
         </div>
       </div>
 
@@ -41,12 +68,13 @@ const AddressTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
         <table className={styles.table}>
           <thead>
             <tr>
+              <th style={{ width: '100px', textAlign: 'center' }}>Action</th>
               <th style={{ width: '60px', textAlign: 'center' }}>Sr. No.</th>
               <th>Address</th>
               <th>Postoffice</th>
               <th>District</th>
               <th>Pincode</th>
-              <th style={{ width: '100px', textAlign: 'center' }}>Action</th>
+              <th style={{ textAlign: 'center' }}>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -58,17 +86,12 @@ const AddressTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
               </tr>
             ) : (
               paginatedData.map((addr, index) => (
-                <tr key={addr.id}>
-                  <td style={{ textAlign: 'center', fontWeight: '500' }}>
-                    {startIndex + index + 1}
-                  </td>
-                  <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
-                    {addr.address}
-                  </td>
-                  <td>{addr.postOffice}</td>
-                  <td>{addr.district}</td>
-                  <td>{addr.pincode}</td>
-                  <td>
+                <tr 
+                  key={addr.id}
+                  onClick={() => onEdit(addr)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <td onClick={(e) => e.stopPropagation()}>
                     <div className={styles.actionCell}>
                       <button
                         onClick={() => onEdit(addr)}
@@ -78,13 +101,37 @@ const AddressTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
                         <Edit size={14} />
                       </button>
                       <button
-                        onClick={() => onDelete(addr.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(addr.id);
+                        }}
                         title="Delete Address"
                         className={styles.deleteBtn}
                       >
                         <Trash2 size={14} />
                       </button>
                     </div>
+                  </td>
+                  <td style={{ textAlign: 'center', fontWeight: '500' }}>
+                    {startIndex + index + 1}
+                  </td>
+                  <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                    {addr.address}
+                  </td>
+                  <td>{addr.postOffice}</td>
+                  <td>{addr.district}</td>
+                  <td>{addr.pincode}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.8rem',
+                      fontWeight: '600',
+                      backgroundColor: addr.status === 'Active' ? '#dcfce7' : '#fee2e2',
+                      color: addr.status === 'Active' ? '#16a34a' : '#ef4444'
+                    }}>
+                      {addr.status}
+                    </span>
                   </td>
                 </tr>
               ))

@@ -5,7 +5,8 @@ const mapToFrontend = (a) => ({
   address: a.address,
   postOffice: a.post_office,
   district: a.district,
-  pincode: a.pincode
+  pincode: a.pincode,
+  status: a.status ? 'Active' : 'Inactive'
 });
 
 const mapToBackend = (a, companyId) => ({
@@ -13,7 +14,8 @@ const mapToBackend = (a, companyId) => ({
   address: a.address,
   post_office: a.postOffice,
   district: a.district,
-  pincode: a.pincode
+  pincode: a.pincode,
+  status: a.status === 'Active'
 });
 
 export const getAddresses = async (companyId) => {

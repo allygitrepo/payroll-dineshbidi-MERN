@@ -13,6 +13,7 @@ const AddressPage = () => {
 
   // Search filter and download dropdown states
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Active');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Confirm delete states
@@ -110,9 +111,15 @@ const AddressPage = () => {
     setEditingAddress(null);
   };
 
-  // Filtered address list based on search keyword
+  // Filtered address list based on search keyword and status
   const filteredAddresses = useMemo(() => {
     return addresses.filter((addr) => {
+      // 1. Status Filter
+      if (statusFilter !== 'All' && addr.status !== statusFilter) {
+        return false;
+      }
+      
+      // 2. Keyword Search
       const search = searchTerm.toLowerCase();
       return (
         (addr.address && addr.address.toLowerCase().includes(search)) ||
@@ -121,7 +128,7 @@ const AddressPage = () => {
         (addr.pincode && addr.pincode.toLowerCase().includes(search))
       );
     });
-  }, [addresses, searchTerm]);
+  }, [addresses, searchTerm, statusFilter]);
 
   // Export alerts
   const handleExportClick = (type) => {
@@ -188,6 +195,8 @@ const AddressPage = () => {
         data={filteredAddresses}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
       />

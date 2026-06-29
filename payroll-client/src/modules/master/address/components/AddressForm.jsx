@@ -10,7 +10,8 @@ const AddressForm = ({ address, onSave, onCancel }) => {
     address: '',
     postOffice: '',
     district: '',
-    pincode: ''
+    pincode: '',
+    isActive: true
   });
 
   const [errors, setErrors] = useState({});
@@ -18,14 +19,18 @@ const AddressForm = ({ address, onSave, onCancel }) => {
   useEffect(() => {
     setErrors({});
     if (address) {
-      setFormData(address);
+      setFormData({
+        ...address,
+        isActive: address.status === 'Active'
+      });
     } else {
       setFormData({
         id: '',
         address: '',
         postOffice: '',
         district: '',
-        pincode: ''
+        pincode: '',
+        isActive: true
       });
     }
   }, [address]);
@@ -35,8 +40,8 @@ const AddressForm = ({ address, onSave, onCancel }) => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    let finalValue = value;
+    const { name, value, type, checked } = e.target;
+    let finalValue = type === 'checkbox' ? checked : value;
 
     setFormData((prev) => ({ ...prev, [name]: finalValue }));
 
@@ -69,7 +74,13 @@ const AddressForm = ({ address, onSave, onCancel }) => {
       return;
     }
 
-    onSave(formData);
+    const payload = {
+      ...formData,
+      status: formData.isActive ? 'Active' : 'Inactive'
+    };
+    delete payload.isActive;
+
+    onSave(payload);
     // Reset form if creating new
     if (!address) {
       setFormData({
@@ -77,7 +88,8 @@ const AddressForm = ({ address, onSave, onCancel }) => {
         address: '',
         postOffice: '',
         district: '',
-        pincode: ''
+        pincode: '',
+        isActive: true
       });
       setErrors({});
     }
@@ -144,6 +156,28 @@ const AddressForm = ({ address, onSave, onCancel }) => {
               className={styles.input}
             />
             {errors.pincode && <span className={styles.errorText}>{errors.pincode}</span>}
+          </div>
+
+          {/* Status (Active) */}
+          <div className={styles.field} style={{ justifyContent: 'center', alignItems: 'flex-start' }}>
+            <label className={styles.label} style={{ marginBottom: '6px' }}>Status</label>
+            <div className={styles.toggleContainer} style={{ marginTop: '0' }}>
+              <label className={styles.toggleSwitch}>
+                <input
+                  type="checkbox"
+                  name="isActive"
+                  checked={formData.isActive}
+                  onChange={handleChange}
+                />
+                <span className={styles.toggleSlider}></span>
+              </label>
+              <span 
+                className={styles.toggleLabel}
+                style={{ color: formData.isActive ? 'var(--primary)' : '#ef4444' }}
+              >
+                {formData.isActive ? 'ACTIVE' : 'INACTIVE'}
+              </span>
+            </div>
           </div>
         </div>
 

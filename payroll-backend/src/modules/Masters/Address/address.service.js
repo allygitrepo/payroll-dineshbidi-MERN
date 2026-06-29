@@ -61,7 +61,7 @@ class AddressService {
         await verifyCompanyAccess(companyId, user);
 
         const addresses = await Address.findAll({
-            where: { company_id: companyId, status: true },
+            where: { company_id: companyId },
             order: [["createdAt", "DESC"]],
         });
         return addresses;
@@ -72,7 +72,7 @@ class AddressService {
      */
     static async getAddressById(id, user) {
         const address = await Address.findOne({
-            where: { id, status: true },
+            where: { id },
             include: [
                 {
                     model: Company,
@@ -108,7 +108,7 @@ class AddressService {
      */
     static async updateAddress(id, user, updateData) {
         const address = await Address.findOne({
-            where: { id, status: true },
+            where: { id },
             include: [
                 {
                     model: Company,
@@ -153,7 +153,7 @@ class AddressService {
      */
     static async deleteAddress(id, user) {
         const address = await Address.findOne({
-            where: { id, status: true },
+            where: { id },
             include: [
                 {
                     model: Company,
@@ -181,7 +181,7 @@ class AddressService {
             }
         }
 
-        await address.update({ status: false });
+        await address.destroy();
         return true;
     }
 }
