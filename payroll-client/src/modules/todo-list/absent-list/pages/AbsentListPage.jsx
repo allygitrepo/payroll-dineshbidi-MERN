@@ -482,32 +482,11 @@ const AbsentListPage = () => {
           </div>
 
           <div className={styles.pagination}>
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1 || isLoading}
-              className={styles.pageBtn}
-            >
-              Previous
-            </button>
-
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
-                disabled={isLoading}
-              >
-                {i + 1}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages || isLoading}
-              className={styles.pageBtn}
-            >
-              Next
-            </button>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </div>
       </div>

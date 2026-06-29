@@ -141,32 +141,12 @@ const UserManagementTable = ({ data, searchTerm, onSearchChange, onEdit, onDelet
         </div>
 
         <div className={styles.pagination}>
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className={styles.pageBtn}
-          >
-            Previous
-          </button>
-          
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => handlePageChange(i + 1)}
-              className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className={styles.pageBtn}
-          >
-            Next
-          </button>
-        </div>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
       </div>
     </div>
   );

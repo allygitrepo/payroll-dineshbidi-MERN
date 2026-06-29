@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
-import { useToast, DatePicker } from '../../../../shared/components';
+import { useToast, DatePicker, Pagination } from '../../../../shared/components';
 import Input from '../../../../shared/components/Input/Input';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import styles from '../components/KycExportPage.module.css';
@@ -434,31 +434,11 @@ const KycExportPage = () => {
             <div className={styles.pageInfo}>
               Showing {startIndex + 1} to {endIndex} of {totalEntries} entries
             </div>
-            <div className={styles.pageControls}>
-              <button 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                Prev
-              </button>
-              <div className={styles.pageNumbers}>
-                {Array.from({ length: totalPages }).map((_, idx) => (
-                  <button 
-                    key={idx + 1}
-                    className={currentPage === idx + 1 ? styles.activePage : ''}
-                    onClick={() => setCurrentPage(idx + 1)}
-                  >
-                    {idx + 1}
-                  </button>
-                ))}
-              </div>
-              <button 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </button>
-            </div>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </div>

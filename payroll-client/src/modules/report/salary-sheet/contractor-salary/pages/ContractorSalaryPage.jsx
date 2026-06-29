@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer, ChevronDown, Check, X, CalendarDays, Users } from 'lucide-react';
-import { useToast, MonthYearPicker } from '../../../../../shared/components';
+import { useToast, MonthYearPicker, Pagination } from '../../../../../shared/components';
 import { fetchContractorSalarySheet } from '../services/contractorSalaryReportService';
 import { getContractors } from '../../../../master/contractor/services/contractorService';
 import styles from '../components/ContractorSalaryPage.module.css';
@@ -505,15 +505,11 @@ const ContractorSalaryPage = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} style={{ padding: '6px 12px', border: '1px solid var(--border)', borderRadius: '4px', background: currentPage === 1 ? 'var(--surface-50)' : '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}>Previous</button>
-              {Array.from({ length: totalPages }).map((_, i) => (
-                <button key={i} onClick={() => setCurrentPage(i + 1)} style={{ padding: '6px 12px', border: '1px solid var(--border)', borderRadius: '4px', background: currentPage === i + 1 ? 'var(--primary)' : '#fff', color: currentPage === i + 1 ? '#fff' : 'inherit', cursor: 'pointer' }}>
-                  {i + 1}
-                </button>
-              ))}
-              <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} style={{ padding: '6px 12px', border: '1px solid var(--border)', borderRadius: '4px', background: currentPage === totalPages ? 'var(--surface-50)' : '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}>Next</button>
-            </div>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </div>
       )}
