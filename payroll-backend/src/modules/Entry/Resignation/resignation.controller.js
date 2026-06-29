@@ -131,7 +131,7 @@ exports.getEmployeeByUan = async (req, res) => {
         }
 
         const employee = await Employee.findOne({
-            where: { company_id, uan },
+            where: { company_id, uan, status: true },
             attributes: ['uan', 'name', 'father_or_husband_name', 'member_id']
         });
 

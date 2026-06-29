@@ -49,8 +49,9 @@ const BidiRollerEntryPage = () => {
       if (companyId) {
         try {
           const list = await getContractors(companyId);
+          const activeList = list.filter(c => c.status === 'Active');
           const selfContractor = { id: 'SELF', name: 'SELF', pfCode: 'N/A' };
-          const extendedList = [selfContractor, ...list];
+          const extendedList = [selfContractor, ...activeList];
           setContractorsList(extendedList);
           setSelectedContractors(extendedList.map(c => c.id));
         } catch (error) {
