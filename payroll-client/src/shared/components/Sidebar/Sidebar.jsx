@@ -210,7 +210,7 @@ const Sidebar = ({ sidebarCollapsed }) => {
 
   useEffect(() => {
     if (activeMenu) {
-      setExpandedMenus(prev => ({ ...prev, [activeMenu]: true }));
+      setExpandedMenus({ [activeMenu]: true });
     }
     if (activeMenu && activeSubMenu) {
       const matchedMenuItem = menuItems.find(item => item.name === activeMenu);
@@ -219,7 +219,7 @@ const Sidebar = ({ sidebarCollapsed }) => {
           sub.nestedItems && sub.nestedItems.some(nested => nested.name === activeSubMenu)
         );
         if (parentSub) {
-          setExpandedSubMenus(prev => ({ ...prev, [parentSub.name]: true }));
+          setExpandedSubMenus({ [parentSub.name]: true });
         }
       }
     }
@@ -302,10 +302,10 @@ const Sidebar = ({ sidebarCollapsed }) => {
                 <button
                   className={`${styles.sidebarItem} ${isActive ? styles.activeItem : ''}`}
                   onClick={() => {
-                    setExpandedMenus(prev => ({
-                      ...prev,
-                      [item.name]: !prev[item.name]
-                    }));
+                    setExpandedMenus(prev => {
+                      if (prev[item.name]) return {};
+                      return { [item.name]: true };
+                    });
                   }}
                 >
                   <IconComp size={18} className={styles.sidebarIcon} />
@@ -331,9 +331,11 @@ const Sidebar = ({ sidebarCollapsed }) => {
                 </RouterLink>
               )}
 
-              {hasSubItems && isExpanded && !sidebarCollapsed && (
-                <div className={styles.subMenuContainer}>
-                  {item.subItems.map(sub => {
+              {hasSubItems && !sidebarCollapsed && (
+                <div className={`${styles.subMenuWrapper} ${isExpanded ? styles.expanded : ''}`}>
+                  <div className={styles.subMenuInner}>
+                    <div className={styles.subMenuContainer}>
+                      {item.subItems.map(sub => {
                     const isSubActive = activeSubMenu === sub.name;
                     const SubIcon = sub.icon;
                     const hasNestedItems = !!sub.nestedItems;
@@ -346,10 +348,10 @@ const Sidebar = ({ sidebarCollapsed }) => {
                           <button
                             className={`${styles.subItem} ${isSubActive ? styles.activeSubItem : ''} ${styles.formParentSubItem}`}
                             onClick={() => {
-                              setExpandedSubMenus(prev => ({
-                                ...prev,
-                                [sub.name]: !prev[sub.name]
-                              }));
+                              setExpandedSubMenus(prev => {
+                                if (prev[sub.name]) return {};
+                                return { [sub.name]: true };
+                              });
                             }}
                           >
                             <ChevronRight
@@ -368,9 +370,11 @@ const Sidebar = ({ sidebarCollapsed }) => {
                           </RouterLink>
                         )}
 
-                        {hasNestedItems && isSubExpanded && (
-                          <div className={styles.nestedMenuContainer}>
-                            {sub.nestedItems.map(nested => {
+                        {hasNestedItems && (
+                          <div className={`${styles.nestedMenuWrapper} ${isSubExpanded ? styles.expanded : ''}`}>
+                            <div className={styles.nestedMenuInner}>
+                              <div className={styles.nestedMenuContainer}>
+                                {sub.nestedItems.map(nested => {
                               const isNestedActive = activeSubMenu === nested.name;
                               const NestedIcon = nested.icon;
                               const nestedPath = `/${nameToSlug(item.name)}/${nameToSlug(nested.name)}`;
@@ -386,11 +390,15 @@ const Sidebar = ({ sidebarCollapsed }) => {
                                 </RouterLink>
                               );
                             })}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
                     );
                   })}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

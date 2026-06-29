@@ -108,6 +108,20 @@
   transform: rotate(90deg);
 }
 
+.subMenuWrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.subMenuWrapper.expanded {
+  grid-template-rows: 1fr;
+}
+
+.subMenuInner {
+  overflow: hidden;
+}
+
 .subMenuContainer {
   display: flex;
   flex-direction: column;
@@ -172,6 +186,20 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+}
+
+.nestedMenuWrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nestedMenuWrapper.expanded {
+  grid-template-rows: 1fr;
+}
+
+.nestedMenuInner {
+  overflow: hidden;
 }
 
 .nestedMenuContainer {
