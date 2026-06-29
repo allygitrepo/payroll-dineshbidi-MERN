@@ -97,3 +97,42 @@
   border-color: var(--danger);
   color: var(--danger);
 }
+
+.companyDropdownWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: transparent;
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 8px;
+  margin-right: 8px;
+  transition: all 0.2s ease;
+}
+
+.companyDropdownWrapper:hover {
+  border-color: var(--primary);
+}
+
+.companyIcon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.companySelect {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  max-width: 250px;
+  text-overflow: ellipsis;
+  padding: 2px 0;
+}
+
+.companySelect:focus {
+  outline: none;
+}
+
