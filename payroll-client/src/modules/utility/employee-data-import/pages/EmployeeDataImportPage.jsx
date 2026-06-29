@@ -250,6 +250,7 @@ const EmployeeDataImportPage = () => {
             nationality: String(row['Nationality'] || 'INDIAN'),
             pmrpy: (row['PMRPY'] || 'NO').toUpperCase(),
             address_id: defaultAddressId,
+            status: (String(row['Status'] || '1').trim() === '0' || String(row['Status'] || '').trim().toUpperCase() === 'INACTIVE') ? 'Inactive' : 'Active',
             kycDetails: [
               { documentType: 'PAN', documentNumber: row['PAN'] || '' },
               { documentType: 'BANK PASSBOOK', documentNumber: row['Bank Account Number'] || '', ifsc: row['Bank IFSC'] || '' }
@@ -422,19 +423,19 @@ const EmployeeDataImportPage = () => {
         'Type Of Employee', 'Member Name', 'Gender', 'Date Of Birth', 'Date Of Joining', 
         'Father/Husband Name', 'Relationship', 'Marital Status', 'Mobile Number', 
         'Email Id', 'Aadhaar Number', 'PAN', 'Bank Account Number', 'Nationality', 
-        'PMRPY', 'Bank IFSC', 'Address', 'Post Office', 'District', 'Pincode'
+        'PMRPY', 'Bank IFSC', 'Address', 'Post Office', 'District', 'Pincode', 'Status'
       ],
       [
         '100984728192', '3128471928', '', 'Self', 'BIDI MAKER', 'Dinesh Bidi', 'MALE', 
         '1988-08-15', '2018-04-01', 'Ramji Bidi', 'FATHER', 'MARRIED', '9876543210', 
         'test@example.com', '123456789012', 'ABCDE1234F', '123456789', 'INDIAN', 'NO', 'SBIN0001234',
-        'Main Street', 'Central PO', 'City District', '123456'
+        'Main Street', 'Central PO', 'City District', '123456', 1
       ]
     ];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     
     // Set some column widths
-    ws['!cols'] = Array(24).fill({ wch: 20 });
+    ws['!cols'] = Array(25).fill({ wch: 20 });
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Employees");
