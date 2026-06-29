@@ -11,14 +11,14 @@ const formatDate = (dateStr) => {
   return dateStr;
 };
 
-const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeFilterChange, onEdit, onDelete, onToggleAbry }) => {
+const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeFilterChange, selectedStatus, onStatusFilterChange, onEdit, onDelete, onToggleAbry }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Reset pagination if filter changes
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, pageSize, selectedType]);
+  }, [searchTerm, pageSize, selectedType, selectedStatus]);
 
   // Pagination calculations
   const totalEntries = data.length;
@@ -60,6 +60,27 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
             <option value="BIDI ROLLER">BIDI ROLLER</option>
           </select>
 
+          <select
+            value={selectedStatus || ''}
+            onChange={(e) => onStatusFilterChange && onStatusFilterChange(e.target.value)}
+            className={styles.limitSelect}
+            style={{
+              height: '42px',
+              padding: '0 14px',
+              borderRadius: '8px',
+              border: '1px solid var(--border)',
+              outline: 'none',
+              backgroundColor: 'var(--card-bg)',
+              color: 'var(--text-primary)',
+              fontSize: '0.9rem',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="">ALL STATUS</option>
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
+
           <div className={styles.searchWrapper}>
             <Search size={16} className={styles.searchIcon} />
             <input
@@ -78,6 +99,7 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
         <table className={styles.table}>
           <thead>
             <tr>
+              <th style={{ width: '100px', textAlign: 'center' }}>Action</th>
               <th style={{ width: '140px', textAlign: 'center' }}>ABRY Applicable?</th>
               <th>UAN</th>
               <th>IP Number</th>
@@ -85,10 +107,26 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
               <th>Member Name</th>
               <th>Date Of Birth</th>
               <th>DateOfJoining</th>
+              <th>Aadhaar Card</th>
               <th>Gender</th>
               <th>Father/Husband Name</th>
+              <th>Relation</th>
+              <th>Marital Status</th>
+              <th>Mobile</th>
+              <th>Qualification</th>
+              <th>Employee Type</th>
+              <th>Contractor</th>
+              <th>Address</th>
+              <th>Post Office</th>
+              <th>District</th>
+              <th>Pincode</th>
+              <th>Nationality</th>
+              <th>Email</th>
+              <th>Int. Worker</th>
+              <th>Physical Handicap</th>
+              <th>PMRPY</th>
+              <th style={{ width: '100px', textAlign: 'center' }}>Status</th>
               <th style={{ width: '130px', textAlign: 'center' }}>Face Status</th>
-              <th style={{ width: '100px', textAlign: 'center' }}>Action (Edit/Delete)</th>
             </tr>
           </thead>
           <tbody>
@@ -100,26 +138,83 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
               </tr>
             ) : (
               paginatedData.map((employee) => (
-                <tr key={employee.id}>
-                  <td style={{ textAlign: 'center' }}>
+                <tr 
+                  key={employee.id} 
+                  onClick={() => onEdit(employee)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <div className={styles.actionCell}>
+                      <button
+                        onClick={() => onEdit(employee)}
+                        title="Edit Employee"
+                        className={styles.editBtn}
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(employee.id);
+                        }}
+                        title="Delete Employee"
+                        className={styles.deleteBtn}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                  <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={employee.abryApplicable || false}
-                      onChange={() => onToggleAbry && onToggleAbry(employee.id)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        onToggleAbry && onToggleAbry(employee.id);
+                      }}
                       className={styles.checkbox}
                       style={{ cursor: 'pointer' }}
                     />
                   </td>
-                  <td style={{ fontWeight: '500' }}>{employee.uan}</td>
-                  <td>{employee.ipNumber}</td>
+                  <td style={{ fontWeight: '500' }}>{employee.uan || '-'}</td>
+                  <td>{employee.ipNumber || '-'}</td>
                   <td>{employee.memberId || '-'}</td>
                   <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
                     {employee.memberName}
                   </td>
                   <td>{formatDate(employee.dob)}</td>
                   <td>{formatDate(employee.dateOfJoining)}</td>
-                  <td>{employee.gender}</td>
+                  <td>{employee.aadhaarCard || '-'}</td>
+                  <td>{employee.gender || '-'}</td>
                   <td>{employee.fatherHusbandName || '-'}</td>
+                  <td>{employee.relation || '-'}</td>
+                  <td>{employee.maritalStatus || '-'}</td>
+                  <td>{employee.mobile || '-'}</td>
+                  <td>{employee.qualification || '-'}</td>
+                  <td>{employee.employeeType || '-'}</td>
+                  <td>{employee.contractor || '-'}</td>
+                  <td>{employee.address || '-'}</td>
+                  <td>{employee.postOffice || '-'}</td>
+                  <td>{employee.district || '-'}</td>
+                  <td>{employee.pincode || '-'}</td>
+                  <td>{employee.nationality || '-'}</td>
+                  <td>{employee.email || '-'}</td>
+                  <td>{employee.isInternationalWorker || '-'}</td>
+                  <td>{employee.physicalHandicap || '-'}</td>
+                  <td>{employee.pmrpy || '-'}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    <span style={{
+                      backgroundColor: employee.status ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                      color: employee.status ? '#10B981' : '#EF4444',
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      display: 'inline-block'
+                    }}>
+                      {employee.status ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
                   <td style={{ textAlign: 'center' }}>
                     {employee.faceDescriptorPath ? (
                       <span style={{
@@ -146,24 +241,6 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
                         Not Enrolled
                       </span>
                     )}
-                  </td>
-                  <td>
-                    <div className={styles.actionCell}>
-                      <button
-                        onClick={() => onEdit(employee)}
-                        title="Edit Employee"
-                        className={styles.editBtn}
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => onDelete(employee.id)}
-                        title="Delete Employee"
-                        className={styles.deleteBtn}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
                   </td>
                 </tr>
               ))

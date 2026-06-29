@@ -105,6 +105,11 @@ const Employee = sequelize.define(
             allowNull: false,
             defaultValue: false,
         },
+        abry_applicable: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
         status: {
             type: DataTypes.BOOLEAN,
             defaultValue: true,

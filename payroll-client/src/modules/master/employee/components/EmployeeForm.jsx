@@ -60,7 +60,8 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
     nomineeDetails: [],
     familyDetails: [],
     faceDescriptorPath: null,
-    tempFaceDescriptors: null
+    tempFaceDescriptors: null,
+    status: true
   });
 
   // Local Inputs State for nested records addition
@@ -103,7 +104,8 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
         nomineeDetails: employee.nomineeDetails || [],
         familyDetails: employee.familyDetails || [],
         faceDescriptorPath: employee.faceDescriptorPath || null,
-        tempFaceDescriptors: null
+        tempFaceDescriptors: null,
+        status: employee.status !== undefined ? employee.status : true
       });
     } else {
       setFormData({
@@ -138,7 +140,8 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
         nomineeDetails: [],
         familyDetails: [],
         faceDescriptorPath: null,
-        tempFaceDescriptors: null
+        tempFaceDescriptors: null,
+        status: true
       });
     }
   }, [employee]);
@@ -957,6 +960,26 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
                 <option value="NO">NO</option>
                 <option value="YES">YES</option>
               </select>
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label}>Status</label>
+              <div className={styles.toggleContainer}>
+                <label className={styles.toggleSwitch}>
+                  <input
+                    type="checkbox"
+                    checked={formData.status}
+                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.checked }))}
+                  />
+                  <span className={styles.toggleSlider}></span>
+                </label>
+                <span 
+                  className={styles.toggleLabel}
+                  style={{ color: formData.status ? 'var(--primary)' : '#ef4444' }}
+                >
+                  {formData.status ? 'ACTIVE' : 'INACTIVE'}
+                </span>
+              </div>
             </div>
           </div>
         )}

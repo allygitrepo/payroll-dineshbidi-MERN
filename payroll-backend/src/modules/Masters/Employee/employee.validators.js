@@ -117,6 +117,7 @@ const createEmployeeSchema = Joi.object({
     is_international_worker: Joi.boolean().default(false).optional(),
     physical_handicap: Joi.boolean().default(false).optional(),
     pmrpy: Joi.boolean().default(false).optional(),
+    abry_applicable: Joi.boolean().default(false).optional(),
     
     // Nested objects
     kyc_details: kycSchema.optional().default({}),
@@ -164,6 +165,7 @@ const updateEmployeeSchema = Joi.object({
     is_international_worker: Joi.boolean().optional(),
     physical_handicap: Joi.boolean().optional(),
     pmrpy: Joi.boolean().optional(),
+    abry_applicable: Joi.boolean().optional(),
     status: Joi.boolean().optional(),
     
     // Nested updates

@@ -4,7 +4,7 @@ import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Upload 
 import styles from '../components/EmployeePage.module.css';
 import EmployeeForm from '../components/EmployeeForm';
 import EmployeeTable from '../components/EmployeeTable';
-import { getEmployees, saveEmployee, deleteEmployee } from '../services/employeeService';
+import { getEmployees, saveEmployee, deleteEmployee, toggleAbryStatus } from '../services/employeeService';
 import { getAddresses } from '../../address/services/addressService';
 import { getContractors } from '../../contractor/services/contractorService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
@@ -22,6 +22,7 @@ const EmployeePage = () => {
   // Search filter and download dropdown states
   const [searchTerm, setSearchTerm] = useState('');
   const [employeeTypeFilter, setEmployeeTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Confirm delete states
@@ -128,22 +129,25 @@ const EmployeePage = () => {
     }
   };
 
-  const handleToggleAbry = (employeeId) => {
+  const handleToggleAbry = async (employeeId) => {
     const employee = employees.find(e => e.id === employeeId);
     if (!employee) return;
-
-    const updatedEmployee = {
-      ...employee,
-      abryApplicable: !employee.abryApplicable
-    };
-
-    const updatedList = employees.map(e => e.id === employeeId ? updatedEmployee : e);
-    setEmployees(updatedList);
-
-    addToast({
-      type: 'success',
-      message: `ABRY Applicable status toggled for ${employee.memberName}!`
-    });
+    
+    const companyId = localStorage.getItem('selectedCompany');
+    try {
+      const updatedEmployees = await toggleAbryStatus(employeeId, employee.abryApplicable, companyId);
+      setEmployees(updatedEmployees);
+      addToast({
+        type: 'success',
+        message: `ABRY Applicable status toggled for ${employee.memberName}!`
+      });
+    } catch (err) {
+      console.error('Error toggling ABRY status:', err);
+      addToast({
+        type: 'error',
+        message: 'Failed to toggle ABRY status.'
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -157,6 +161,9 @@ const EmployeePage = () => {
       if (employeeTypeFilter && employee.employeeType !== employeeTypeFilter) {
         return false;
       }
+      if (statusFilter === 'ACTIVE' && employee.status === false) return false;
+      if (statusFilter === 'INACTIVE' && employee.status === true) return false;
+      
       const search = searchTerm.toLowerCase();
       return (
         (employee.uan && employee.uan.toLowerCase().includes(search)) ||
@@ -171,7 +178,7 @@ const EmployeePage = () => {
         (employee.pincode && employee.pincode.toLowerCase().includes(search))
       );
     });
-  }, [employees, searchTerm, employeeTypeFilter]);
+  }, [employees, searchTerm, employeeTypeFilter, statusFilter]);
 
   // Export handlers
   const handleExportClick = async (type) => {
@@ -266,6 +273,8 @@ const EmployeePage = () => {
         onSearchChange={setSearchTerm}
         selectedType={employeeTypeFilter}
         onTypeFilterChange={setEmployeeTypeFilter}
+        selectedStatus={statusFilter}
+        onStatusFilterChange={setStatusFilter}
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
         onToggleAbry={handleToggleAbry}
