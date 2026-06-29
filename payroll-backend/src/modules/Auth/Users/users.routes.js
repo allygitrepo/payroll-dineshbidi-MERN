@@ -10,6 +10,7 @@ router.post("/refresh", UsersController.refresh);
 
 // Protected routes (require JWT verification)
 router.post("/logout", authenticateJWT, UsersController.logout);
+router.post("/select-company", authenticateJWT, UsersController.selectCompany);
 router.get("/me", authenticateJWT, UsersController.getProfile);
 router.get("/", authenticateJWT, UsersController.getAll);
 router.put("/:id", authenticateJWT, UsersController.update);

@@ -53,7 +53,8 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
     ptax: '',
     email: '',
     phone: '',
-    website: ''
+    website: '',
+    cstatus: true
   });
 
   const [errors, setErrors] = useState({});
@@ -80,7 +81,8 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
         ptax: '',
         email: '',
         phone: '',
-        website: ''
+        website: '',
+        cstatus: true
       });
     }
   }, [company]);
@@ -505,6 +507,26 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
               className={styles.input}
             />
             {errors.website && <span className={styles.errorText}>{errors.website}</span>}
+          </div>
+
+          <div className={`${styles.field}`} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <label className={styles.label}>
+              Status
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  name="cstatus"
+                  checked={formData.cstatus}
+                  onChange={(e) => setFormData(prev => ({ ...prev, cstatus: e.target.checked }))}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                />
+                <span style={{ marginLeft: '8px', fontWeight: '500', color: formData.cstatus ? '#16a34a' : '#ef4444' }}>
+                  {formData.cstatus ? 'Active' : 'Inactive'}
+                </span>
+              </label>
+            </div>
           </div>
 
         </div>

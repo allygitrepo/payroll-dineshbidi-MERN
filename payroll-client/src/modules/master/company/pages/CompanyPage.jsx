@@ -6,6 +6,7 @@ import CompanyTable from '../components/CompanyTable';
 import { getCompanies, saveCompany, deleteCompany } from '../services/companyService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
+import authService from '../../../auth/services/authService';
 
 const CompanyPage = () => {
   const addToast = useToast();
@@ -91,10 +92,31 @@ const CompanyPage = () => {
 
   const handleSave = async (companyData) => {
     try {
+      const isNew = !companyData.id;
       const updated = await saveCompany(companyData);
       setCompanies(updated);
       setIsFormOpen(false);
       setEditingCompany(null);
+      
+      // Auto-select if it's the first company created
+      if (isNew && !localStorage.getItem('selectedCompany')) {
+        const newCompany = updated.find(c => c.estbId === companyData.estbId) || updated[updated.length - 1];
+        if (newCompany) {
+          try {
+            const res = await authService.selectCompany(newCompany.id);
+            if (res.status || res.success) {
+              localStorage.setItem('accessToken', res.data.accessToken);
+              localStorage.setItem('selectedCompany', newCompany.id);
+              addToast({ type: 'success', message: 'Company created and set as default!' });
+              window.location.reload();
+              return;
+            }
+          } catch (e) {
+            console.error('Failed to auto-select company', e);
+          }
+        }
+      }
+
       addToast({
         type: 'success',
         message: companyData.id ? 'Company updated successfully!' : 'Company created successfully!'

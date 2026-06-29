@@ -61,6 +61,7 @@ const CompanyTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
               <th>District</th>
               <th>Pincode</th>
               <th>PAN</th>
+              <th style={{ textAlign: 'center' }}>Status</th>
               <th style={{ width: '100px', textAlign: 'center' }}>Actions</th>
             </tr>
           </thead>
@@ -90,6 +91,18 @@ const CompanyTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
                   <td>{company.district}</td>
                   <td>{company.pincode}</td>
                   <td>{company.pan}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.8rem',
+                      fontWeight: '600',
+                      backgroundColor: company.cstatus ? '#dcfce7' : '#fee2e2',
+                      color: company.cstatus ? '#16a34a' : '#ef4444'
+                    }}>
+                      {company.cstatus ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
                   <td>
                     <div className={styles.actionCell}>
                       <button 

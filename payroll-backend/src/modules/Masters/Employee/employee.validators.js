@@ -16,9 +16,8 @@ const kycSchema = Joi.object({
 });
 
 const nomineeSchema = Joi.object({
-    address_id: Joi.string().guid().required().messages({
+    address_id: Joi.string().guid().optional().allow(null, "").messages({
         "string.guid": "Nominee Address ID must be a valid UUID.",
-        "any.required": "Nominee Address is required.",
     }),
     name: Joi.string().min(3).max(200).required().messages({
         "string.min": "Nominee Name must be at least 3 characters.",
@@ -68,9 +67,8 @@ const createEmployeeSchema = Joi.object({
         "any.required": "Company ID is required.",
     }),
     contractor_id: Joi.string().guid().optional().allow(null, ""),
-    address_id: Joi.string().guid().required().messages({
+    address_id: Joi.string().guid().optional().allow(null, "").messages({
         "string.guid": "Address ID must be a valid UUID.",
-        "any.required": "Address ID is required.",
     }),
     image_path: Joi.string().optional().allow(null, ""),
     uan: Joi.string().pattern(/^[0-9]{12}$/).required().messages({

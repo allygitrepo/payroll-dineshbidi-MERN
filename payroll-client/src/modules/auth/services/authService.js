@@ -22,6 +22,16 @@ const authService = {
   },
 
   /**
+   * Exchange token for a new one with selected company.
+   */
+  async selectCompany(companyId) {
+    const response = await apiClient.post('users/select-company', {
+      company_id: companyId,
+    });
+    return response.data;
+  },
+
+  /**
    * Log out user from system.
    */
   async logout() {

@@ -28,6 +28,9 @@ const LoginPage = () => {
             label: c.company_name,
           }));
           setCompanyOptions(options);
+          if (options.length === 1) {
+            setCompany(options[0].value);
+          }
         } else {
           addToast({
             type: 'error',
@@ -51,7 +54,7 @@ const LoginPage = () => {
     const newErrors = {};
     if (!username.trim()) newErrors.username = 'User ID is required!';
     if (!password) newErrors.password = 'Password is required!';
-    if (!company) newErrors.company = 'Company is required!';
+    if (companyOptions.length > 0 && !company) newErrors.company = 'Company is required!';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -62,12 +65,16 @@ const LoginPage = () => {
     
     setIsSubmitting(true);
     try {
-      const response = await authService.login(username, password, company);
+      const response = await authService.login(username, password, company || undefined);
       if ((response.status || response.success) && response.data) {
         const { user, accessToken } = response.data;
         localStorage.setItem('accessToken', accessToken);
         localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('selectedCompany', company);
+        if (company) {
+          localStorage.setItem('selectedCompany', company);
+        } else {
+          localStorage.removeItem('selectedCompany');
+        }
         
         addToast({
           type: 'success',

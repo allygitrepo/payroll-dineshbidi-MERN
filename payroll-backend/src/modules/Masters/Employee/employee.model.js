@@ -19,7 +19,7 @@ const Employee = sequelize.define(
         },
         address_id: {
             type: DataTypes.UUID,
-            allowNull: false,
+            allowNull: true,
         },
         image_path: {
             type: DataTypes.STRING(500),

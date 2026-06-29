@@ -27,7 +27,8 @@ const mapToFrontend = (c) => ({
   ptax: c.professional_tax_reg_no || '',
   email: c.email_id,
   phone: c.phone,
-  website: c.website || ''
+  website: c.website || '',
+  cstatus: c.cstatus
 });
 
 const mapToBackend = (c) => ({
@@ -46,7 +47,8 @@ const mapToBackend = (c) => ({
   professional_tax_reg_no: c.ptax || null,
   email_id: c.email,
   phone: c.phone,
-  website: c.website || null
+  website: c.website || null,
+  cstatus: c.cstatus !== undefined ? c.cstatus : true
 });
 
 export const getCompanies = async () => {

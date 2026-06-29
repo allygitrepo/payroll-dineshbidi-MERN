@@ -237,6 +237,71 @@ export const getMissingDetails = async (companyId, fields) => {
 };
 
 export const saveEmployee = async (employee, companyId, addresses = [], contractors = []) => {
+  const safeStr = (str) => (str || '').toString().trim().toLowerCase();
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  const resolveOrCreateAddress = async (addressStr, postOffice, district, pincode) => {
+    if (!addressStr) return null;
+    if (uuidRegex.test(addressStr)) return addressStr;
+    const matchingAddress = addresses.find(a => safeStr(a.address) === safeStr(addressStr));
+    if (matchingAddress) return matchingAddress.id;
+    
+    try {
+      const res = await apiClient.post('addresses', {
+        company_id: companyId,
+        address: addressStr.toUpperCase(),
+        post_office: (postOffice || 'UNKNOWN').toUpperCase(),
+        district: (district || 'UNKNOWN').toUpperCase(),
+        pincode: pincode || '000000',
+        status: true
+      });
+      if (res.data?.data?.id) {
+        // Push to local list to avoid creating duplicates in the same run
+        addresses.push(res.data.data);
+        return res.data.data.id;
+      }
+    } catch (e) {
+      console.error("Failed to auto-create address", e);
+    }
+    return addressStr;
+  };
+
+  const resolveOrCreateContractor = async (contractorStr, addrId) => {
+    if (!contractorStr || safeStr(contractorStr) === 'self') return null;
+    if (uuidRegex.test(contractorStr)) return contractorStr;
+    const matchingContractor = contractors.find(c => safeStr(c.name) === safeStr(contractorStr));
+    if (matchingContractor) return matchingContractor.id;
+
+    try {
+      const res = await apiClient.post('contractors', {
+        company_id: companyId,
+        name: contractorStr.toUpperCase(),
+        address_id: addrId || addresses[0]?.id || null,
+        status: true
+      });
+      if (res.data?.data?.id) {
+        contractors.push(res.data.data);
+        return res.data.data.id;
+      }
+    } catch (e) {
+      console.error("Failed to auto-create contractor", e);
+    }
+    return contractorStr;
+  };
+
+  // Pre-resolve or auto-create related entities
+  employee.address_id = await resolveOrCreateAddress(employee.address || employee.address_id, employee.postOffice, employee.district, employee.pincode);
+  
+  if (employee.contractor && safeStr(employee.contractor) !== 'self') {
+    employee.contractor_id = await resolveOrCreateContractor(employee.contractor, employee.address_id);
+  }
+
+  if (employee.nomineeDetails && employee.nomineeDetails.length > 0) {
+    for (const nom of employee.nomineeDetails) {
+       nom.address_id = await resolveOrCreateAddress(nom.address || nom.address_id, employee.postOffice, employee.district, employee.pincode);
+    }
+  }
+
   const payload = mapToBackend(employee, companyId, addresses, contractors);
   let savedEmpId = employee.id;
   let savedEmpName = employee.memberName;

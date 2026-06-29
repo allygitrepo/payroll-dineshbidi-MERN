@@ -117,6 +117,46 @@ class UsersService {
     }
 
     /**
+     * Select a company and get new tokens.
+     */
+    static async selectCompany(userId, companyId) {
+        const user = await User.findByPk(userId);
+        if (!user || !user.status) {
+            const error = new Error("User not found or inactive.");
+            error.statusCode = 404;
+            error.errorCode = "USER_NOT_FOUND";
+            error.messageToShow = "User not found or inactive.";
+            throw error;
+        }
+
+        // Generate tokens
+        const accessToken = jwt.sign(
+            { id: user.id, user_id: user.user_id, role_id: user.role_id, company_id: companyId },
+            process.env.JWT_ACCESS_SECRET,
+            { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
+        );
+
+        const refreshToken = jwt.sign(
+            { id: user.id, company_id: companyId },
+            process.env.JWT_REFRESH_SECRET,
+            { expiresIn: process.env.REFRESH_EXPIRES_IN || "30d" }
+        );
+
+        // Store refresh token in database
+        const expiresAt = calculateExpiryDate(process.env.REFRESH_EXPIRES_IN || "30d");
+        await RefreshToken.create({
+            user_id: user.id,
+            token: refreshToken,
+            expires_at: expiresAt,
+        });
+
+        return {
+            accessToken,
+            refreshToken,
+        };
+    }
+
+    /**
      * Refreshes access and refresh tokens using Refresh Token Rotation.
      */
     static async refreshSession(token) {

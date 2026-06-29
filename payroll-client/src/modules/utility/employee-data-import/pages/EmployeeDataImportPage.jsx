@@ -4,7 +4,7 @@ import { useToast } from '../../../../shared/components';
 import * as XLSX from 'xlsx';
 import { saveEmployee, getEmployees } from '../../../master/employee/services/employeeService';
 import { getContractors, saveContractor } from '../../../master/contractor/services/contractorService';
-import { getAddresses } from '../../../master/address/services/addressService';
+import { getAddresses, saveAddress } from '../../../master/address/services/addressService';
 import styles from '../components/EmployeeDataImportPage.module.css';
 
 
@@ -179,7 +179,7 @@ const EmployeeDataImportPage = () => {
 
         const existingEmployees = await getEmployees(companyId);
 
-        const summary = { added: [], updated: [], failed: [], missingContractors: new Set() };
+        const summary = { added: [], updated: [], failed: [], missingContractors: new Set(), missingAddresses: new Set() };
 
         for (let i = 0; i < totalRows; i++) {
           const row = jsonData[i];
@@ -195,6 +195,7 @@ const EmployeeDataImportPage = () => {
             email = ''; // Clear invalid email to prevent validation failure
           }
           const contractorName = String(row['Contractor Name'] || 'SELF').trim().toUpperCase();
+          const addressStr = String(row['Address'] || '').trim().toUpperCase();
 
           if (!uan || uan.length !== 12 || !memberName || !dob || !doj) {
             summary.failed.push({ rowNumber: i + 2, name: memberName || 'Unknown', reason: "Missing required fields or invalid date (Name, 12-digit UAN, DOB, DOJ)." });
@@ -205,6 +206,13 @@ const EmployeeDataImportPage = () => {
             const match = contractorsList.find(c => String(c.name).trim().toUpperCase() === contractorName);
             if (!match) {
               summary.missingContractors.add(contractorName);
+            }
+          }
+
+          if (addressStr) {
+            const match = addressesList.find(a => String(a.address).trim().toUpperCase() === addressStr);
+            if (!match) {
+              summary.missingAddresses.add(addressStr);
             }
           }
 
@@ -244,7 +252,8 @@ const EmployeeDataImportPage = () => {
               { documentType: 'BANK PASSBOOK', documentNumber: row['Bank Account Number'] || '', ifsc: row['Bank IFSC'] || '' }
             ].filter(k => k.documentNumber),
             nomineeDetails: [],
-            familyDetails: []
+            familyDetails: [],
+            addressStr
           };
 
           const existingMatch = existingEmployees.find(emp => emp.uan === uan);
@@ -282,8 +291,26 @@ const EmployeeDataImportPage = () => {
     let processed = 0;
     let failCount = 0;
     const failedReasons = [];
-    const { companyId, addressesList } = analysisSummary;
+    const { companyId } = analysisSummary;
+    let addressesList = analysisSummary.addressesList;
     let contractorsList = analysisSummary.contractorsList;
+
+    if (analysisSummary.missingAddresses && analysisSummary.missingAddresses.size > 0) {
+      for (const addrName of analysisSummary.missingAddresses) {
+        try {
+          await saveAddress({
+            address: addrName,
+            postOffice: 'UNKNOWN',
+            district: 'UNKNOWN',
+            pincode: '000000',
+            status: 'Active'
+          }, companyId);
+        } catch (e) {
+          console.error("Failed to auto-create address", e);
+        }
+      }
+      addressesList = await getAddresses(companyId);
+    }
 
     if (analysisSummary.missingContractors && analysisSummary.missingContractors.size > 0) {
       const defaultAddressId = addressesList.length > 0 ? addressesList[0].id : null;
@@ -304,9 +331,21 @@ const EmployeeDataImportPage = () => {
       contractorsList = await getContractors(companyId);
     }
 
+    const defaultAddressId = addressesList.length > 0 ? addressesList[0].id : null;
     const processList = [...analysisSummary.added, ...analysisSummary.updated];
 
     for (const emp of processList) {
+      if (emp.addressStr) {
+        const matchedAddress = addressesList.find(a => String(a.address).trim().toUpperCase() === emp.addressStr);
+        if (matchedAddress) {
+          emp.address_id = matchedAddress.id;
+        } else {
+          emp.address_id = defaultAddressId;
+        }
+      } else {
+        emp.address_id = defaultAddressId;
+      }
+
       try {
         await saveEmployee(emp, companyId, addressesList, contractorsList);
       } catch (err) {
@@ -345,18 +384,19 @@ const EmployeeDataImportPage = () => {
         'Type Of Employee', 'Member Name', 'Gender', 'Date Of Birth', 'Date Of Joining', 
         'Father/Husband Name', 'Relationship', 'Marital Status', 'Mobile Number', 
         'Email Id', 'Aadhaar Number', 'PAN', 'Bank Account Number', 'Nationality', 
-        'PMRPY', 'Bank IFSC'
+        'PMRPY', 'Bank IFSC', 'Address', 'Post Office', 'District', 'Pincode'
       ],
       [
         '100984728192', '3128471928', '', 'Self', 'BIDI MAKER', 'Dinesh Bidi', 'MALE', 
         '1988-08-15', '2018-04-01', 'Ramji Bidi', 'FATHER', 'MARRIED', '9876543210', 
-        'test@example.com', '123456789012', 'ABCDE1234F', '123456789', 'INDIAN', 'NO', 'SBIN0001234'
+        'test@example.com', '123456789012', 'ABCDE1234F', '123456789', 'INDIAN', 'NO', 'SBIN0001234',
+        'Main Street', 'Central PO', 'City District', '123456'
       ]
     ];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     
     // Set some column widths
-    ws['!cols'] = Array(20).fill({ wch: 20 });
+    ws['!cols'] = Array(24).fill({ wch: 20 });
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Employees");
@@ -505,9 +545,14 @@ const EmployeeDataImportPage = () => {
               </div>
             </div>
             
-            {analysisSummary.missingContractors && analysisSummary.missingContractors.size > 0 && (
-              <div style={{ padding: '1rem', background: '#e0f2fe', color: '#0369a1', borderRadius: '4px', marginBottom: '1rem', border: '1px solid #bae6fd' }}>
+            {analysisSummary.missingContractors?.size > 0 && (
+              <div className={styles.notice}>
                 <strong>Notice:</strong> {analysisSummary.missingContractors.size} missing contractors found in the Excel sheet. They will be automatically created in the database during import.
+              </div>
+            )}
+            {analysisSummary.missingAddresses?.size > 0 && (
+              <div className={styles.notice}>
+                <strong>Notice:</strong> {analysisSummary.missingAddresses.size} missing addresses found in the Excel sheet. They will be automatically created in the database during import.
               </div>
             )}
 

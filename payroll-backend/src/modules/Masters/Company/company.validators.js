@@ -54,6 +54,7 @@ const createCompanySchema = Joi.object({
     website: Joi.string().optional().allow(null, ""),
     company_type: Joi.string().optional().allow(null, ""),
     user_id: Joi.string().optional().allow(null, ""),
+    cstatus: Joi.boolean().optional(),
 });
 
 const updateCompanySchema = Joi.object({

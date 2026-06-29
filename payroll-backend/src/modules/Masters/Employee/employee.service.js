@@ -77,6 +77,7 @@ const verifyCompanyOwnership = async (companyId, userId) => {
  * Helper to verify address exists and belongs to the company.
  */
 const verifyAddressAssociation = async (addressId, companyId) => {
+    if (!addressId) return null;
     const address = await Address.findOne({ where: { id: addressId, company_id: companyId, status: true } });
     if (!address) {
         const error = new Error("Address not found.");

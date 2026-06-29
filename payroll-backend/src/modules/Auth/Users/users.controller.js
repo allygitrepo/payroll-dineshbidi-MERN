@@ -110,6 +110,44 @@ class UsersController {
     }
 
     /**
+     * Select a company and get new tokens.
+     */
+    static async selectCompany(req, res) {
+        const { company_id } = req.body;
+        const userId = req.user.id;
+
+        try {
+            const { accessToken, refreshToken } = await UsersService.selectCompany(userId, company_id);
+
+            res.cookie("refreshToken", refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "strict",
+                maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+            });
+
+            return res.status(200).json(
+                successResponse(
+                    "COMPANY_SELECTED",
+                    "Company selected and tokens refreshed.",
+                    "Company selected successfully.",
+                    { accessToken }
+                )
+            );
+        } catch (err) {
+            const statusCode = err.statusCode || 500;
+            const errorCode = err.errorCode || "COMPANY_SELECT_FAILED";
+            return res.status(statusCode).json(
+                errorResponse(
+                    errorCode,
+                    err.message,
+                    err.messageToShow || "Failed to select company."
+                )
+            );
+        }
+    }
+
+    /**
      * Refresh access and refresh tokens.
      */
     static async refresh(req, res) {
