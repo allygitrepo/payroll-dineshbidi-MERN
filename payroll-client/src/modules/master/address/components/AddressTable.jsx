@@ -22,8 +22,12 @@ const AddressTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =>
 
   return (
     <div className={styles.tableCard}>
-      {/* Table controls (Search on right) */}
-      <div className={styles.tableControls} style={{ justifyContent: 'flex-end' }}>
+      {/* Table controls containing Total Addresses on left, Search on right */}
+      <div className={styles.tableControls}>
+        <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+          Total Addresses: {totalEntries}
+        </div>
+
         <div className={styles.searchWrapper}>
           <Search size={16} className={styles.searchIcon} />
           <input
