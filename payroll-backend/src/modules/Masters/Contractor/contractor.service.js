@@ -47,7 +47,7 @@ const verifyAddressAssociation = async (addressId, companyId) => {
  */
 const normalizeOptionalFields = (data) => {
     for (const key in data) {
-        if (typeof data[key] === "string") {
+        if (typeof data[key] === "string" && !key.toLowerCase().endsWith('id')) {
             data[key] = data[key].trim().toUpperCase();
             if (data[key] === "") {
                 data[key] = null;
