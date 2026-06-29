@@ -31,7 +31,8 @@ const PmrpyReportPage = () => {
     const fetchData = async () => {
       const companyId = localStorage.getItem('selectedCompany');
       try {
-        const dbList = await getEmployees(companyId) || [];
+        let dbList = await getEmployees(companyId) || [];
+        dbList = dbList.filter(emp => emp.status === 'Active');
         const dbPmrpy = dbList.filter(emp => emp.pmrpy === 'YES');
 
     const mappedDb = dbPmrpy.map(emp => {

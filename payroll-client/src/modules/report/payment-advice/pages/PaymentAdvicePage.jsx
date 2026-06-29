@@ -39,7 +39,8 @@ const PaymentAdvicePage = () => {
     const fetchMasters = async () => {
       try {
         const companyId = localStorage.getItem('selectedCompany');
-        const cList = await getContractors(companyId) || [];
+        let cList = await getContractors(companyId) || [];
+        cList = cList.filter(c => c.status === 'Active');
         setContractorsList(cList);
 
         const companies = await getCompanies() || [];
@@ -94,7 +95,8 @@ const PaymentAdvicePage = () => {
           rawEntries = res?.data || [];
         }
 
-        const dbEmployees = await getEmployees(companyId) || [];
+        let dbEmployees = await getEmployees(companyId) || [];
+        dbEmployees = dbEmployees.filter(e => e.status === 'Active');
 
         // Map rows to retrieve bank account and IFSC from kycDetails
         const mapped = rawEntries.map(row => {

@@ -48,7 +48,8 @@ const GratuityCalculationPage = () => {
     const fetchData = async () => {
       const companyId = localStorage.getItem('selectedCompany');
       try {
-        const list = await getContractors(companyId) || [];
+        let list = await getContractors(companyId) || [];
+        list = list.filter(c => c.status === 'Active');
         setContractorsList(list.map(c => `${c.name} - ${c.pfCode || c.ccode || ''}`));
       } catch (err) {
         console.error(err);
@@ -120,7 +121,7 @@ const GratuityCalculationPage = () => {
         const allMonths = Array.from(monthsToFetch);
 
         const [dbEmployees, dbResignations, officeSalariesRes] = await Promise.all([
-          getEmployees(companyId).catch(() => []),
+          getEmployees(companyId).then(list => list ? list.filter(e => e.status === 'Active') : []).catch(() => []),
           getResignations(companyId).catch(() => []),
           searchTriggeredType === 'OFFICE STAFF' ? getOfficeStaffSalaries(companyId).catch(() => []) : Promise.resolve([])
         ]);

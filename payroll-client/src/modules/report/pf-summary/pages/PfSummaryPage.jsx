@@ -77,7 +77,7 @@ const PfSummaryPage = () => {
           getOfficeStaffEntry(searchTriggeredMonth, companyId).catch(() => ({ data: [] })),
           getPackersEntry(searchTriggeredMonth, companyId).catch(() => ({ data: [] })),
           getBidiRollerEntry(searchTriggeredMonth, companyId).catch(() => ({ data: [] })),
-          getContractors(companyId).catch(() => [])
+          getContractors(companyId).then(list => list ? list.filter(c => c.status === 'Active') : []).catch(() => [])
         ]);
 
         const setup = setupRes?.[0] || {};

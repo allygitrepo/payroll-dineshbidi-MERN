@@ -38,7 +38,8 @@ const EcrReportPage = () => {
     const fetchData = async () => {
       const companyId = localStorage.getItem('selectedCompany');
       try {
-        const dbList = await getEmployees(companyId) || [];
+        let dbList = await getEmployees(companyId) || [];
+        dbList = dbList.filter(emp => emp.status === 'Active');
         
         // Map active db employees to ECR columns
         const mappedDb = dbList.map(emp => {

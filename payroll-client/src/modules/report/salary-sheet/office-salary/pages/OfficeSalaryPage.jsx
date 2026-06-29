@@ -35,7 +35,8 @@ const OfficeSalaryPage = () => {
     const fetchData = async () => {
       const companyId = localStorage.getItem('selectedCompany');
       try {
-        const dbList = await getEmployees(companyId) || [];
+        let dbList = await getEmployees(companyId) || [];
+        dbList = dbList.filter(emp => emp.status === 'Active');
         const dbOfficeStaff = dbList.filter(emp => emp.employeeType === 'OFFICE STAFF');
 
         const mappedDbRecords = dbOfficeStaff.map(emp => {
