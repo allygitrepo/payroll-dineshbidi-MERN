@@ -112,7 +112,7 @@
 .leftControls {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
   flex-wrap: wrap;
 }
 
@@ -120,50 +120,40 @@
 .dateFilter {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.dateInputWrapper {
-  display: flex;
-  align-items: center;
-  background-color: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  padding: 2px;
+  gap: 12px;
 }
 
 .datePickerInput {
-  border: none;
-  background: none;
-  padding: 6px 10px;
-  font-size: 0.85rem;
-  color: var(--text-primary);
-  outline: none;
-  font-family: inherit;
-  cursor: pointer;
+  width: 190px;
 }
 
 .quickBtn {
-  background: none;
-  border: none;
-  padding: 6px 12px;
-  font-size: 0.8rem;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  height: 46px;
+  padding: 0 16px;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .quickBtn:hover {
   background-color: var(--bg-main);
+  border-color: var(--text-muted);
   color: var(--text-primary);
 }
 
 .activeQuickBtn {
   background-color: var(--primary) !important;
   color: #ffffff !important;
+  border-color: var(--primary) !important;
 }
 
 /* Category Select */
@@ -174,7 +164,7 @@
 }
 
 .categorySelect select {
-  padding: 8px 12px;
+  padding: 0 16px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background-color: var(--card-bg);
@@ -183,6 +173,8 @@
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s ease;
+  height: 46px;
+  box-sizing: border-box;
 }
 
 .categorySelect select:focus {
@@ -198,20 +190,22 @@
 
 .searchIcon {
   position: absolute;
-  left: 10px;
+  left: 12px;
   color: var(--text-muted);
 }
 
 .searchWrapper input {
-  padding: 8px 12px 8px 32px;
+  padding: 0 16px 0 36px;
   font-size: 0.85rem;
   border-radius: 8px;
   border: 1px solid var(--border);
   background-color: var(--card-bg);
   color: var(--text-primary);
   outline: none;
-  width: 180px;
+  width: 220px;
   transition: all 0.2s ease;
+  height: 46px;
+  box-sizing: border-box;
 }
 
 .searchWrapper input:focus {
