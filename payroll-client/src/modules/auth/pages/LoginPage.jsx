@@ -180,12 +180,12 @@ const LoginPage = () => {
             </Button>
           </form>
 
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+          {/* <div style={{ marginTop: '20px', textAlign: 'center' }}>
             <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Or test face recognition: </span>
             <a href="/trial-attendance" style={{ color: 'var(--primary)', fontWeight: '600', fontSize: '0.85rem', textDecoration: 'underline' }}>
               Self-Attendance Kiosk
             </a>
-          </div>
+          </div> */}
         </div>
 
       </div>
