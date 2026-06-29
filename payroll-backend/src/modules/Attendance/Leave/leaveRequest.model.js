@@ -33,11 +33,11 @@ const LeaveRequest = sequelize.define("LeaveRequest", {
     },
     total_leaves: {
         type: DataTypes.INTEGER,
-        defaultValue: 12,
+        defaultValue: 0,
     },
     remaining_leaves: {
         type: DataTypes.DECIMAL(4, 1),
-        defaultValue: 12.0,
+        defaultValue: 0.0,
     },
     description: {
         type: DataTypes.TEXT,

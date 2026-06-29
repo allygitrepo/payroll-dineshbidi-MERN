@@ -29,10 +29,12 @@ const authenticateJWT = (req, res, next) => {
             req.companyId = decoded.company_id;
             req.params.companyId = decoded.company_id;
             
-            if (req.method === "POST") {
-                req.body.company_id = decoded.company_id;
-            } else if (req.method === "PUT" || req.method === "PATCH") {
-                delete req.body.company_id;
+            if (req.body) {
+                if (req.method === "POST") {
+                    req.body.company_id = decoded.company_id;
+                } else if (req.method === "PUT" || req.method === "PATCH") {
+                    delete req.body.company_id;
+                }
             }
         }
         

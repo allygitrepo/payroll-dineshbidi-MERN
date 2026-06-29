@@ -2,7 +2,13 @@ const LeaveRequestService = require("./leaveRequest.service");
 const { successResponse, errorResponse } = require("../../../utils/response");
 
 const getDurationInDays = (fromDate, toDate, leaveType) => {
-    if (leaveType === "Half Day Leave") return 0.5;
+    if (leaveType && leaveType.startsWith("Custom Leave (")) {
+        const match = leaveType.match(/Custom Leave \(([\d.]+)\s*Days?\)/i);
+        if (match && match[1]) {
+            return parseFloat(match[1]);
+        }
+    }
+    if (leaveType && leaveType.toLowerCase().includes("half day")) return 0.5;
     if (!fromDate || !toDate) return 0;
     const start = new Date(fromDate);
     const end = new Date(toDate);
@@ -68,7 +74,52 @@ class LeaveRequestController {
             // Get current remaining leaves for the employee
             const latestRemaining = await LeaveRequestService.getLatestRemainingLeaves(employeeId);
 
+            // Calculate requested duration
+            const duration = getDurationInDays(fromDate, toDate, leaveType);
+
+            // Fetch LeaveMaster configs for the company to validate
+            try {
+                const db = require("../../../database/models/index");
+                const leaveConfigs = await db.LeaveMaster.findAll({
+                    where: { company_id: companyId, status: true }
+                });
+                
+                // 1. Validate specific leave type duration limits
+                const leaveConfig = leaveConfigs.find(c => c.leave_type === leaveType);
+                if (leaveConfig && leaveConfig.leave_days !== null && leaveConfig.leave_days !== undefined && leaveConfig.leave_days !== "") {
+                    const maxDays = parseFloat(leaveConfig.leave_days);
+                    if (duration > maxDays) {
+                        return res.status(400).json(
+                            errorResponse("LEAVE_LIMIT_EXCEEDED", `Requested leave duration (${duration} days) exceeds the maximum allowed limit for ${leaveType} (${maxDays} days).`, `Leave type limit exceeded. Max allowed is ${maxDays} days.`)
+                        );
+                    }
+                }
+            } catch (err) {
+                console.error("Error validating leave limits:", err);
+            }
+
+            // 2. Validate overall remaining leaves balance
+            if (duration > latestRemaining) {
+                return res.status(400).json(
+                    errorResponse("INSUFFICIENT_LEAVES", `Requested leave duration (${duration} days) exceeds the employee's remaining leaves balance (${latestRemaining} days).`, `Insufficient remaining leaves balance (${latestRemaining} days).`)
+                );
+            }
+
             const requestDate = new Date().toISOString().split("T")[0];
+
+            // Get dynamic yearly leave cap
+            let yearlyCap = 0;
+            try {
+                const db = require("../../../database/models/index");
+                const leaveMaster = await db.LeaveMaster.findOne({
+                    where: { company_id: companyId, status: true }
+                });
+                if (leaveMaster && leaveMaster.yearly_leave_cap !== null && leaveMaster.yearly_leave_cap !== undefined) {
+                    yearlyCap = parseFloat(leaveMaster.yearly_leave_cap);
+                }
+            } catch (e) {
+                console.error("Error fetching dynamic yearly cap for leave request:", e);
+            }
 
             const request = await LeaveRequestService.create({
                 employee_id: employeeId,
@@ -79,7 +130,7 @@ class LeaveRequestController {
                 description,
                 status: "Pending",
                 request_date: requestDate,
-                total_leaves: 12,
+                total_leaves: yearlyCap,
                 remaining_leaves: latestRemaining,
             });
 

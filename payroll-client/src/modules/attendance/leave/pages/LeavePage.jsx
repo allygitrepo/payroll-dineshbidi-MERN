@@ -9,9 +9,16 @@ import {
   approveLeaveRequest,
   rejectLeaveRequest
 } from '../services/leaveService';
+import { getLeaveMaster } from '../../../setup/leave-master/services/leaveMasterService';
 
 const getDurationInDays = (fromDate, toDate, leaveType) => {
-  if (leaveType === 'Half Day Leave') return 0.5;
+  if (leaveType && leaveType.startsWith("Custom Leave (")) {
+    const match = leaveType.match(/Custom Leave \(([\d.]+)\s*Days?\)/i);
+    if (match && match[1]) {
+      return parseFloat(match[1]);
+    }
+  }
+  if (leaveType && leaveType.toLowerCase().includes('half day')) return 0.5;
   if (!fromDate || !toDate) return 0;
   const start = new Date(fromDate);
   const end = new Date(toDate);
@@ -27,6 +34,41 @@ const formatDateToDMY = (dateStr) => {
     return `${parts[2]}-${parts[1]}-${parts[0]}`;
   }
   return dateStr;
+};
+
+const calculateToDate = (fromDateStr, leaveType, customDaysStr, leaveMaster) => {
+  if (!fromDateStr) return '';
+  
+  let days = 1.0;
+  
+  const isCustom = customDaysStr && customDaysStr.trim() !== '';
+  if (isCustom) {
+    const parsed = parseFloat(customDaysStr);
+    if (!isNaN(parsed) && parsed > 0) {
+      days = parsed;
+    }
+  } else if (leaveType) {
+    if (leaveType.toLowerCase().includes('half day')) {
+      days = 0.5;
+    } else {
+      const typeConfig = leaveMaster?.leave_types?.find(t => t.leave_type === leaveType);
+      if (typeConfig && typeConfig.leave_days !== null && typeConfig.leave_days !== undefined && typeConfig.leave_days !== "") {
+        const parsed = parseFloat(typeConfig.leave_days);
+        if (!isNaN(parsed) && parsed > 0) {
+          days = parsed;
+        }
+      }
+    }
+  }
+
+  const calendarDays = Math.max(1, Math.ceil(days));
+  const date = new Date(fromDateStr);
+  date.setDate(date.getDate() + calendarDays - 1);
+  
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 };
 
 const LeavePage = () => {
@@ -47,6 +89,7 @@ const LeavePage = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [leaveMaster, setLeaveMaster] = useState({ yearly_leave_cap: 0.0, leave_types: [] });
 
   // Confirmation Modal States
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -64,6 +107,9 @@ const LeavePage = () => {
     description: '',
     singleDay: false
   });
+
+  const [customLeaveDays, setCustomLeaveDays] = useState('');
+  const [customLeaveDaysError, setCustomLeaveDaysError] = useState('');
 
 
 
@@ -92,6 +138,13 @@ const LeavePage = () => {
 
         const requestsData = await getLeaveRequests(companyId);
         setLeaveRequests(requestsData || []);
+
+        try {
+          const lmData = await getLeaveMaster(companyId);
+          setLeaveMaster(lmData);
+        } catch (lmErr) {
+          console.error('Failed to load leave master configuration:', lmErr);
+        }
       } catch (err) {
         console.error('Failed to load employees or leave requests for dashboard:', err);
         addToast({ type: 'error', message: 'Failed to load leave requests.' });
@@ -308,24 +361,99 @@ const LeavePage = () => {
   // Form Input Change Handler
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewLeave((prev) => ({
-      ...prev,
-      [name]: value
-    }));
+    setNewLeave((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (name === 'leaveType') {
+        updated.toDate = calculateToDate(prev.fromDate, value, customLeaveDays, leaveMaster);
+      }
+      return updated;
+    });
+  };
+
+  const handleCustomLeaveDaysChange = (e) => {
+    const val = e.target.value;
+    setCustomLeaveDays(val);
+    if (val.trim() === '') {
+      setCustomLeaveDaysError('');
+      setNewLeave(prev => {
+        const resetLeaveType = (prev.leaveType && prev.leaveType.startsWith('Custom Leave')) ? '' : prev.leaveType;
+        const calculatedTo = calculateToDate(prev.fromDate, resetLeaveType, '', leaveMaster);
+        return {
+          ...prev,
+          leaveType: resetLeaveType,
+          toDate: calculatedTo
+        };
+      });
+      return;
+    }
+    const regex = /^\d+(\.\d+)?$/;
+    if (!regex.test(val.trim())) {
+      setCustomLeaveDaysError('Only positive numbers and decimal values allowed.');
+      return;
+    }
+    const parsed = parseFloat(val.trim());
+    if (isNaN(parsed) || parsed < 0) {
+      setCustomLeaveDaysError('Please enter a valid positive number.');
+      return;
+    }
+    setCustomLeaveDaysError('');
+    setNewLeave(prev => {
+      const calculatedTo = calculateToDate(prev.fromDate, 'Custom Leave', val.trim(), leaveMaster);
+      return {
+        ...prev,
+        leaveType: 'Custom Leave',
+        toDate: calculatedTo
+      };
+    });
   };
 
   // Form Submit Handler
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    const toDateVal = newLeave.singleDay ? newLeave.fromDate : newLeave.toDate;
+    const isCustom = customLeaveDays.trim() !== '' && !customLeaveDaysError;
+    const leaveTypeVal = isCustom ? `Custom Leave (${parseFloat(customLeaveDays)} Days)` : newLeave.leaveType;
+    const toDateVal = newLeave.toDate || newLeave.fromDate;
     
-    if (!newLeave.employeeId || !newLeave.leaveType || !newLeave.fromDate || !toDateVal || !newLeave.description) {
+    if (!newLeave.employeeId || !leaveTypeVal || !newLeave.fromDate || !toDateVal || !newLeave.description) {
       addToast({ type: 'warning', message: 'Please fill out all required fields.' });
       return;
     }
 
-    if (!newLeave.singleDay && new Date(toDateVal) < new Date(newLeave.fromDate)) {
-      addToast({ type: 'warning', message: 'To Date cannot be earlier than From Date.' });
+    // Calculate requested duration
+    const duration = getDurationInDays(newLeave.fromDate, toDateVal, leaveTypeVal);
+
+    // Validate against leave type limit
+    if (!isCustom && leaveMaster && leaveMaster.leave_types) {
+      const typeConfig = leaveMaster.leave_types.find(t => t.leave_type === leaveTypeVal);
+      if (typeConfig && typeConfig.leave_days !== null && typeConfig.leave_days !== undefined && typeConfig.leave_days !== "") {
+        const maxDays = parseFloat(typeConfig.leave_days);
+        if (duration > maxDays) {
+          addToast({
+            type: 'error',
+            message: `Requested leave duration (${duration} Days) exceeds the allowed limit for ${leaveTypeVal} (${maxDays} Days).`
+          });
+          return;
+        }
+      }
+    }
+
+    // Validate against employee's remaining balance
+    const getEmployeeRemainingLeaves = (empId) => {
+      const empApprovedRequests = leaveRequests.filter(r => r.employeeId === empId && r.status === 'Approved');
+      if (empApprovedRequests.length > 0) {
+        // Sort by requestDate descending
+        const sorted = [...empApprovedRequests].sort((a, b) => new Date(b.requestDate) - new Date(a.requestDate));
+        return parseFloat(sorted[0].remainingLeaves);
+      }
+      return parseFloat(leaveMaster.yearly_leave_cap) || 0.0;
+    };
+
+    const remainingBalance = getEmployeeRemainingLeaves(newLeave.employeeId);
+    if (duration > remainingBalance) {
+      addToast({
+        type: 'error',
+        message: `Requested leave duration (${duration} Days) exceeds the employee's remaining leaves balance (${remainingBalance} Days).`
+      });
       return;
     }
 
@@ -339,7 +467,7 @@ const LeavePage = () => {
       const createdRequest = await createLeaveRequest({
         employeeId: newLeave.employeeId,
         companyId,
-        leaveType: newLeave.leaveType,
+        leaveType: leaveTypeVal,
         fromDate: newLeave.fromDate,
         toDate: toDateVal,
         description: newLeave.description
@@ -355,13 +483,16 @@ const LeavePage = () => {
         description: '',
         singleDay: false
       });
+      setCustomLeaveDays('');
+      setCustomLeaveDaysError('');
       addToast({
         type: 'success',
         message: `Leave request for ${createdRequest.employeeName} submitted successfully!`
       });
     } catch (err) {
       console.error('Error submitting leave request:', err);
-      addToast({ type: 'error', message: err.message || 'Failed to submit leave request.' });
+      const errMsg = err.response?.data?.message || err.message || 'Failed to submit leave request.';
+      addToast({ type: 'error', message: errMsg });
     }
   };
 
@@ -378,7 +509,8 @@ const LeavePage = () => {
       });
     } catch (err) {
       console.error('Error approving leave request:', err);
-      addToast({ type: 'error', message: err.message || 'Failed to approve leave request.' });
+      const errMsg = err.response?.data?.message || err.message || 'Failed to approve leave request.';
+      addToast({ type: 'error', message: errMsg });
     }
   };
 
@@ -395,7 +527,8 @@ const LeavePage = () => {
       });
     } catch (err) {
       console.error('Error rejecting leave request:', err);
-      addToast({ type: 'error', message: err.message || 'Failed to reject leave request.' });
+      const errMsg = err.response?.data?.message || err.message || 'Failed to reject leave request.';
+      addToast({ type: 'error', message: errMsg });
     }
   };
 
@@ -556,103 +689,67 @@ const LeavePage = () => {
               </div>
 
               <div className={styles.field}>
+                <label className={styles.label}>Custom Leave Days (Optional)</label>
+                <input
+                  type="text"
+                  name="customLeaveDays"
+                  value={customLeaveDays}
+                  onChange={handleCustomLeaveDaysChange}
+                  placeholder="e.g. 2.5 (Disables Leave Type)"
+                  className={`${styles.input} ${customLeaveDaysError ? styles.inputError : ''}`}
+                />
+                {customLeaveDaysError && (
+                  <span className={styles.errorText} style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: '4px' }}>
+                    {customLeaveDaysError}
+                  </span>
+                )}
+              </div>
+
+              <div className={styles.field}>
                 <label className={styles.label}>Leave Type *</label>
                 <select
                   name="leaveType"
                   value={newLeave.leaveType}
                   onChange={handleInputChange}
                   className={styles.select}
-                  required
+                  required={!(customLeaveDays.trim() !== '' && !customLeaveDaysError)}
+                  disabled={customLeaveDays.trim() !== '' && !customLeaveDaysError}
                 >
                   <option value="" disabled>Select Leave Type</option>
-                  <option value="Casual Leave (CL)">Casual Leave (CL)</option>
-                  <option value="Sick Leave (SL)">Sick Leave (SL)</option>
-                  <option value="Marriage Leave">Marriage Leave</option>
-                  <option value="Engagement Leave">Engagement Leave</option>
-                  <option value="Half Day Leave">Half Day Leave</option>
-                  <option value="Emergency Leave">Emergency Leave</option>
+                  {leaveMaster.leave_types && leaveMaster.leave_types.map(t => (
+                    <option key={t.id} value={t.leave_type}>{t.leave_type}</option>
+                  ))}
+                  {(customLeaveDays.trim() !== '' && !customLeaveDaysError) && (
+                    <option value="Custom Leave">Custom Leave</option>
+                  )}
                 </select>
               </div>
 
-              {/* Single Day Checkbox */}
-              <div
-                className={styles.checkboxField}
-                onClick={(e) => {
-                  if (e.target.id === 'singleDay' || e.target.tagName === 'LABEL') return;
-                  setNewLeave(prev => {
-                    const nextVal = !prev.singleDay;
-                    return {
-                      ...prev,
-                      singleDay: nextVal,
-                      toDate: nextVal ? prev.fromDate : ''
-                    };
-                  });
-                }}
-              >
-                <input
-                  type="checkbox"
-                  id="singleDay"
-                  name="singleDay"
-                  checked={newLeave.singleDay}
+              <div className={styles.field}>
+                <label className={styles.label}>Select Date *</label>
+                <DatePicker
+                  name="fromDate"
+                  value={newLeave.fromDate}
+                  min={todayStr}
                   onChange={(e) => {
-                    setNewLeave(prev => ({
-                      ...prev,
-                      singleDay: e.target.checked,
-                      toDate: e.target.checked ? prev.fromDate : ''
-                    }));
-                  }}
-                  className={styles.checkbox}
-                />
-                <label htmlFor="singleDay" className={styles.checkboxLabel}>Single Day Leave</label>
-              </div>
-
-              {newLeave.singleDay ? (
-                <div className={styles.field}>
-                  <label className={styles.label}>Select Date *</label>
-                  <DatePicker
-                    name="fromDate"
-                    value={newLeave.fromDate}
-                    min={todayStr}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setNewLeave(prev => ({
+                    const val = e.target.value;
+                    setNewLeave(prev => {
+                      const calculatedTo = calculateToDate(val, prev.leaveType, customLeaveDays, leaveMaster);
+                      return {
                         ...prev,
                         fromDate: val,
-                        toDate: val
-                      }));
-                    }}
-                  />
-                </div>
-              ) : (
-                <>
-                  <div className={styles.field}>
-                    <label className={styles.label}>From Date *</label>
-                    <DatePicker
-                      name="fromDate"
-                      value={newLeave.fromDate}
-                      min={todayStr}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setNewLeave(prev => ({
-                          ...prev,
-                          fromDate: val,
-                          toDate: prev.toDate && prev.toDate >= val ? prev.toDate : val
-                        }));
-                      }}
-                    />
-                  </div>
-
-                  <div className={styles.field}>
-                    <label className={styles.label}>To Date *</label>
-                    <DatePicker
-                      name="toDate"
-                      value={newLeave.toDate}
-                      min={newLeave.fromDate || todayStr}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </>
-              )}
+                        toDate: calculatedTo
+                      };
+                    });
+                  }}
+                  required
+                />
+                {newLeave.toDate && (
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px', display: 'block' }}>
+                    Calculated To Date: <strong>{formatDateToDMY(newLeave.toDate)}</strong>
+                  </span>
+                )}
+              </div>
 
               <div className={`${styles.field} ${styles.fieldFull}`}>
                 <label className={styles.label}>Reason / Description *</label>
@@ -783,7 +880,7 @@ const LeavePage = () => {
                     <th>Contact</th>
                     <th>Leave Category</th>
                     <th>Leave Details</th>
-                    <th style={{ textAlign: 'center' }}>Remaining (Yearly CAP 12)</th>
+                    <th style={{ textAlign: 'center' }}>Remaining (Yearly CAP {leaveMaster.yearly_leave_cap})</th>
                     <th>Leave Description</th>
                     <th style={{ textAlign: 'center' }}>Status</th>
                     <th style={{ textAlign: 'center', width: '120px' }}>Actions</th>
@@ -823,7 +920,7 @@ const LeavePage = () => {
                             {row.fromDate && (
                               <span className={styles.leaveDuration}>
                                 {row.fromDate === row.toDate 
-                                  ? `${formatDateToDMY(row.fromDate)} (${row.leaveType === 'Half Day Leave' ? '0.5 Day' : '1 Day'})` 
+                                  ? `${formatDateToDMY(row.fromDate)} (${row.leaveType && row.leaveType.toLowerCase().includes('half day') ? '0.5 Day' : '1 Day'})` 
                                   : `${formatDateToDMY(row.fromDate)} to ${formatDateToDMY(row.toDate)} (${getDurationInDays(row.fromDate, row.toDate, row.leaveType)} Days)`}
                               </span>
                             )}

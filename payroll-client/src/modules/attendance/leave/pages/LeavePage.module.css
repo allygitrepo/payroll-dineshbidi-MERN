@@ -859,9 +859,18 @@
 
 .dropdownMenu button:hover svg {
   color: var(--primary);
+}.errorText {
+  color: var(--danger, #ef4444);
+  font-size: 0.75rem;
+  margin-top: 4px;
+  font-weight: 500;
+  display: block;
 }
 
+.inputError {
+  border-color: var(--danger, #ef4444) !important;
+}
 
-
-
-
+.inputError:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}

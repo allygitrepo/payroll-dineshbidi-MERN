@@ -102,7 +102,6 @@ class AttendanceService {
 
         // Check if a record already exists for today
         let record = await Attendance.findOne({ where: { employee_id: employeeId, date: todayStr } });
-        const workEnd = new Date(`${todayStr}T18:00:00`);
 
         if (!record) {
             const photoPath = photo ? saveBase64Image(photo, "sign_in", `${employeeId}_${todayStr}.jpg`) : null;
@@ -115,20 +114,11 @@ class AttendanceService {
                 sign_in_photo: photoPath,
             };
 
-            if (!isNaN(workEnd) && now >= workEnd) {
-                createPayload.sign_out_time = workEnd;
-                createPayload.is_auto_signout = true;
-            }
-
             record = await Attendance.create(createPayload);
             return await Attendance.findByPk(record.id);
         }
 
         if (record.sign_in_time) {
-            // Already signed in. Auto-check out if past 6 PM and not checked out
-            if (!record.sign_out_time && !isNaN(workEnd) && now >= workEnd) {
-                await record.update({ sign_out_time: workEnd, is_auto_signout: true });
-            }
             return await Attendance.findByPk(record.id);
         }
 
@@ -140,18 +130,9 @@ class AttendanceService {
         }
 
         await record.update(updatePayload);
-
-        // Auto-check out check
-        if (!record.sign_out_time && !isNaN(workEnd) && now >= workEnd) {
-            await record.update({ sign_out_time: workEnd, is_auto_signout: true });
-        }
-
         return await Attendance.findByPk(record.id);
     }
 
-    /**
-     * Records check-out for the current day.
-     */
     static async signOutToday(employeeId, { location, sign_out_location, photo }) {
         const now = new Date();
         const yyyy = now.getFullYear();
@@ -172,11 +153,27 @@ class AttendanceService {
             return record;
         }
 
-        // Cap sign-out time to 18:00 local if checked out late
-        const workEnd = new Date(`${todayStr}T18:00:00`);
-        const signOutAt = (!isNaN(workEnd) && now >= workEnd) ? workEnd : now;
+        // Check if checked out within 5 minutes of sign_in_time
+        const elapsedMs = now - new Date(record.sign_in_time);
+        const fiveMinutes = 5 * 60 * 1000;
+        if (elapsedMs < fiveMinutes) {
+            const remainingMs = fiveMinutes - elapsedMs;
+            const remainingMinutes = Math.floor(remainingMs / 60000);
+            const remainingSeconds = Math.ceil((remainingMs % 60000) / 1000);
+            let timeStr = "";
+            if (remainingMinutes > 0) {
+                timeStr += `${remainingMinutes}m ${remainingSeconds}s`;
+            } else {
+                timeStr += `${remainingSeconds}s`;
+            }
+            const error = new Error(`Too early to clock out. Please wait another ${timeStr}.`);
+            error.statusCode = 400;
+            error.errorCode = "CLOCK_OUT_TOO_EARLY";
+            error.messageToShow = `Please wait another ${timeStr} to clock out.`;
+            throw error;
+        }
 
-        const updatePayload = { sign_out_time: signOutAt };
+        const updatePayload = { sign_out_time: now };
         const loc = sign_out_location || location || null;
         if (loc) updatePayload.sign_out_location = loc;
         if (photo) {
@@ -199,14 +196,6 @@ class AttendanceService {
         const todayStr = `${yyyy}-${mm}-${dd}`;
 
         let record = await Attendance.findOne({ where: { employee_id: employeeId, date: todayStr } });
-
-        // Auto-check out if past 6 PM and not checked out
-        const workEnd = new Date(`${todayStr}T18:00:00`);
-        if (record && record.sign_in_time && !record.sign_out_time && !isNaN(workEnd) && now >= workEnd) {
-            await record.update({ sign_out_time: workEnd, is_auto_signout: true });
-            record = await Attendance.findByPk(record.id);
-        }
-
         return record;
     }
 
@@ -382,6 +371,26 @@ class AttendanceService {
         }
 
         if (!record.sign_out_time) {
+            // Check if clocking out within 5 minutes of sign_in_time
+            const elapsedMs = now - new Date(record.sign_in_time);
+            const fiveMinutes = 5 * 60 * 1000;
+            if (elapsedMs < fiveMinutes) {
+                const remainingMs = fiveMinutes - elapsedMs;
+                const remainingMinutes = Math.floor(remainingMs / 60000);
+                const remainingSeconds = Math.ceil((remainingMs % 60000) / 1000);
+                let timeStr = "";
+                if (remainingMinutes > 0) {
+                    timeStr += `${remainingMinutes}m ${remainingSeconds}s`;
+                } else {
+                    timeStr += `${remainingSeconds}s`;
+                }
+                const error = new Error(`Too early to clock out. Please wait another ${timeStr}.`);
+                error.statusCode = 400;
+                error.errorCode = "CLOCK_OUT_TOO_EARLY";
+                error.messageToShow = `Please wait another ${timeStr} to clock out.`;
+                throw error;
+            }
+
             // Record exists but not checked out -> Check Out
             const photoPath = photo ? saveBase64Image(photo, "sign_out", `${employeeId}_${todayStr}.jpg`) : null;
             await record.update({
