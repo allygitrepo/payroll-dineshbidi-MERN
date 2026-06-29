@@ -259,7 +259,7 @@ const ContractorForm = ({ contractor, addresses = [], onSave, onCancel }) => {
               className={styles.select}
             >
               <option value="">SELECT ADDRESS</option>
-              {addresses.map((opt) => (
+              {addresses.filter(opt => opt.status === 'Active').map((opt) => (
                 <option key={opt.id} value={opt.address}>{opt.address}</option>
               ))}
             </select>
@@ -436,14 +436,24 @@ const ContractorForm = ({ contractor, addresses = [], onSave, onCancel }) => {
 
           {/* Status (Active) */}
           <div className={styles.field} style={{ justifyContent: 'center', alignItems: 'flex-start' }}>
-            <label className={styles.label} style={{ marginBottom: '6px' }}>Status (Active)</label>
-            <input
-              type="checkbox"
-              name="isActive"
-              checked={formData.isActive}
-              onChange={handleChange}
-              className={styles.checkbox}
-            />
+            <label className={styles.label} style={{ marginBottom: '6px' }}>Status</label>
+            <div className={styles.toggleContainer} style={{ marginTop: '0' }}>
+              <label className={styles.toggleSwitch}>
+                <input
+                  type="checkbox"
+                  name="isActive"
+                  checked={formData.isActive}
+                  onChange={handleChange}
+                />
+                <span className={styles.toggleSlider}></span>
+              </label>
+              <span 
+                className={styles.toggleLabel}
+                style={{ color: formData.isActive ? 'var(--primary)' : '#ef4444' }}
+              >
+                {formData.isActive ? 'ACTIVE' : 'INACTIVE'}
+              </span>
+            </div>
           </div>
         </div>
 

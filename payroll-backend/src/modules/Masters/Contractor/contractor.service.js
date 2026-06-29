@@ -151,7 +151,7 @@ class ContractorService {
         // Verify company ownership
         await verifyCompanyAccess(companyId, user);
 
-        const whereClause = { company_id: companyId, status: true };
+        const whereClause = { company_id: companyId };
         if (user.role_name === 'Contractor' && user.contractor_id) {
             whereClause.id = user.contractor_id;
         }
@@ -173,7 +173,7 @@ class ContractorService {
      */
     static async getContractorById(id, user) {
         const contractor = await Contractor.findOne({
-            where: { id, status: true },
+            where: { id },
             include: [
                 {
                     model: Company,
@@ -221,7 +221,7 @@ class ContractorService {
      */
     static async updateContractor(id, user, updateData) {
         const contractor = await Contractor.findOne({
-            where: { id, status: true },
+            where: { id },
             include: [
                 {
                     model: Company,
@@ -281,7 +281,7 @@ class ContractorService {
      */
     static async deleteContractor(id, user) {
         const contractor = await Contractor.findOne({
-            where: { id, status: true },
+            where: { id },
             include: [
                 {
                     model: Company,
@@ -315,7 +315,7 @@ class ContractorService {
             throw error;
         }
 
-        await contractor.update({ status: false });
+        await contractor.destroy();
         return true;
     }
 

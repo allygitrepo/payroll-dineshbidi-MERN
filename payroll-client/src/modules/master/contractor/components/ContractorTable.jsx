@@ -86,6 +86,7 @@ const ContractorTable = ({
         <table className={styles.table}>
           <thead>
             <tr>
+              <th style={{ width: '100px', textAlign: 'center' }}>Action</th>
               <th style={{ width: '60px', textAlign: 'center' }}>Sr No.</th>
               <th>Ccode</th>
               <th>Name</th>
@@ -101,8 +102,7 @@ const ContractorTable = ({
               <th>Bank A/c</th>
               <th>Bank Name</th>
               <th>IFSC</th>
-              <th>Status</th>
-              <th style={{ width: '100px', textAlign: 'center' }}>Action</th>
+              <th style={{ textAlign: 'center' }}>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -114,7 +114,40 @@ const ContractorTable = ({
               </tr>
             ) : (
               paginatedData.map((contractor, index) => (
-                <tr key={contractor.id}>
+                <tr 
+                  key={contractor.id}
+                  onClick={() => onEdit(contractor)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <div className={styles.actionCell}>
+                      <button
+                        onClick={() => onEdit(contractor)}
+                        title="Edit Contractor"
+                        className={styles.editBtn}
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={() => onCreateLogin(contractor)}
+                        title="Create Login"
+                        className={styles.editBtn}
+                        style={{ color: '#0ea5e9', border: '1px solid #bae6fd', backgroundColor: '#f0f9ff' }}
+                      >
+                        <Key size={14} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(contractor.id);
+                        }}
+                        title="Delete Contractor"
+                        className={styles.deleteBtn}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
                   <td style={{ textAlign: 'center', fontWeight: '500' }}>
                     {startIndex + index + 1}
                   </td>
@@ -134,34 +167,17 @@ const ContractorTable = ({
                   <td>{contractor.bankAccount || '-'}</td>
                   <td>{contractor.bankName || '-'}</td>
                   <td>{contractor.ifsc || '-'}</td>
-                  <td style={{ fontWeight: '500', color: contractor.status === 'Active' ? 'var(--primary)' : 'var(--danger)' }}>
-                    {contractor.status}
-                  </td>
-                  <td>
-                    <div className={styles.actionCell}>
-                      <button
-                        onClick={() => onEdit(contractor)}
-                        title="Edit Contractor"
-                        className={styles.editBtn}
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => onCreateLogin(contractor)}
-                        title="Create Login"
-                        className={styles.editBtn}
-                        style={{ color: '#0ea5e9', border: '1px solid #bae6fd', backgroundColor: '#f0f9ff' }}
-                      >
-                        <Key size={14} />
-                      </button>
-                      <button
-                        onClick={() => onDelete(contractor.id)}
-                        title="Delete Contractor"
-                        className={styles.deleteBtn}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                  <td style={{ textAlign: 'center' }}>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.8rem',
+                      fontWeight: '600',
+                      backgroundColor: contractor.status === 'Active' ? '#dcfce7' : '#fee2e2',
+                      color: contractor.status === 'Active' ? '#16a34a' : '#ef4444'
+                    }}>
+                      {contractor.status}
+                    </span>
                   </td>
                 </tr>
               ))
