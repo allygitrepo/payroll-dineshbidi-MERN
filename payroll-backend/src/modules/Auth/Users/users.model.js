@@ -32,6 +32,16 @@ const User = sequelize.define(
             onDelete: "SET NULL",
             onUpdate: "CASCADE",
         },
+        contractor_id: {
+            type: DataTypes.UUID,
+            allowNull: true,
+            references: {
+                model: "contractors",
+                key: "id",
+            },
+            onDelete: "SET NULL",
+            onUpdate: "CASCADE",
+        },
         status: {
             type: DataTypes.BOOLEAN,
             defaultValue: true,

@@ -16,6 +16,17 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
   const [activeTab, setActiveTab] = useState('Personal Info');
   const [errors, setErrors] = useState({});
 
+  const userStr = localStorage.getItem('user');
+  let isContractor = false;
+  let contractorName = '';
+  if (userStr) {
+    try {
+      const userObj = JSON.parse(userStr);
+      isContractor = userObj?.role?.name === 'Contractor';
+      contractorName = userObj?.user_name;
+    } catch (e) {}
+  }
+
   // Form Fields State
   const [formData, setFormData] = useState({
     id: '',
@@ -112,7 +123,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
         mobile: '',
         qualification: '',
         employeeType: '',
-        contractor: '',
+        contractor: isContractor ? contractorName : '',
         address: '',
         postOffice: '',
         district: '',
@@ -833,8 +844,9 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
                 value={formData.contractor}
                 onChange={handleChange}
                 className={styles.select}
+                disabled={isContractor}
               >
-                <option value="SELF">SELF</option>
+                {!isContractor && <option value="SELF">SELF</option>}
                 {contractors.map((c) => (
                   <option key={c.id} value={c.name}>{c.name}</option>
                 ))}

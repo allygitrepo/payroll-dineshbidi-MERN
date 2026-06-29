@@ -67,3 +67,20 @@ export const deleteContractor = async (id, companyId) => {
   await apiClient.delete(`contractors/${id}`);
   return await getContractors(companyId);
 };
+
+export const createContractorLogin = async (contractorId, credentials) => {
+  const response = await apiClient.post(`contractors/${contractorId}/login`, credentials);
+  return response.data;
+};
+
+export const getContractorLogin = async (contractorId) => {
+  try {
+    const response = await apiClient.get(`contractors/${contractorId}/login`);
+    if (response.data?.status || response.data?.success) {
+      return response.data.data;
+    }
+  } catch (err) {
+    return null;
+  }
+  return null;
+};

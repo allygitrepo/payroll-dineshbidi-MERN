@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Edit, Trash2, Search } from 'lucide-react';
+import { Edit, Trash2, Search, Key } from 'lucide-react';
 import styles from './ContractorPage.module.css';
 
 const formatDate = (dateStr) => {
@@ -18,7 +18,8 @@ const ContractorTable = ({
   statusFilter,
   onStatusFilterChange,
   onEdit,
-  onDelete
+  onDelete,
+  onCreateLogin
 }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -144,6 +145,14 @@ const ContractorTable = ({
                         className={styles.editBtn}
                       >
                         <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={() => onCreateLogin(contractor)}
+                        title="Create Login"
+                        className={styles.editBtn}
+                        style={{ color: '#0ea5e9', border: '1px solid #bae6fd', backgroundColor: '#f0f9ff' }}
+                      >
+                        <Key size={14} />
                       </button>
                       <button
                         onClick={() => onDelete(contractor.id)}

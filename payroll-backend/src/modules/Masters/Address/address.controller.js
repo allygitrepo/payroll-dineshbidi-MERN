@@ -46,7 +46,7 @@ class AddressController {
         }
 
         try {
-            const newAddress = await AddressService.createAddress(value, req.user.id);
+            const newAddress = await AddressService.createAddress(value, req.user);
 
             return res.status(201).json(
                 successResponse(
@@ -85,7 +85,7 @@ class AddressController {
         }
 
         try {
-            const addresses = await AddressService.getAllAddresses(companyId, req.user.id);
+            const addresses = await AddressService.getAllAddresses(companyId, req.user);
 
             return res.status(200).json(
                 successResponse(
@@ -115,7 +115,7 @@ class AddressController {
         const { id } = req.params;
 
         try {
-            const address = await AddressService.getAddressById(id, req.user.id);
+            const address = await AddressService.getAddressById(id, req.user);
 
             return res.status(200).json(
                 successResponse(
@@ -158,7 +158,7 @@ class AddressController {
         }
 
         try {
-            const updatedAddress = await AddressService.updateAddress(id, req.user.id, value);
+            const updatedAddress = await AddressService.updateAddress(id, req.user, value);
 
             return res.status(200).json(
                 successResponse(
@@ -188,7 +188,7 @@ class AddressController {
         const { id } = req.params;
 
         try {
-            await AddressService.deleteAddress(id, req.user.id);
+            await AddressService.deleteAddress(id, req.user);
 
             return res.status(200).json(
                 successResponse(

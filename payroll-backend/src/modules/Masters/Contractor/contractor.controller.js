@@ -53,7 +53,7 @@ class ContractorController {
         }
 
         try {
-            const newContractor = await ContractorService.createContractor(value, req.user.id);
+            const newContractor = await ContractorService.createContractor(value, req.user);
 
             return res.status(201).json(
                 successResponse(
@@ -92,7 +92,7 @@ class ContractorController {
         }
 
         try {
-            const contractors = await ContractorService.getAllContractors(companyId, req.user.id);
+            const contractors = await ContractorService.getAllContractors(companyId, req.user);
 
             return res.status(200).json(
                 successResponse(
@@ -122,7 +122,7 @@ class ContractorController {
         const { id } = req.params;
 
         try {
-            const contractor = await ContractorService.getContractorById(id, req.user.id);
+            const contractor = await ContractorService.getContractorById(id, req.user);
 
             return res.status(200).json(
                 successResponse(
@@ -165,7 +165,7 @@ class ContractorController {
         }
 
         try {
-            const updatedContractor = await ContractorService.updateContractor(id, req.user.id, value);
+            const updatedContractor = await ContractorService.updateContractor(id, req.user, value);
 
             return res.status(200).json(
                 successResponse(
@@ -195,7 +195,7 @@ class ContractorController {
         const { id } = req.params;
 
         try {
-            await ContractorService.deleteContractor(id, req.user.id);
+            await ContractorService.deleteContractor(id, req.user);
 
             return res.status(200).json(
                 successResponse(
@@ -212,6 +212,77 @@ class ContractorController {
                     errorCode,
                     err.message,
                     err.messageToShow || "Failed to delete contractor."
+                )
+            );
+        }
+    }
+
+    /**
+     * Creates a login for the contractor.
+     */
+    static async createLogin(req, res) {
+        const { id } = req.params;
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json(
+                errorResponse(
+                    "VALIDATION_ERROR",
+                    "Username and password are required.",
+                    "Username and password are required."
+                )
+            );
+        }
+
+        try {
+            const loginUser = await ContractorService.createLogin(id, req.user, { username, password });
+
+            return res.status(201).json(
+                successResponse(
+                    "LOGIN_CREATED_OR_UPDATED",
+                    "Contractor login saved successfully.",
+                    "Contractor login saved successfully.",
+                    loginUser
+                )
+            );
+        } catch (err) {
+            const statusCode = err.statusCode || 500;
+            const errorCode = err.errorCode || "INTERNAL_SERVER_ERROR";
+            return res.status(statusCode).json(
+                errorResponse(
+                    errorCode,
+                    err.message,
+                    err.messageToShow || "Failed to create/update contractor login."
+                )
+            );
+        }
+    }
+
+    /**
+     * Gets the login details for a contractor.
+     */
+    static async getLogin(req, res) {
+        const { id } = req.params;
+
+        try {
+            const loginUser = await ContractorService.getLogin(id, req.user);
+            
+            return res.status(200).json(
+                successResponse(
+                    "LOGIN_RETRIEVED",
+                    "Contractor login retrieved successfully.",
+                    "Contractor login retrieved successfully.",
+                    loginUser
+                )
+            );
+        } catch (err) {
+            const statusCode = err.statusCode || 500;
+            const errorCode = err.errorCode || "LOGIN_RETRIEVE_FAILED";
+            return res.status(statusCode).json(
+                errorResponse(
+                    errorCode,
+                    err.message,
+                    err.messageToShow || "Failed to retrieve contractor login."
                 )
             );
         }

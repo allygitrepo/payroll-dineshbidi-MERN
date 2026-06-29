@@ -192,28 +192,34 @@
 }
 
 /* Responsive adjust */
-@media (max-width: 768px) {
+@media (max-width: 960px) {
   .card {
-    width: 340px;
+    width: 95%;
+    max-width: 450px;
     height: auto;
     flex-direction: column;
+    border-radius: 12px;
   }
 
   .welcomePanel {
-    padding: 30px;
-    height: 200px;
-    border-radius: 0;
+    padding: 24px;
+    height: 140px;
+    border-radius: 12px 12px 0 0;
+    align-items: center;
+    text-align: center;
   }
 
   .welcomePanel::after {
     display: none;
   }
 
+  .leftLogoContainer {
+    align-self: center;
+    margin-top: 0;
+  }
+
   .welcomeText {
-    writing-mode: horizontal-tb;
-    position: static;
-    font-size: 2rem;
-    margin-bottom: 10px;
+    display: none; /* Hide large vertical text on mobile */
   }
 
   .graphicContainer {
@@ -222,11 +228,22 @@
 
   .tagline {
     position: static;
-    margin-left: 0;
+    margin-top: 12px;
     max-width: 100%;
+    font-size: 0.9rem;
   }
 
   .formPanel {
-    padding: 30px 24px;
+    padding: 30px 20px;
+    gap: 20px;
+  }
+
+  .form {
+    gap: 20px;
+  }
+
+  .installBtnContainer {
+    margin-top: 15px;
+    width: 100%;
   }
 }

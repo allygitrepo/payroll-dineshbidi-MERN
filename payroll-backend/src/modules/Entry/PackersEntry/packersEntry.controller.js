@@ -20,14 +20,19 @@ exports.getEntries = async (req, res) => {
         const lastDayOfMonthStr = `${year}-${String(month).padStart(2, "0")}-${String(lastDayOfMonth.getDate()).padStart(2, "0")}`;
         const firstDayOfMonthStr = `${year}-${String(month).padStart(2, "0")}-01`;
 
+        const employeeWhere = {
+            company_id,
+            employee_type: "BIDI PACKER",
+            date_of_joining: { [Op.lte]: lastDayOfMonthStr },
+            status: true,
+        };
+        if (req.user?.role_name === 'Contractor' && req.user?.contractor_id) {
+            employeeWhere.contractor_id = req.user.contractor_id;
+        }
+
         // 1. Fetch active BIDI PACKER employees joined before or on the last day of the month
         const employees = await Employee.findAll({
-            where: {
-                company_id,
-                employee_type: "BIDI PACKER",
-                date_of_joining: { [Op.lte]: lastDayOfMonthStr },
-                status: true,
-            },
+            where: employeeWhere,
             attributes: ["id", "name", "uan", "member_id", "gender", "status", "date_of_joining"]
         });
 
@@ -168,8 +173,21 @@ exports.saveEntries = async (req, res) => {
             return res.status(400).json({ status: false, message: "Invalid payload" });
         }
 
+        let allowedEmployeeIds = null;
+        if (req.user?.role_name === 'Contractor' && req.user?.contractor_id) {
+            const myEmployees = await Employee.findAll({
+                where: { company_id, contractor_id: req.user.contractor_id },
+                attributes: ["id"]
+            });
+            allowedEmployeeIds = new Set(myEmployees.map(e => e.id));
+        }
+
         // We will process updates or inserts
         for (const entry of entries) {
+            if (allowedEmployeeIds && !allowedEmployeeIds.has(entry.employeeId)) {
+                continue;
+            }
+
             const payload = {
                 company_id,
                 employee_id: entry.employeeId,
@@ -215,8 +233,22 @@ exports.deleteEntries = async (req, res) => {
             return res.status(400).json({ status: false, message: "Company ID and month_year are required" });
         }
 
+        const deleteWhere = { company_id, month_year };
+
+        if (req.user?.role_name === 'Contractor' && req.user?.contractor_id) {
+            const myEmployees = await Employee.findAll({
+                where: { company_id, contractor_id: req.user.contractor_id },
+                attributes: ["id"]
+            });
+            const myEmployeeIds = myEmployees.map(e => e.id);
+            if (myEmployeeIds.length === 0) {
+                return res.status(200).json({ status: true, message: "No entries to delete.", deletedCount: 0 });
+            }
+            deleteWhere.employee_id = { [Op.in]: myEmployeeIds };
+        }
+
         const deletedCount = await PackersEntry.destroy({
-            where: { company_id, month_year }
+            where: deleteWhere
         });
 
         res.status(200).json({ 

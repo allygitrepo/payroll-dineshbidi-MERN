@@ -65,7 +65,7 @@ class EmployeeController {
         }
 
         try {
-            const newEmployee = await EmployeeService.createEmployee(value, req.user.id);
+            const newEmployee = await EmployeeService.createEmployee(value, req.user);
 
             return res.status(201).json(
                 successResponse(
@@ -104,7 +104,7 @@ class EmployeeController {
         }
 
         try {
-            const employees = await EmployeeService.getAllEmployees(companyId, req.user.id);
+            const employees = await EmployeeService.getAllEmployees(companyId, req.user);
 
             return res.status(200).json(
                 successResponse(
@@ -139,7 +139,7 @@ class EmployeeController {
         }
 
         try {
-            const employees = await EmployeeService.getMissingDetails(companyId, fields, req.user.id);
+            const employees = await EmployeeService.getMissingDetails(companyId, fields, req.user);
             return res.status(200).json(
                 successResponse("MISSING_DETAILS_RETRIEVED", "Missing details retrieved successfully.", "Missing details retrieved.", employees)
             );
@@ -157,7 +157,7 @@ class EmployeeController {
         const { id } = req.params;
 
         try {
-            const employee = await EmployeeService.getEmployeeById(id, req.user.id);
+            const employee = await EmployeeService.getEmployeeById(id, req.user);
 
             return res.status(200).json(
                 successResponse(
@@ -200,7 +200,7 @@ class EmployeeController {
         }
 
         try {
-            const updatedEmployee = await EmployeeService.updateEmployee(id, req.user.id, value);
+            const updatedEmployee = await EmployeeService.updateEmployee(id, req.user, value);
 
             return res.status(200).json(
                 successResponse(
@@ -230,7 +230,7 @@ class EmployeeController {
         const { id } = req.params;
 
         try {
-            await EmployeeService.deleteEmployee(id, req.user.id);
+            await EmployeeService.deleteEmployee(id, req.user);
 
             return res.status(200).json(
                 successResponse(
