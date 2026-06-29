@@ -6,8 +6,10 @@ const connectDB = async () => {
         await sequelize.authenticate();
         console.log("Database Connected Successfully");
 
-        // Sync models
-        await db.sequelize.sync({ alter: true });
+        // Sync models with foreign key checks temporarily disabled to prevent order issues
+        await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+        await db.sequelize.sync();
+        await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
         console.log("Database models synchronized successfully");
     } catch (err) {
         console.log("DB connection failed");

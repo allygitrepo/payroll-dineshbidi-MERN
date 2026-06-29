@@ -11,3 +11,4 @@ app.listen(PORT, () => {
     console.log(`http://localhost:${PORT}/payroll/v1/test`);
 
 });
+// Trigger nodemon restart after db and ignore config updates

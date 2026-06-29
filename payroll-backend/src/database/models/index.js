@@ -23,6 +23,7 @@ const BidiRollerEntry = require("../../modules/Entry/BidiRollerEntry/bidiRollerE
 const ChallanDateEntry = require("../../modules/Entry/ChallanDateEntry/challanDateEntry.model");
 const Resignation = require("../../modules/Entry/Resignation/resignation.model");
 const Note = require("../../modules/Todo List/Note/note.model");
+const LeaveMaster = require("../../modules/Setup/LeaveMaster/leaveMaster.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -55,6 +56,7 @@ db.BidiRollerEntry = BidiRollerEntry;
 db.ChallanDateEntry = ChallanDateEntry;
 db.Resignation = Resignation;
 db.Note = Note;
+db.LeaveMaster = LeaveMaster;
 
 // Model associations
 
@@ -393,6 +395,17 @@ db.Company.hasMany(db.Note, {
     onDelete: "CASCADE",
 });
 db.Note.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+// LeaveMaster relationships
+db.Company.hasMany(db.LeaveMaster, {
+    foreignKey: "company_id",
+    as: "leaveMasters",
+    onDelete: "CASCADE",
+});
+db.LeaveMaster.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
 });

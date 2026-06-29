@@ -8,6 +8,7 @@ const contractorRoutes = require("./modules/Masters/Contractor/contractor.routes
 const employeeRoutes = require("./modules/Masters/Employee/employee.routes");
 const attendanceRoutes = require("./modules/Attendance/attendance.routes");
 const leaveRequestRoutes = require("./modules/Attendance/Leave/leaveRequest.routes");
+const leaveMasterRoutes = require("./modules/Setup/LeaveMaster/leaveMaster.routes");
 const challanSetupRoutes = require("./modules/Setup/ChallanSetup/challanSetup.routes");
 const professionalTaxRoutes = require("./modules/Setup/ProfessionalTax/professionalTax.routes");
 const bidiRollerWageRoutes = require("./modules/Setup/BidiRollerWage/bidiRollerWage.routes");
@@ -43,6 +44,7 @@ router.use("/v1/contractors", contractorRoutes);
 router.use("/v1/employees", employeeRoutes);
 router.use("/v1/attendance", attendanceRoutes);
 router.use("/v1/leaves", leaveRequestRoutes);
+router.use("/v1/leave-masters", leaveMasterRoutes);
 router.use("/v1/challan-setups", challanSetupRoutes);
 router.use("/v1/professional-taxes", professionalTaxRoutes);
 router.use("/v1/bidi-roller-wages", bidiRollerWageRoutes);

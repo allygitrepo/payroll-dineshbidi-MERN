@@ -21,6 +21,7 @@ const slugToSubmenuMap = {
   'professional-tax': 'Professional Tax',
   'office-staff-salary': 'Office Staff Salary',
   'challan-setup': 'Challan Setup',
+  'leave': 'Leave',
   
   'attendence-list': 'Attendence List',
   'leave-management': 'Leave Management',

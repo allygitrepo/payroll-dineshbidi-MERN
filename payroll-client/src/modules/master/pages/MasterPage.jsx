@@ -4,6 +4,7 @@ import EmployeePage from '../employee/pages/EmployeePage';
 import KycUpdatePage from '../kyc-update/pages/KycUpdatePage';
 import ContractorPage from '../contractor/pages/ContractorPage';
 import AddressPage from '../address/pages/AddressPage';
+import LeaveMasterPage from '../../setup/leave-master/pages/LeaveMasterPage';
 
 const MasterPage = ({ activeSubMenu }) => {
   switch (activeSubMenu) {
@@ -17,6 +18,8 @@ const MasterPage = ({ activeSubMenu }) => {
       return <ContractorPage />;
     case 'Address':
       return <AddressPage />;
+    case 'Leave':
+      return <LeaveMasterPage />;
     default:
       return (
         <div style={{ padding: '30px', backgroundColor: 'var(--card-bg)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>

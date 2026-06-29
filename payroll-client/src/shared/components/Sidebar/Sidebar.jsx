@@ -52,7 +52,8 @@ const menuItems = [
       { name: 'Employee', icon: Users },
       { name: 'KYC Update', icon: Fingerprint },
       { name: 'Contractor', icon: Briefcase },
-      { name: 'Address', icon: MapPin }
+      { name: 'Address', icon: MapPin },
+      { name: 'Leave', icon: FileCheck }
     ]
   },
   {
@@ -246,6 +247,7 @@ const Sidebar = ({ sidebarCollapsed }) => {
   }
 
   const isContractor = userStr && JSON.parse(userStr)?.role?.name === 'Contractor';
+  const isAdmin = userStr && (JSON.parse(userStr)?.role?.name === 'ADMIN' || JSON.parse(userStr)?.role?.name === 'Admin');
 
   // Filter menuItems based on permissions and role
   const filteredMenuItems = menuItems.map(item => {
@@ -265,7 +267,9 @@ const Sidebar = ({ sidebarCollapsed }) => {
           }
           return null;
         } else {
-          return permissions[nameToSlug(sub.name)] ? sub : null;
+          const slug = nameToSlug(sub.name);
+          const hasPerm = permissions[slug] || (isAdmin && slug === 'leave');
+          return hasPerm ? sub : null;
         }
       }).filter(Boolean);
       

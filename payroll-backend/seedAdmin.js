@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require("uuid");
 
 const ALL_PERMISSION_SLUGS = [
   'dashboard',
-  'company', 'employee', 'kyc-update', 'contractor', 'address',
+  'company', 'employee', 'kyc-update', 'contractor', 'address', 'leave-master',
   'packing-wages', 'bidi-roller-wages', 'professional-tax', 'office-staff-salary', 'challan-setup',
   'office-attendance', 'packing-attendance', 'bidi-roller-attendance',
   'office-staff', 'packers', 'bidi-roller', 'epf-challan-date', 'resignation',
