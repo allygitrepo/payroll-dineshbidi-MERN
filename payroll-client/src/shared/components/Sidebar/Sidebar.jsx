@@ -249,17 +249,9 @@ const Sidebar = ({ sidebarCollapsed }) => {
 
   // Filter menuItems based on permissions and role
   const filteredMenuItems = menuItems.map(item => {
-    if (isContractor) {
-      const allowedParentMenus = ['Master', 'Attendance', 'Entry'];
-      if (!allowedParentMenus.includes(item.name)) return null;
-    }
-
     let filteredSubItems = null;
     if (item.subItems) {
       filteredSubItems = item.subItems.map(sub => {
-        if (isContractor && item.name === 'Master' && sub.name !== 'Employee') {
-            return null; // Contractor can only see Employee in Master
-        }
 
         if (sub.nestedItems) {
           // If the parent itself has permission (e.g., Salary Sheet), show it with all nested items
