@@ -221,14 +221,14 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
     setFormData(prev => {
       const currentPerms = prev.permissions[slug] || { read: false, create: false, edit: false, delete: false };
       const newValue = !currentPerms[action];
-      
+
       const newPerms = { ...currentPerms, [action]: newValue };
-      
+
       // If setting create, edit, or delete to true, ensure read is also true
       if (newValue && action !== 'read') {
         newPerms.read = true;
       }
-      
+
       // If setting read to false, ensure others are false
       if (!newValue && action === 'read') {
         newPerms.create = false;
@@ -265,14 +265,14 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
   const handleToggleAllPermissions = (select) => {
     const updated = {};
     PERMISSION_GROUPS.forEach(group => {
-        group.items.forEach(item => {
-            updated[item.slug] = {
-                read: select,
-                create: item.readOnly ? false : select,
-                edit: item.readOnly ? false : select,
-                delete: item.readOnly ? false : select,
-            };
-        });
+      group.items.forEach(item => {
+        updated[item.slug] = {
+          read: select,
+          create: item.readOnly ? false : select,
+          edit: item.readOnly ? false : select,
+          delete: item.readOnly ? false : select,
+        };
+      });
     });
     setFormData(prev => ({
       ...prev,
@@ -444,7 +444,7 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
                 return (
                   <div key={group.title} className={styles.permissionGroup}>
                     <div className={styles.groupHeader}>
-                      <input 
+                      <input
                         type="checkbox"
                         checked={isAllSelected}
                         ref={el => { if (el) el.indeterminate = isSomeSelected; }}

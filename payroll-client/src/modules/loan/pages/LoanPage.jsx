@@ -482,10 +482,12 @@ const LoanPage = () => {
             )}
           </div>
         ) : (
-          <div className={styles.noSelection} style={{ margin: 'auto 0' }}>
-            <User size={48} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Select Employee</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+          <div className={styles.noSelection}>
+            <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '16px', borderRadius: '50%', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', width: '72px', height: '72px' }}>
+              <User size={36} />
+            </div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-primary)' }}>Select Employee</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px', maxWidth: '300px' }}>
               Choose a worker from the sidebar list to view their outstanding loan ledger.
             </p>
           </div>
