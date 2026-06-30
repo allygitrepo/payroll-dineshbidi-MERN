@@ -21,6 +21,7 @@ const AddressPage = () => {
   const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   const dropdownRef = useRef(null);
+  const pageTopRef = useRef(null);
 
   // Load initial address records
   useEffect(() => {
@@ -59,7 +60,13 @@ const AddressPage = () => {
 
   const handleEdit = (addr) => {
     setEditingAddress(addr);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      if (pageTopRef.current) {
+        pageTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100);
   };
 
   const handleDeleteClick = (id) => {
@@ -146,7 +153,7 @@ const AddressPage = () => {
   };
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} ref={pageTopRef}>
       {/* Header section with heading and actions */}
       <div className={styles.headerSection}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

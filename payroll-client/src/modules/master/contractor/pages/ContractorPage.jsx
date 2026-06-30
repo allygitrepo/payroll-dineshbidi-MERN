@@ -31,6 +31,7 @@ const ContractorPage = () => {
   const [existingLogin, setExistingLogin] = useState(null);
 
   const dropdownRef = useRef(null);
+  const pageTopRef = useRef(null);
 
   // Load initial contractors and addresses
   useEffect(() => {
@@ -79,7 +80,13 @@ const ContractorPage = () => {
   const handleEdit = (contractor) => {
     setEditingContractor(contractor);
     setIsFormOpen(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      if (pageTopRef.current) {
+        pageTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100);
   };
 
   const handleDeleteClick = (id) => {
@@ -219,7 +226,7 @@ const ContractorPage = () => {
   };
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} ref={pageTopRef}>
       {/* Header section with heading and actions */}
       <div className={styles.headerSection}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

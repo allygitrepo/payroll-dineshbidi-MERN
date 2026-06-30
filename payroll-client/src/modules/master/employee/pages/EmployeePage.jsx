@@ -30,6 +30,7 @@ const EmployeePage = () => {
   const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   const dropdownRef = useRef(null);
+  const pageTopRef = useRef(null);
 
   // Load initial employees, addresses and contractors
   useEffect(() => {
@@ -80,7 +81,13 @@ const EmployeePage = () => {
   const handleEdit = (employee) => {
     setEditingEmployee(employee);
     setIsFormOpen(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      if (pageTopRef.current) {
+        pageTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100);
   };
 
   const handleDeleteClick = (id) => {
@@ -206,7 +213,7 @@ const EmployeePage = () => {
   };
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} ref={pageTopRef}>
       {/* Header section with heading and actions */}
       <div className={styles.headerSection}>
         <h1 className={styles.title}>Employee</h1>
