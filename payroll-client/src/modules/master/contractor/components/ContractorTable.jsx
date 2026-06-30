@@ -1,6 +1,6 @@
 import { Pagination } from '../../../../shared/components';
 import React, { useState, useMemo } from 'react';
-import { Edit, Trash2, Search, Key } from 'lucide-react';
+import { Edit, Trash2, Search, Key, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import styles from './ContractorPage.module.css';
 
 const formatDate = (dateStr) => {
@@ -24,20 +24,52 @@ const ContractorTable = ({
 }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   // Reset pagination if filter changes
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, pageSize, statusFilter]);
 
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedData = useMemo(() => {
+    let sortableItems = [...data];
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+        
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [data, sortConfig]);
+
   // Pagination calculations
-  const totalEntries = data.length;
+  const totalEntries = sortedData.length;
   const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalEntries);
   const paginatedData = useMemo(() => {
-    return data.slice(startIndex, endIndex);
-  }, [data, startIndex, endIndex]);
+    return sortedData.slice(startIndex, endIndex);
+  }, [sortedData, startIndex, endIndex]);
+
+  const renderSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) return <ArrowUpDown size={14} style={{ opacity: 0.4, marginLeft: '4px' }} />;
+    return sortConfig.direction === 'asc' ? <ArrowUp size={14} style={{ marginLeft: '4px' }} /> : <ArrowDown size={14} style={{ marginLeft: '4px' }} />;
+  };
 
   return (
     <div className={styles.tableCard}>
@@ -89,21 +121,51 @@ const ContractorTable = ({
             <tr>
               <th style={{ width: '100px', textAlign: 'center' }}>Action</th>
               <th style={{ width: '60px', textAlign: 'center' }}>Sr No.</th>
-              <th>Ccode</th>
-              <th>Name</th>
-              <th>Address</th>
-              <th>Postoffice</th>
-              <th>District</th>
-              <th>Pincode</th>
-              <th>Pf Code</th>
-              <th>Date of Joining</th>
-              <th>PAN</th>
-              <th>Adhar</th>
-              <th>GST No.</th>
-              <th>Bank A/c</th>
-              <th>Bank Name</th>
-              <th>IFSC</th>
-              <th style={{ textAlign: 'center' }}>Status</th>
+              <th onClick={() => handleSort('ccode')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Ccode {renderSortIcon('ccode')}</div>
+              </th>
+              <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Name {renderSortIcon('name')}</div>
+              </th>
+              <th onClick={() => handleSort('address')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Address {renderSortIcon('address')}</div>
+              </th>
+              <th onClick={() => handleSort('postOffice')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Postoffice {renderSortIcon('postOffice')}</div>
+              </th>
+              <th onClick={() => handleSort('district')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>District {renderSortIcon('district')}</div>
+              </th>
+              <th onClick={() => handleSort('pincode')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Pincode {renderSortIcon('pincode')}</div>
+              </th>
+              <th onClick={() => handleSort('pfCode')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Pf Code {renderSortIcon('pfCode')}</div>
+              </th>
+              <th onClick={() => handleSort('dateOfJoining')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Date of Joining {renderSortIcon('dateOfJoining')}</div>
+              </th>
+              <th onClick={() => handleSort('pan')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>PAN {renderSortIcon('pan')}</div>
+              </th>
+              <th onClick={() => handleSort('aadhaar')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Adhar {renderSortIcon('aadhaar')}</div>
+              </th>
+              <th onClick={() => handleSort('gstNo')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>GST No. {renderSortIcon('gstNo')}</div>
+              </th>
+              <th onClick={() => handleSort('bankAccount')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Bank A/c {renderSortIcon('bankAccount')}</div>
+              </th>
+              <th onClick={() => handleSort('bankName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Bank Name {renderSortIcon('bankName')}</div>
+              </th>
+              <th onClick={() => handleSort('ifsc')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>IFSC {renderSortIcon('ifsc')}</div>
+              </th>
+              <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Status {renderSortIcon('status')}</div>
+              </th>
             </tr>
           </thead>
           <tbody>

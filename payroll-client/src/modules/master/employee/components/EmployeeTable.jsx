@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Edit, Trash2, Search } from 'lucide-react';
+import { Edit, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import styles from './EmployeePage.module.css';
 
 const formatDate = (dateStr) => {
@@ -14,20 +14,52 @@ const formatDate = (dateStr) => {
 const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeFilterChange, selectedStatus, onStatusFilterChange, onEdit, onDelete, onToggleAbry }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   // Reset pagination if filter changes
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, pageSize, selectedType, selectedStatus]);
 
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedData = useMemo(() => {
+    let sortableItems = [...data];
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+        
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [data, sortConfig]);
+
   // Pagination calculations
-  const totalEntries = data.length;
+  const totalEntries = sortedData.length;
   const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalEntries);
   const paginatedData = useMemo(() => {
-    return data.slice(startIndex, endIndex);
-  }, [data, startIndex, endIndex]);
+    return sortedData.slice(startIndex, endIndex);
+  }, [sortedData, startIndex, endIndex]);
+
+  const renderSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) return <ArrowUpDown size={14} style={{ opacity: 0.4, marginLeft: '4px' }} />;
+    return sortConfig.direction === 'asc' ? <ArrowUp size={14} style={{ marginLeft: '4px' }} /> : <ArrowDown size={14} style={{ marginLeft: '4px' }} />;
+  };
 
   return (
     <div className={styles.tableCard}>
@@ -100,33 +132,87 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
           <thead>
             <tr>
               <th style={{ width: '100px', textAlign: 'center' }}>Action</th>
-              <th style={{ width: '140px', textAlign: 'center' }}>ABRY Applicable?</th>
-              <th>UAN</th>
-              <th>IP Number</th>
-              <th>Member Id</th>
-              <th>Member Name</th>
-              <th>Date Of Birth</th>
-              <th>DateOfJoining</th>
-              <th>Aadhaar Card</th>
-              <th>Gender</th>
-              <th>Father/Husband Name</th>
-              <th>Relation</th>
-              <th>Marital Status</th>
-              <th>Mobile</th>
-              <th>Qualification</th>
-              <th>Employee Type</th>
-              <th>Contractor</th>
-              <th>Address</th>
-              <th>Post Office</th>
-              <th>District</th>
-              <th>Pincode</th>
-              <th>Nationality</th>
-              <th>Email</th>
-              <th>Int. Worker</th>
-              <th>Physical Handicap</th>
-              <th>PMRPY</th>
-              <th style={{ width: '100px', textAlign: 'center' }}>Status</th>
-              <th style={{ width: '130px', textAlign: 'center' }}>Face Status</th>
+              <th onClick={() => handleSort('abryApplicable')} style={{ width: '140px', textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>ABRY Applicable? {renderSortIcon('abryApplicable')}</div>
+              </th>
+              <th onClick={() => handleSort('uan')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>UAN {renderSortIcon('uan')}</div>
+              </th>
+              <th onClick={() => handleSort('ipNumber')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>IP Number {renderSortIcon('ipNumber')}</div>
+              </th>
+              <th onClick={() => handleSort('memberId')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Member Id {renderSortIcon('memberId')}</div>
+              </th>
+              <th onClick={() => handleSort('memberName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Member Name {renderSortIcon('memberName')}</div>
+              </th>
+              <th onClick={() => handleSort('dob')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Date Of Birth {renderSortIcon('dob')}</div>
+              </th>
+              <th onClick={() => handleSort('dateOfJoining')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>DateOfJoining {renderSortIcon('dateOfJoining')}</div>
+              </th>
+              <th onClick={() => handleSort('aadhaarCard')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Aadhaar Card {renderSortIcon('aadhaarCard')}</div>
+              </th>
+              <th onClick={() => handleSort('gender')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Gender {renderSortIcon('gender')}</div>
+              </th>
+              <th onClick={() => handleSort('fatherHusbandName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Father/Husband Name {renderSortIcon('fatherHusbandName')}</div>
+              </th>
+              <th onClick={() => handleSort('relation')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Relation {renderSortIcon('relation')}</div>
+              </th>
+              <th onClick={() => handleSort('maritalStatus')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Marital Status {renderSortIcon('maritalStatus')}</div>
+              </th>
+              <th onClick={() => handleSort('mobile')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Mobile {renderSortIcon('mobile')}</div>
+              </th>
+              <th onClick={() => handleSort('qualification')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Qualification {renderSortIcon('qualification')}</div>
+              </th>
+              <th onClick={() => handleSort('employeeType')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Employee Type {renderSortIcon('employeeType')}</div>
+              </th>
+              <th onClick={() => handleSort('contractor')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Contractor {renderSortIcon('contractor')}</div>
+              </th>
+              <th onClick={() => handleSort('address')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Address {renderSortIcon('address')}</div>
+              </th>
+              <th onClick={() => handleSort('postOffice')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Post Office {renderSortIcon('postOffice')}</div>
+              </th>
+              <th onClick={() => handleSort('district')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>District {renderSortIcon('district')}</div>
+              </th>
+              <th onClick={() => handleSort('pincode')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Pincode {renderSortIcon('pincode')}</div>
+              </th>
+              <th onClick={() => handleSort('nationality')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Nationality {renderSortIcon('nationality')}</div>
+              </th>
+              <th onClick={() => handleSort('email')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Email {renderSortIcon('email')}</div>
+              </th>
+              <th onClick={() => handleSort('isInternationalWorker')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Int. Worker {renderSortIcon('isInternationalWorker')}</div>
+              </th>
+              <th onClick={() => handleSort('physicalHandicap')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Physical Handicap {renderSortIcon('physicalHandicap')}</div>
+              </th>
+              <th onClick={() => handleSort('pmrpy')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>PMRPY {renderSortIcon('pmrpy')}</div>
+              </th>
+              <th onClick={() => handleSort('status')} style={{ width: '100px', textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Status {renderSortIcon('status')}</div>
+              </th>
+              <th onClick={() => handleSort('faceDescriptorPath')} style={{ width: '130px', textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Face Status {renderSortIcon('faceDescriptorPath')}</div>
+              </th>
             </tr>
           </thead>
           <tbody>

@@ -10,7 +10,8 @@ import {
   Printer,
   Users,
   CalendarDays,
-  Upload
+  Upload,
+  ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import styles from '../components/OfficeStaffEntryPage.module.css';
@@ -57,6 +58,15 @@ const OfficeStaffEntryPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   /* Close dropdown outside click */
   React.useEffect(() => {
@@ -294,10 +304,33 @@ const OfficeStaffEntryPage = () => {
     );
   }, [rows, searchQuery]);
 
+  const sortedRows = useMemo(() => {
+    let sortableItems = [...filteredRows];
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+        
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filteredRows, sortConfig]);
+
   const paginatedRows = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredRows.slice(start, start + pageSize);
-  }, [filteredRows, currentPage, pageSize]);
+    return sortedRows.slice(start, start + pageSize);
+  }, [sortedRows, currentPage, pageSize]);
+
+  const renderSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) return <ArrowUpDown size={14} style={{ opacity: 0.4, marginLeft: '4px' }} />;
+    return sortConfig.direction === 'asc' ? <ArrowUp size={14} style={{ marginLeft: '4px' }} /> : <ArrowDown size={14} style={{ marginLeft: '4px' }} />;
+  };
 
   /* ---- Totals ---- */
   const totals = useMemo(() => {
@@ -455,17 +488,39 @@ const OfficeStaffEntryPage = () => {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th style={{ width: 220 }}>Employee Name</th>
-                  <th style={{ textAlign: 'right' }}>No. of Days Worked</th>
-                  <th style={{ textAlign: 'right' }}>Leave With Pay</th>
-                  <th style={{ textAlign: 'right' }}>Leave Without Pay</th>
-                  <th style={{ textAlign: 'right' }}>Addition</th>
-                  <th style={{ textAlign: 'right' }}>Basic Salary</th>
-                  <th style={{ textAlign: 'right' }}>Total</th>
-                  <th style={{ textAlign: 'right' }}>PF</th>
-                  <th style={{ textAlign: 'right' }}>PT</th>
-                  <th style={{ textAlign: 'right' }}>ESIC</th>
-                  <th style={{ textAlign: 'right' }}>Net Wages</th>
+                  <th onClick={() => handleSort('employeeName')} style={{ width: 220, cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>Employee Name {renderSortIcon('employeeName')}</div>
+                  </th>
+                  <th onClick={() => handleSort('daysWorked')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>No. of Days Worked {renderSortIcon('daysWorked')}</div>
+                  </th>
+                  <th onClick={() => handleSort('leaveWithPay')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>Leave With Pay {renderSortIcon('leaveWithPay')}</div>
+                  </th>
+                  <th onClick={() => handleSort('leaveWithoutPay')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>Leave Without Pay {renderSortIcon('leaveWithoutPay')}</div>
+                  </th>
+                  <th onClick={() => handleSort('addition')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>Addition {renderSortIcon('addition')}</div>
+                  </th>
+                  <th onClick={() => handleSort('basicSalary')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>Basic Salary {renderSortIcon('basicSalary')}</div>
+                  </th>
+                  <th onClick={() => handleSort('gross')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>Total {renderSortIcon('gross')}</div>
+                  </th>
+                  <th onClick={() => handleSort('pf')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>PF {renderSortIcon('pf')}</div>
+                  </th>
+                  <th onClick={() => handleSort('pt')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>PT {renderSortIcon('pt')}</div>
+                  </th>
+                  <th onClick={() => handleSort('esic')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>ESIC {renderSortIcon('esic')}</div>
+                  </th>
+                  <th onClick={() => handleSort('netWages')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>Net Wages {renderSortIcon('netWages')}</div>
+                  </th>
                 </tr>
               </thead>
               <tbody>

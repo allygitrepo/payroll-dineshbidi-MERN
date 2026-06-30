@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
-  Search, Save, Download, FileSpreadsheet, Copy, FileText, File, Printer, Users, CalendarDays, ChevronDown, Check, X, Upload
+  Search, Save, Download, FileSpreadsheet, Copy, FileText, File, Printer, Users, CalendarDays, ChevronDown, Check, X, Upload, ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import styles from './BidiRollerEntryPage.module.css';
@@ -50,6 +50,15 @@ const BidiRollerEntryPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   /* Load Contractors list on mount */
   useEffect(() => {
@@ -217,10 +226,33 @@ const BidiRollerEntryPage = () => {
     );
   }, [displayedRows, searchQuery]);
 
+  const sortedRows = useMemo(() => {
+    let sortableItems = [...filteredRows];
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+        
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filteredRows, sortConfig]);
+
   const paginatedRows = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredRows.slice(start, start + pageSize);
-  }, [filteredRows, currentPage, pageSize]);
+    return sortedRows.slice(start, start + pageSize);
+  }, [sortedRows, currentPage, pageSize]);
+
+  const renderSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) return <ArrowUpDown size={14} style={{ opacity: 0.4, marginLeft: '4px' }} />;
+    return sortConfig.direction === 'asc' ? <ArrowUp size={14} style={{ marginLeft: '4px' }} /> : <ArrowDown size={14} style={{ marginLeft: '4px' }} />;
+  };
 
   /* ---- Export ---- */
   const handleExport = (type) => {
@@ -570,18 +602,42 @@ const BidiRollerEntryPage = () => {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th style={{ width: 180 }}>Employee Name.</th>
-                  <th style={{ textAlign: 'center' }}>No. of Unit worked</th>
-                  <th style={{ textAlign: 'center' }}>No. of Unit worked</th>
-                  <th style={{ textAlign: 'center' }}>No. of Days worked</th>
-                  <th style={{ textAlign: 'center', width: 100 }}>Leave With Pay</th>
-                  <th style={{ textAlign: 'center' }}>Wages</th>
-                  <th style={{ textAlign: 'center' }}>Bonus</th>
-                  <th style={{ textAlign: 'center' }}>Total</th>
-                  <th style={{ textAlign: 'center' }}>PF</th>
-                  <th style={{ textAlign: 'center' }}>PT</th>
-                  <th style={{ textAlign: 'center' }}>ESIC</th>
-                  <th style={{ textAlign: 'center' }}>Net Wages</th>
+                  <th onClick={() => handleSort('employeeName')} style={{ width: 180, cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>Employee Name {renderSortIcon('employeeName')}</div>
+                  </th>
+                  <th onClick={() => handleSort('unit1')} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>No. of Unit worked {renderSortIcon('unit1')}</div>
+                  </th>
+                  <th onClick={() => handleSort('unit2')} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>No. of Unit worked {renderSortIcon('unit2')}</div>
+                  </th>
+                  <th onClick={() => handleSort('daysWorked')} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>No. of Days worked {renderSortIcon('daysWorked')}</div>
+                  </th>
+                  <th onClick={() => handleSort('leaveWithPay')} style={{ textAlign: 'center', width: 100, cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Leave With Pay {renderSortIcon('leaveWithPay')}</div>
+                  </th>
+                  <th onClick={() => handleSort('wages')} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Wages {renderSortIcon('wages')}</div>
+                  </th>
+                  <th onClick={() => handleSort('bonus')} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Bonus {renderSortIcon('bonus')}</div>
+                  </th>
+                  <th onClick={() => handleSort('gross')} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Total {renderSortIcon('gross')}</div>
+                  </th>
+                  <th onClick={() => handleSort('pf')} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>PF {renderSortIcon('pf')}</div>
+                  </th>
+                  <th onClick={() => handleSort('pt')} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>PT {renderSortIcon('pt')}</div>
+                  </th>
+                  <th onClick={() => handleSort('esic')} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>ESIC {renderSortIcon('esic')}</div>
+                  </th>
+                  <th onClick={() => handleSort('netWages')} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Net Wages {renderSortIcon('netWages')}</div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
