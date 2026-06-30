@@ -10,9 +10,9 @@ const requirePermission = (moduleSlug, action) => {
     return async (req, res, next) => {
         try {
             // req.user is set by authenticateJWT
-            if (!req.user || !req.user.role) {
+            if (!req.user || !req.user.id) {
                 return res.status(403).json(
-                    errorResponse("FORBIDDEN", "User role not found in session.", "Access denied.")
+                    errorResponse("FORBIDDEN", "User not found in session.", "Access denied.")
                 );
             }
 
@@ -28,17 +28,28 @@ const requirePermission = (moduleSlug, action) => {
                 );
             }
 
-            const permissions = user.role.permissions || {};
-            const modulePerm = permissions[moduleSlug];
-
+            let permissions = user.role.permissions || {};
+            if (typeof permissions === 'string') {
+                try {
+                    permissions = JSON.parse(permissions);
+                } catch(e) {}
+            }
+            
             let hasAccess = false;
 
-            if (typeof modulePerm === 'boolean') {
-                // Backward compatibility: If the permission is just a boolean, it means full access if true.
-                hasAccess = modulePerm === true;
-            } else if (typeof modulePerm === 'object' && modulePerm !== null) {
-                // Granular check
-                hasAccess = modulePerm[action] === true;
+            if (Array.isArray(permissions)) {
+                // Older legacy format where permissions was just an array of slugs: ['company', 'employee']
+                hasAccess = permissions.includes(moduleSlug);
+            } else {
+                const modulePerm = permissions[moduleSlug];
+                
+                if (typeof modulePerm === 'boolean') {
+                    // Backward compatibility: If the permission is just a boolean, it means full access if true.
+                    hasAccess = modulePerm === true;
+                } else if (typeof modulePerm === 'object' && modulePerm !== null) {
+                    // Granular check
+                    hasAccess = modulePerm[action] === true;
+                }
             }
 
             // Optional: Hardcode an override for OWNER role or super admin
