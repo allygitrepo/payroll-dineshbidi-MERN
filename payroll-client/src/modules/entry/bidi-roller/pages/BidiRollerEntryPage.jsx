@@ -1,7 +1,8 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
-  Search, Save, Download, FileSpreadsheet, Copy, FileText, File, Printer, Users, CalendarDays, ChevronDown, Check, X
+  Search, Save, Download, FileSpreadsheet, Copy, FileText, File, Printer, Users, CalendarDays, ChevronDown, Check, X, Upload
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import styles from './BidiRollerEntryPage.module.css';
 import { useToast, MonthYearPicker, Pagination } from '../../../../shared/components';
 import { getContractors } from '../../../master/contractor/services/contractorService';
@@ -29,6 +30,7 @@ const getCurrentMonth = () => {
 const BidiRollerEntryPage = () => {
   const addToast = useToast();
   const dropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
   const companyId = localStorage.getItem('selectedCompany');
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
@@ -222,7 +224,58 @@ const BidiRollerEntryPage = () => {
 
   /* ---- Export ---- */
   const handleExport = (type) => {
-    if (type === 'Copy') {
+    if (type === 'Excel' || type === 'Excel Template') {
+      const isTemplate = type === 'Excel Template';
+      const esicLimit = config?.esicWageLimit || 176;
+      const esicRate = config?.esicShare || 0.0075;
+      
+      const r1 = config?.rate1 || 0;
+      const r2 = config?.rate2 || 0;
+      const b1 = config?.bonus1 || 0;
+      const b2 = config?.bonus2 || 0;
+
+      const aoa = [
+        ['ID (Do Not Modify)', 'Employee Code', 'Employee Name', 'Unit 1', 'Unit 2', 'Days Worked', 'Leave With Pay', 'Rate 1', 'Rate 2', 'Bonus 1', 'Bonus 2', 'Wages', 'Bonus', 'Total', 'PF', 'PT', 'ESIC', 'Net Wages']
+      ];
+
+      filteredRows.forEach((r, idx) => {
+        const rowNum = idx + 2;
+        const pfRate = (r.gender === 'MALE' || r.gender === 'Male' || r.gender === 'M') ? (config?.pfRateMale || 0.12) : (config?.pfRateFemale || 0.12);
+        
+        const ptConst = r.pt || 0;
+
+        const fL = `ROUND(D${rowNum}*H${rowNum} + E${rowNum}*I${rowNum} + IF(F${rowNum}>0, ((D${rowNum}*H${rowNum} + E${rowNum}*I${rowNum}) / F${rowNum}) * G${rowNum}, 0), 0)`;
+        const fM = `ROUND(D${rowNum}*J${rowNum} + E${rowNum}*K${rowNum}, 0)`;
+        const fN = `ROUND(L${rowNum} + M${rowNum}, 0)`;
+        const fO = `ROUND(L${rowNum} * ${pfRate}, 0)`;
+        const fQ = `IF(N${rowNum}/MAX(1, F${rowNum} + G${rowNum}) <= ${esicLimit}, 0, CEILING(N${rowNum} * ${esicRate}, 1))`;
+        const fR = `MAX(0, N${rowNum} - O${rowNum} - P${rowNum} - Q${rowNum})`;
+
+        aoa.push([
+          r.employeeId,
+          r.employeeCode || '',
+          r.employeeName,
+          isTemplate ? null : (r.unit1 || 0),
+          isTemplate ? null : (r.unit2 || 0),
+          isTemplate ? null : (r.daysWorked || 0),
+          isTemplate ? null : (r.leaveWithPay || 0),
+          r1, r2, b1, b2,
+          { t: 'n', f: fL, v: isTemplate ? 0 : r.wages },
+          { t: 'n', f: fM, v: isTemplate ? 0 : r.bonus },
+          { t: 'n', f: fN, v: isTemplate ? 0 : r.gross },
+          { t: 'n', f: fO, v: isTemplate ? 0 : r.pf },
+          ptConst,
+          { t: 'n', f: fQ, v: isTemplate ? 0 : r.esic },
+          { t: 'n', f: fR, v: isTemplate ? 0 : r.netWages }
+        ]);
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Bidi_Roller');
+      XLSX.writeFile(workbook, `Bidi_Roller_${isTemplate ? 'Template' : 'Export'}_${formatMonthLabel(activeMonth) || ''}.xlsx`);
+      addToast({ type: 'success', message: `${type} downloaded!` });
+    } else if (type === 'Copy') {
       const header = 'Employee Name.\tNo. of days\tUnit-1\tUnit-2\tLeave with pay\tRate-1\tRate-2\tBonus-1\tBonus-2\tWages\tBonus\tTotal\tPF\tPT\tESIC\tNet Wages';
       const body = filteredRows.map(r =>
         `${r.employeeName}\t${r.daysWorked}\t${r.unit1}\t${r.unit2}\t${r.leaveWithPay}\t${config?.rate1 || 0}\t${config?.rate2 || 0}\t${config?.bonus1 || 0}\t${config?.bonus2 || 0}\t${r.wages}\t${r.bonus}\t${r.gross}\t${r.pf}\t${r.pt}\t${r.esic}\t${r.netWages}`
@@ -233,6 +286,66 @@ const BidiRollerEntryPage = () => {
       addToast({ type: 'info', message: `${type} export started for ${filteredRows.length} records!` });
     }
     setIsDropdownOpen(false);
+  };
+
+  /* ---- Import ---- */
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const importedData = XLSX.utils.sheet_to_json(worksheet);
+
+        let updateCount = 0;
+        setRows(prev => {
+          const newRows = [...prev];
+          importedData.forEach(importedRow => {
+            const empId = importedRow['ID (Do Not Modify)'];
+            if (!empId) return; // Skip invalid rows
+            
+            const rowIndex = newRows.findIndex(r => r.employeeId === empId);
+            if (rowIndex !== -1) {
+              const rowToUpdate = { ...newRows[rowIndex] };
+              let modified = false;
+
+              const mapField = (excelCol, objKey) => {
+                if (importedRow[excelCol] !== undefined) {
+                  let val = String(importedRow[excelCol]).replace(/[^0-9.]/g, '');
+                  const parts = val.split('.');
+                  if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+                  rowToUpdate[objKey] = val;
+                  modified = true;
+                }
+              };
+
+              mapField('Unit 1', 'unit1');
+              mapField('Unit 2', 'unit2');
+              mapField('Days Worked', 'daysWorked');
+              mapField('Leave With Pay', 'leaveWithPay');
+
+              if (modified) {
+                newRows[rowIndex] = config ? recalculateBidiRollerRow(rowToUpdate, config) : rowToUpdate;
+                updateCount++;
+              }
+            }
+          });
+          return newRows;
+        });
+
+        addToast({ type: 'success', message: `Successfully updated ${updateCount} records from Excel.` });
+      } catch (error) {
+        console.error('Error importing Excel:', error);
+        addToast({ type: 'error', message: 'Failed to import Excel file. Please check the format.' });
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = null;
   };
 
   /* ---- Totals ---- */
@@ -268,6 +381,21 @@ const BidiRollerEntryPage = () => {
       <div className={styles.headerSection}>
         <h1 className={styles.title}>Bidi Roller Entry</h1>
         <div className={styles.headerActions}>
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            style={{ display: 'none' }} 
+          />
+          <button
+            className={styles.downloadBtn}
+            style={{ backgroundColor: 'var(--success-color, #10b981)' }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload size={18} /> Upload Excel
+          </button>
+          
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
               className={styles.downloadBtn}
@@ -279,6 +407,9 @@ const BidiRollerEntryPage = () => {
               <div className={styles.dropdownMenu}>
                 <button onClick={() => handleExport('Excel')}>
                   <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button onClick={() => handleExport('Excel Template')}>
+                  <FileSpreadsheet size={16} /> Excel Template
                 </button>
                 <button onClick={() => handleExport('Copy')}>
                   <Copy size={16} /> Copy

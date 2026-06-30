@@ -9,8 +9,10 @@ import {
   File,
   Printer,
   Users,
-  CalendarDays
+  CalendarDays,
+  Upload
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import styles from '../components/OfficeStaffEntryPage.module.css';
 import { useToast, MonthYearPicker, Pagination } from '../../../../shared/components';
 import {
@@ -41,6 +43,7 @@ const getCurrentMonth = () => {
 const OfficeStaffEntryPage = () => {
   const addToast = useToast();
   const dropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [activeMonth, setActiveMonth] = useState('');
@@ -166,7 +169,53 @@ const OfficeStaffEntryPage = () => {
 
   /* ---- Export ---- */
   const handleExport = (type) => {
-    if (type === 'Copy') {
+    if (type === 'Excel' || type === 'Excel Template') {
+      const isTemplate = type === 'Excel Template';
+      const totalDays = config?.totalDaysInMonth || 30;
+      const esicLimit = config?.esicWageLimit || 176;
+      const esicRate = config?.esicShare || 0.0075;
+
+      const aoa = [
+        ['ID (Do Not Modify)', 'Employee Code', 'Employee Name', 'Days Worked', 'Addition', 'Leave With Pay', 'Leave Without Pay', 'Basic Salary', 'Gross', 'PF', 'PT', 'ESIC', 'Net Wages']
+      ];
+
+      filteredRows.forEach((r, idx) => {
+        const rowNum = idx + 2;
+        const pfRate = (r.gender === 'MALE' || r.gender === 'Male' || r.gender === 'M') ? (config?.pfRateMale || 0.12) : (config?.pfRateFemale || 0.12);
+
+        const basic = r.basicSalary || 0;
+        const lwp = r.leaveWithPay || 0;
+        const ptConst = r.pt || 0; // PT is kept constant to avoid complex slab formulas in Excel
+
+        const fG = `MAX(0, ${totalDays} - F${rowNum} - D${rowNum})`;
+        const fI = `ROUND(H${rowNum} - (H${rowNum}/MAX(1, ${totalDays} - F${rowNum})) * G${rowNum}, 0) + E${rowNum}`;
+        const fJ = `ROUND(MIN(I${rowNum}, 15000) * ${pfRate}, 0)`;
+        const fL = `IF(I${rowNum}/MAX(1, D${rowNum} + F${rowNum}) <= ${esicLimit}, 0, CEILING(I${rowNum} * ${esicRate}, 1))`;
+        const fM = `MAX(0, I${rowNum} - J${rowNum} - K${rowNum} - L${rowNum})`;
+
+        aoa.push([
+          r.employeeId,
+          r.employeeCode || '',
+          r.employeeName,
+          isTemplate ? null : (r.daysWorked || 0),
+          isTemplate ? null : (r.addition || 0),
+          lwp,
+          { t: 'n', f: fG, v: isTemplate ? 0 : r.leaveWithoutPay },
+          basic,
+          { t: 'n', f: fI, v: isTemplate ? 0 : r.gross },
+          { t: 'n', f: fJ, v: isTemplate ? 0 : r.pf },
+          ptConst,
+          { t: 'n', f: fL, v: isTemplate ? 0 : r.esic },
+          { t: 'n', f: fM, v: isTemplate ? 0 : r.netWages }
+        ]);
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Office_Staff');
+      XLSX.writeFile(workbook, `Office_Staff_${isTemplate ? 'Template' : 'Export'}_${formatMonthLabel(activeMonth) || ''}.xlsx`);
+      addToast({ type: 'success', message: `${type} downloaded!` });
+    } else if (type === 'Copy') {
       const header = 'Employee\tDays\tLWP\tLwoP\tAddition\tBasic\tTotal\tPF\tPT\tESIC\tNet';
       const body = filteredRows.map(r =>
         `${r.employeeName}\t${r.daysWorked}\t${r.leaveWithPay}\t${r.leaveWithoutPay}\t${r.addition}\t${r.basicSalary}\t${r.gross}\t${r.pf}\t${r.pt}\t${r.esic}\t${r.netWages}`
@@ -177,6 +226,61 @@ const OfficeStaffEntryPage = () => {
       addToast({ type: 'info', message: `${type} export started for ${filteredRows.length} records!` });
     }
     setIsDropdownOpen(false);
+  };
+
+  /* ---- Import ---- */
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const importedData = XLSX.utils.sheet_to_json(worksheet);
+
+        let updateCount = 0;
+        setRows(prev => {
+          const newRows = [...prev];
+          importedData.forEach(importedRow => {
+            const empId = importedRow['ID (Do Not Modify)'];
+            if (!empId) return; // Skip invalid rows
+            
+            const rowIndex = newRows.findIndex(r => r.employeeId === empId);
+            if (rowIndex !== -1) {
+              const rowToUpdate = { ...newRows[rowIndex] };
+              let modified = false;
+
+              if (importedRow['Days Worked'] !== undefined) {
+                rowToUpdate.daysWorked = importedRow['Days Worked'];
+                modified = true;
+              }
+              if (importedRow['Addition'] !== undefined) {
+                rowToUpdate.addition = importedRow['Addition'];
+                modified = true;
+              }
+
+              if (modified) {
+                newRows[rowIndex] = config ? recalculateRow(rowToUpdate, config) : rowToUpdate;
+                updateCount++;
+              }
+            }
+          });
+          return newRows;
+        });
+
+        addToast({ type: 'success', message: `Successfully updated ${updateCount} records from Excel.` });
+      } catch (error) {
+        console.error('Error importing Excel:', error);
+        addToast({ type: 'error', message: 'Failed to import Excel file. Please check the format.' });
+      }
+    };
+    reader.readAsBinaryString(file);
+    // Reset file input
+    e.target.value = null;
   };
 
   /* ---- Derived State ---- */
@@ -222,6 +326,21 @@ const OfficeStaffEntryPage = () => {
       <div className={styles.headerSection}>
         <h1 className={styles.title}>Office Staff Entry</h1>
         <div className={styles.headerActions}>
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            style={{ display: 'none' }} 
+          />
+          <button
+            className={styles.downloadBtn}
+            style={{ backgroundColor: 'var(--success-color, #10b981)' }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload size={18} /> Upload Excel
+          </button>
+          
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
               className={styles.downloadBtn}
@@ -233,6 +352,9 @@ const OfficeStaffEntryPage = () => {
               <div className={styles.dropdownMenu}>
                 <button onClick={() => handleExport('Excel')}>
                   <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button onClick={() => handleExport('Excel Template')}>
+                  <FileSpreadsheet size={16} /> Excel Template
                 </button>
                 <button onClick={() => handleExport('Copy')}>
                   <Copy size={16} /> Copy

@@ -1,7 +1,8 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
-  Search, Save, Download, FileSpreadsheet, Copy, FileText, File, Printer, Users, CalendarDays
+  Search, Save, Download, FileSpreadsheet, Copy, FileText, File, Printer, Users, CalendarDays, Upload
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import styles from './PackersEntryPage.module.css';
 import { useToast, MonthYearPicker, Pagination } from '../../../../shared/components';
 import { getPackersEntry, savePackersEntry, recalculateRow } from '../services/packersEntryService';
@@ -28,6 +29,7 @@ const getCurrentMonth = () => {
 const PackersEntryPage = () => {
   const addToast = useToast();
   const dropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [activeMonth, setActiveMonth] = useState('');
@@ -168,7 +170,60 @@ const PackersEntryPage = () => {
 
   /* ---- Export ---- */
   const handleExport = (type) => {
-    if (type === 'Copy') {
+    if (type === 'Excel' || type === 'Excel Template') {
+      const isTemplate = type === 'Excel Template';
+      const esicLimit = config?.esicWageLimit || 176;
+      const esicRate = config?.esicShare || 0.0075;
+      
+      const r1 = config?.rate1 || 0;
+      const r2 = config?.rate2 || 0;
+      const r3 = config?.rate3 || 0;
+      const r4 = config?.rate4 || 0;
+
+      const aoa = [
+        ['ID (Do Not Modify)', 'Employee Code', 'Employee Name', 'Days Worked', 'Unit 1', 'Unit 2', 'Unit 3', 'Unit 4', 'Rate 1', 'Rate 2', 'Rate 3', 'Rate 4', 'Additional Paid Wages', 'Wages', 'Weekly Leave', 'Total', 'PF', 'PT', 'ESIC', 'Net Wages']
+      ];
+
+      filteredRows.forEach((r, idx) => {
+        const rowNum = idx + 2;
+        const pfRate = (r.gender === 'MALE' || r.gender === 'Male' || r.gender === 'M') ? (config?.pfRateMale || 0.12) : (config?.pfRateFemale || 0.12);
+        
+        const ptConst = r.pt || 0;
+
+        const fN = `E${rowNum}*I${rowNum} + F${rowNum}*J${rowNum} + G${rowNum}*K${rowNum} + H${rowNum}*L${rowNum}`;
+        const fO = `ROUND(N${rowNum}/6, 0)`;
+        const fP = `ROUND(N${rowNum} + O${rowNum} + M${rowNum}, 0)`;
+        const fQ = `ROUND(P${rowNum} * ${pfRate}, 0)`;
+        const fS = `IF(P${rowNum}/MAX(1, D${rowNum}) <= ${esicLimit}, 0, CEILING(P${rowNum} * ${esicRate}, 1))`;
+        const fT = `MAX(0, P${rowNum} - Q${rowNum} - R${rowNum} - S${rowNum})`;
+
+        aoa.push([
+          r.employeeId,
+          r.employeeCode || '',
+          r.employeeName,
+          isTemplate ? null : (r.daysWorked || 0),
+          isTemplate ? null : (r.unit1 || 0),
+          isTemplate ? null : (r.unit2 || 0),
+          isTemplate ? null : (r.unit3 || 0),
+          isTemplate ? null : (r.unit4 || 0),
+          r1, r2, r3, r4,
+          isTemplate ? null : (r.addition || 0),
+          { t: 'n', f: fN, v: isTemplate ? 0 : r.wages },
+          { t: 'n', f: fO, v: isTemplate ? 0 : r.weeklyLeave },
+          { t: 'n', f: fP, v: isTemplate ? 0 : r.gross },
+          { t: 'n', f: fQ, v: isTemplate ? 0 : r.pf },
+          ptConst,
+          { t: 'n', f: fS, v: isTemplate ? 0 : r.esic },
+          { t: 'n', f: fT, v: isTemplate ? 0 : r.netWages }
+        ]);
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Packers');
+      XLSX.writeFile(workbook, `Packers_${isTemplate ? 'Template' : 'Export'}_${formatMonthLabel(activeMonth) || ''}.xlsx`);
+      addToast({ type: 'success', message: `${type} downloaded!` });
+    } else if (type === 'Copy') {
       const header = 'Employee Name.\tNo. of days worked\tUnit-1\tUnit-2\tUnit-3\tUnit-4\tRate-1\tRate-2\tRate-3\tRate-4\tAdditional Paid Wages\tWages\tWeekly Leave\tTotal\tPF\tPT\tESIC\tNet Wages';
       const body = filteredRows.map(r =>
         `${r.employeeName}\t${r.daysWorked}\t${r.unit1}\t${r.unit2}\t${r.unit3}\t${r.unit4}\t${config?.rate1 || 0}\t${config?.rate2 || 0}\t${config?.rate3 || 0}\t${config?.rate4 || 0}\t${r.addition}\t${r.wages}\t${r.weeklyLeave}\t${r.gross}\t${r.pf}\t${r.pt}\t${r.esic}\t${r.netWages}`
@@ -179,6 +234,68 @@ const PackersEntryPage = () => {
       addToast({ type: 'info', message: `${type} export started for ${filteredRows.length} records!` });
     }
     setIsDropdownOpen(false);
+  };
+
+  /* ---- Import ---- */
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const importedData = XLSX.utils.sheet_to_json(worksheet);
+
+        let updateCount = 0;
+        setRows(prev => {
+          const newRows = [...prev];
+          importedData.forEach(importedRow => {
+            const empId = importedRow['ID (Do Not Modify)'];
+            if (!empId) return; // Skip invalid rows
+            
+            const rowIndex = newRows.findIndex(r => r.employeeId === empId);
+            if (rowIndex !== -1) {
+              const rowToUpdate = { ...newRows[rowIndex] };
+              let modified = false;
+
+              const mapField = (excelCol, objKey) => {
+                if (importedRow[excelCol] !== undefined) {
+                  let val = String(importedRow[excelCol]).replace(/[^0-9.]/g, '');
+                  const parts = val.split('.');
+                  if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+                  rowToUpdate[objKey] = val;
+                  modified = true;
+                }
+              };
+
+              mapField('Days Worked', 'daysWorked');
+              mapField('Unit 1', 'unit1');
+              mapField('Unit 2', 'unit2');
+              mapField('Unit 3', 'unit3');
+              mapField('Unit 4', 'unit4');
+              mapField('Additional Paid Wages', 'addition');
+
+              if (modified) {
+                newRows[rowIndex] = config ? recalculateRow(rowToUpdate, config) : rowToUpdate;
+                updateCount++;
+              }
+            }
+          });
+          return newRows;
+        });
+
+        addToast({ type: 'success', message: `Successfully updated ${updateCount} records from Excel.` });
+      } catch (error) {
+        console.error('Error importing Excel:', error);
+        addToast({ type: 'error', message: 'Failed to import Excel file. Please check the format.' });
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = null;
   };
 
   /* ---- Derived State ---- */
@@ -232,6 +349,21 @@ const PackersEntryPage = () => {
       <div className={styles.headerSection}>
         <h1 className={styles.title}>Packers Entry</h1>
         <div className={styles.headerActions}>
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            style={{ display: 'none' }} 
+          />
+          <button
+            className={styles.downloadBtn}
+            style={{ backgroundColor: 'var(--success-color, #10b981)' }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload size={18} /> Upload Excel
+          </button>
+          
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
               className={styles.downloadBtn}
@@ -243,6 +375,9 @@ const PackersEntryPage = () => {
               <div className={styles.dropdownMenu}>
                 <button onClick={() => handleExport('Excel')}>
                   <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button onClick={() => handleExport('Excel Template')}>
+                  <FileSpreadsheet size={16} /> Excel Template
                 </button>
                 <button onClick={() => handleExport('Copy')}>
                   <Copy size={16} /> Copy
