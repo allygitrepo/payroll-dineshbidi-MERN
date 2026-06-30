@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Check, X, FileCheck, Calendar, Users, AlertCircle, FileClock, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
+import { Search, Check, X, FileCheck, Calendar, Users, AlertCircle, FileClock, Download, Copy, File, Printer, ArrowLeft, Ban, Plus, ChevronDown } from 'lucide-react';
 import styles from './LeavePage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { useToast, ConfirmModal, DatePicker } from '../../../../shared/components';
@@ -7,25 +7,11 @@ import {
   getLeaveRequests,
   createLeaveRequest,
   approveLeaveRequest,
-  rejectLeaveRequest
+  rejectLeaveRequest,
+  cancelLeaveRequest,
+  calculateLeaveDays
 } from '../services/leaveService';
-import { getLeaveMaster } from '../../../setup/leave-master/services/leaveMasterService';
-
-const getDurationInDays = (fromDate, toDate, leaveType) => {
-  if (leaveType && leaveType.startsWith("Custom Leave (")) {
-    const match = leaveType.match(/Custom Leave \(([\d.]+)\s*Days?\)/i);
-    if (match && match[1]) {
-      return parseFloat(match[1]);
-    }
-  }
-  if (leaveType && leaveType.toLowerCase().includes('half day')) return 0.5;
-  if (!fromDate || !toDate) return 0;
-  const start = new Date(fromDate);
-  const end = new Date(toDate);
-  const diffTime = end - start;
-  if (diffTime < 0) return 0;
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-};
+import { getLeaveTypes, getEmployeeBalances } from '../../../setup/leave-master/services/leaveMasterService';
 
 const formatDateToDMY = (dateStr) => {
   if (!dateStr) return '-';
@@ -36,462 +22,232 @@ const formatDateToDMY = (dateStr) => {
   return dateStr;
 };
 
-const calculateToDate = (fromDateStr, leaveType, customDaysStr, leaveMaster) => {
-  if (!fromDateStr) return '';
-  
-  let days = 1.0;
-  
-  const isCustom = customDaysStr && customDaysStr.trim() !== '';
-  if (isCustom) {
-    const parsed = parseFloat(customDaysStr);
-    if (!isNaN(parsed) && parsed > 0) {
-      days = parsed;
-    }
-  } else if (leaveType) {
-    if (leaveType.toLowerCase().includes('half day')) {
-      days = 0.5;
-    } else {
-      const typeConfig = leaveMaster?.leave_types?.find(t => t.leave_type === leaveType);
-      if (typeConfig && typeConfig.leave_days !== null && typeConfig.leave_days !== undefined && typeConfig.leave_days !== "") {
-        const parsed = parseFloat(typeConfig.leave_days);
-        if (!isNaN(parsed) && parsed > 0) {
-          days = parsed;
-        }
-      }
-    }
-  }
-
-  const calendarDays = Math.max(1, Math.ceil(days));
-  const date = new Date(fromDateStr);
-  date.setDate(date.getDate() + calendarDays - 1);
-  
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-};
-
 const LeavePage = () => {
   const addToast = useToast();
-  const todayStr = useMemo(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  }, []);
+  const companyId = localStorage.getItem('selectedCompany');
 
   const [employees, setEmployees] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const [leaveMaster, setLeaveMaster] = useState({ yearly_leave_cap: 0.0, leave_types: [] });
+
+  // Search Select States & Refs for Employee dropdown
+  const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
+  const [isEmployeeSelectOpen, setIsEmployeeSelectOpen] = useState(false);
+  const employeeSelectRef = useRef(null);
+
+  // Live employee balances preview state
+  const [employeeBalances, setEmployeeBalances] = useState([]);
+  const [selectedBalance, setSelectedBalance] = useState(null);
 
   // Confirmation Modal States
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null); // 'approve' | 'reject'
+  const [confirmAction, setConfirmAction] = useState(null); // 'approve' | 'reject' | 'cancel'
   const [confirmTargetId, setConfirmTargetId] = useState(null);
   const [confirmTargetName, setConfirmTargetName] = useState(null);
   
+  const [calculatedDays, setCalculatedDays] = useState(null);
+
   // Form State
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [newLeave, setNewLeave] = useState({
     employeeId: '',
-    leaveType: '',
+    leaveTypeId: '',
     fromDate: '',
     toDate: '',
-    description: '',
-    singleDay: false
+    dayType: 'Full Day',
+    reason: '',
+    status: 'Submitted',
+    attachmentPath: ''
   });
 
-  const [customLeaveDays, setCustomLeaveDays] = useState('');
-  const [customLeaveDaysError, setCustomLeaveDaysError] = useState('');
+  // Base64 file upload helper
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setNewLeave(prev => ({ ...prev, attachmentPath: reader.result }));
+    };
+    reader.readAsDataURL(file);
+  };
 
-
-
-  // Helper to construct employee photo URL
   const getPhotoUrl = (path) => {
     if (!path) return '';
     if (path.startsWith('data:')) return path;
     const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/payroll/v1/';
     const host = baseUrl.replace('/payroll/v1/', '');
-    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+    let cleanPath = path.startsWith('/') ? path.slice(1) : path;
+    if (cleanPath.startsWith('payroll/')) {
+      cleanPath = cleanPath.slice('payroll/'.length);
+    }
     return `${host}/payroll/${cleanPath}`;
   };
 
-  // Fetch real database employees and merge/map them to leave requests
-  useEffect(() => {
-    const companyId = localStorage.getItem('selectedCompany');
-    if (!companyId) {
-      setLeaveRequests([]);
-      return;
+  // Fetch initial data
+  const loadInitialData = async () => {
+    if (!companyId) return;
+    try {
+      const empData = await getEmployees(companyId);
+      setEmployees(empData);
+
+      const requestsData = await getLeaveRequests(companyId);
+      setLeaveRequests(requestsData || []);
+
+      const typesData = await getLeaveTypes(companyId);
+      setLeaveTypes(typesData.filter(t => t.is_active));
+    } catch (err) {
+      console.error('Failed to load leave requests info:', err);
+      addToast({ type: 'error', message: 'Failed to load leave records.' });
     }
+  };
 
-    const loadData = async () => {
-      try {
-        const empData = await getEmployees(companyId);
-        setEmployees(empData);
+  useEffect(() => {
+    loadInitialData();
+  }, [companyId]);
 
-        const requestsData = await getLeaveRequests(companyId);
-        setLeaveRequests(requestsData || []);
-
-        try {
-          const lmData = await getLeaveMaster(companyId);
-          setLeaveMaster(lmData);
-        } catch (lmErr) {
-          console.error('Failed to load leave master configuration:', lmErr);
-        }
-      } catch (err) {
-        console.error('Failed to load employees or leave requests for dashboard:', err);
-        addToast({ type: 'error', message: 'Failed to load leave requests.' });
-        setLeaveRequests([]);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  // Close download dropdown if clicked outside
+  // Handle click outside for searchable employee dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
+      if (employeeSelectRef.current && !employeeSelectRef.current.contains(event.target)) {
+        setIsEmployeeSelectOpen(false);
       }
     };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-    if (isDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isDropdownOpen]);
-
-  const exportToCSV = (data, filename) => {
-    const headers = ['Employee Name', 'UAN', 'Mobile', 'Leave Category', 'Leave Details (Duration)', 'Request Date', 'Remaining Leaves', 'Description', 'Status'];
-    const rows = data.map(r => {
-      const duration = r.fromDate === r.toDate 
-        ? `${formatDateToDMY(r.fromDate)} (${r.leaveType === 'Half Day Leave' ? '0.5 Day' : '1 Day'})` 
-        : `${formatDateToDMY(r.fromDate)} to ${formatDateToDMY(r.toDate)} (${getDurationInDays(r.fromDate, r.toDate, r.leaveType)} Days)`;
-      return [
-        r.employeeName,
-        r.uan,
-        r.mobile,
-        r.leaveType,
-        duration,
-        formatDateToDMY(r.requestDate),
-        r.remainingLeaves,
-        r.description ? r.description.replace(/"/g, '""') : '',
-        r.status
-      ];
+  const filteredEmployeeOptions = useMemo(() => {
+    return employees.filter(e => {
+      const name = e.memberName || '';
+      const type = e.employeeType || '';
+      return name.toLowerCase().includes(employeeSearchQuery.toLowerCase()) ||
+             type.toLowerCase().includes(employeeSearchQuery.toLowerCase());
     });
+  }, [employees, employeeSearchQuery]);
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(val => `"${val}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const printTable = (data) => {
-    const formatPrintDateTime = (date) => {
-      const dd = String(date.getDate()).padStart(2, '0');
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const yyyy = date.getFullYear();
-      const hrs = String(date.getHours()).padStart(2, '0');
-      const mins = String(date.getMinutes()).padStart(2, '0');
-      const secs = String(date.getSeconds()).padStart(2, '0');
-      return `${dd}-${mm}-${yyyy} ${hrs}:${mins}:${secs}`;
-    };
-
-    const htmlContent = `
-      <html>
-        <head>
-          <title>&nbsp;</title>
-          <style>
-            @media print {
-              @page { margin: 0; }
-              body { 
-                margin: 0; 
-                padding: 1.6cm; 
-              }
-            }
-            body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-            h1 { text-align: center; color: #27d68a; margin-bottom: 5px; }
-            p.info { text-align: center; color: #666; font-size: 0.9rem; margin-top: 0; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.9rem; }
-            th { background-color: #f8f9fa; font-weight: bold; }
-            .status-Approved { color: #27d68a; font-weight: bold; }
-            .status-Rejected { color: #ef4444; font-weight: bold; }
-            .status-Pending { color: #f59e0b; font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <h1>Leave Requests Report</h1>
-          <p class="info">Generated on: ${formatPrintDateTime(new Date())}</p>
-          <table>
-            <thead>
-              <tr>
-                <th>Employee Name</th>
-                <th>UAN</th>
-                <th>Mobile</th>
-                <th>Leave Category</th>
-                <th>Leave Details</th>
-                <th>Remaining Leaves</th>
-                <th>Description</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${data.map(r => `
-                <tr>
-                  <td><strong>${r.employeeName || ''}</strong></td>
-                  <td>${r.uan || ''}</td>
-                  <td>${r.mobile || ''}</td>
-                  <td>${r.leaveType || ''}</td>
-                  <td>${r.fromDate === r.toDate 
-                    ? `${formatDateToDMY(r.fromDate)} (${r.leaveType === 'Half Day Leave' ? '0.5 Day' : '1 Day'})` 
-                    : `${formatDateToDMY(r.fromDate)} to ${formatDateToDMY(r.toDate)} (${getDurationInDays(r.fromDate, r.toDate, r.leaveType)} Days)`}</td>
-                  <td>${r.remainingLeaves ?? ''}</td>
-                  <td>${r.description || '-'}</td>
-                  <td><span class="status-${r.status || ''}">${r.status || ''}</span></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `;
-
-    const printFrame = document.createElement('iframe');
-    printFrame.style.position = 'fixed';
-    printFrame.style.right = '0';
-    printFrame.style.bottom = '0';
-    printFrame.style.width = '0';
-    printFrame.style.height = '0';
-    printFrame.style.border = '0';
-    printFrame.style.visibility = 'hidden';
-    document.body.appendChild(printFrame);
-
-    const frameDoc = printFrame.contentWindow.document;
-    frameDoc.write(htmlContent);
-    frameDoc.close();
-
-    printFrame.contentWindow.focus();
-    printFrame.contentWindow.print();
-
-    setTimeout(() => {
-      document.body.removeChild(printFrame);
-    }, 1000);
-  };
-
-  // Export handlers
-  const handleExportClick = (type) => {
-    setIsDropdownOpen(false);
-    if (filteredRequests.length === 0) {
-      addToast({ type: 'warning', message: 'No records to export.' });
-      return;
-    }
-
-    try {
-      if (type === 'CSV') {
-        exportToCSV(filteredRequests, 'leave_requests.csv');
-        addToast({ type: 'success', message: 'CSV file exported successfully!' });
-      } else if (type === 'Excel') {
-        exportToCSV(filteredRequests, 'leave_requests.csv');
-        addToast({ type: 'success', message: 'Excel file exported successfully!' });
-      } else if (type === 'PDF' || type === 'Print') {
-        printTable(filteredRequests);
+  // Fetch balances when employee is selected
+  useEffect(() => {
+    const fetchBalances = async () => {
+      if (!newLeave.employeeId || !companyId) {
+        setEmployeeBalances([]);
+        setSelectedBalance(null);
+        return;
       }
-    } catch (err) {
-      console.error('Export failed:', err);
-      addToast({ type: 'error', message: `Failed to export ${type} file.` });
-    }
-  };
+      try {
+        const year = newLeave.fromDate ? newLeave.fromDate.split('-')[0] : new Date().getFullYear().toString();
+        const balances = await getEmployeeBalances(newLeave.employeeId, companyId, year);
+        setEmployeeBalances(balances);
 
-  const handleCopyClick = () => {
-    const text = filteredRequests
-      .map((r) => {
-        const duration = r.fromDate === r.toDate 
-          ? `${formatDateToDMY(r.fromDate)} (${r.leaveType === 'Half Day Leave' ? '0.5 Day' : '1 Day'})` 
-          : `${formatDateToDMY(r.fromDate)} to ${formatDateToDMY(r.toDate)} (${getDurationInDays(r.fromDate, r.toDate, r.leaveType)} Days)`;
-        return `${r.employeeName}\t${r.uan}\t${r.mobile}\t${r.leaveType}\t${duration}\tReq: ${formatDateToDMY(r.requestDate)}\t${r.remainingLeaves}\t${r.description}\t${r.status}`;
-      })
-      .join('\n');
-    navigator.clipboard.writeText(text);
-    addToast({ type: 'success', message: 'Copied filtered leave requests list to clipboard!' });
-    setIsDropdownOpen(false);
-  };
+        if (newLeave.leaveTypeId) {
+          const bal = balances.find(b => b.leave_type_id === newLeave.leaveTypeId);
+          setSelectedBalance(bal || null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch employee balances:', err);
+      }
+    };
+    fetchBalances();
+  }, [newLeave.employeeId, newLeave.fromDate]);
 
-  // Employee Dropdown Options (merges DB data with fallbacks)
-  const employeeOptions = useMemo(() => {
-    if (employees && employees.length > 0) {
-      return employees.map(e => ({
-        id: e.id,
-        name: e.memberName || e.name,
-        uan: e.uan || 'N/A',
-        mobile: e.mobile || 'N/A',
-        category: e.employeeType || 'Office Staff',
-        imagePath: e.employeeImage || null
-      }));
+  // Update selected balance when type changes
+  useEffect(() => {
+    if (newLeave.leaveTypeId && employeeBalances.length > 0) {
+      const bal = employeeBalances.find(b => b.leave_type_id === newLeave.leaveTypeId);
+      setSelectedBalance(bal || null);
+    } else {
+      setSelectedBalance(null);
     }
-    // Fallback options
-    return [
-      { id: 'mock-1', name: 'Karan Mehra', uan: '100090965378', mobile: '9345678901', category: 'Bidi Roller', imagePath: null },
-      { id: 'mock-2', name: 'Gopal Sharma', uan: '100110358674', mobile: '9890123456', category: 'Packing Staff', imagePath: null },
-      { id: 'mock-3', name: 'Vatsal', uan: '111222333444', mobile: '9876543210', category: 'Office Staff', imagePath: null },
-      { id: 'mock-4', name: 'Sanjay Prasad', uan: '100093736407', mobile: '9789012345', category: 'Bidi Roller', imagePath: null }
-    ];
-  }, [employees]);
+  }, [newLeave.leaveTypeId, employeeBalances]);
 
   // Form Input Change Handler
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewLeave((prev) => {
-      const updated = { ...prev, [name]: value };
-      if (name === 'leaveType') {
-        updated.toDate = calculateToDate(prev.fromDate, value, customLeaveDays, leaveMaster);
-      }
-      return updated;
-    });
+    setNewLeave((prev) => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const handleCustomLeaveDaysChange = (e) => {
-    const val = e.target.value;
-    setCustomLeaveDays(val);
-    if (val.trim() === '') {
-      setCustomLeaveDaysError('');
-      setNewLeave(prev => {
-        const resetLeaveType = (prev.leaveType && prev.leaveType.startsWith('Custom Leave')) ? '' : prev.leaveType;
-        const calculatedTo = calculateToDate(prev.fromDate, resetLeaveType, '', leaveMaster);
-        return {
-          ...prev,
-          leaveType: resetLeaveType,
-          toDate: calculatedTo
-        };
-      });
-      return;
-    }
-    const regex = /^\d+(\.\d+)?$/;
-    if (!regex.test(val.trim())) {
-      setCustomLeaveDaysError('Only positive numbers and decimal values allowed.');
-      return;
-    }
-    const parsed = parseFloat(val.trim());
-    if (isNaN(parsed) || parsed < 0) {
-      setCustomLeaveDaysError('Please enter a valid positive number.');
-      return;
-    }
-    setCustomLeaveDaysError('');
-    setNewLeave(prev => {
-      const calculatedTo = calculateToDate(prev.fromDate, 'Custom Leave', val.trim(), leaveMaster);
-      return {
+  // Calculate live leave duration
+  useEffect(() => {
+    const fetchDuration = async () => {
+      if (!newLeave.fromDate || !newLeave.toDate || !companyId) {
+        setCalculatedDays(null);
+        return;
+      }
+      try {
+        const days = await calculateLeaveDays(
+          companyId,
+          newLeave.fromDate,
+          newLeave.toDate,
+          newLeave.dayType
+        );
+        setCalculatedDays(days);
+      } catch (err) {
+        console.error('Failed to calculate leave days:', err);
+        setCalculatedDays(null);
+      }
+    };
+    fetchDuration();
+  }, [newLeave.fromDate, newLeave.toDate, newLeave.dayType, companyId]);
+
+  // Keep toDate in sync with fromDate for half days
+  useEffect(() => {
+    if (newLeave.dayType !== 'Full Day' && newLeave.fromDate) {
+      setNewLeave(prev => ({
         ...prev,
-        leaveType: 'Custom Leave',
-        toDate: calculatedTo
-      };
+        toDate: prev.fromDate
+      }));
+    }
+  }, [newLeave.dayType, newLeave.fromDate]);
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setCalculatedDays(null);
+    setNewLeave({
+      employeeId: '',
+      leaveTypeId: '',
+      fromDate: '',
+      toDate: '',
+      dayType: 'Full Day',
+      reason: '',
+      status: 'Submitted',
+      attachmentPath: ''
     });
   };
 
   // Form Submit Handler
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    const isCustom = customLeaveDays.trim() !== '' && !customLeaveDaysError;
-    const leaveTypeVal = isCustom ? `Custom Leave (${parseFloat(customLeaveDays)} Days)` : newLeave.leaveType;
-    const toDateVal = newLeave.toDate || newLeave.fromDate;
-    
-    if (!newLeave.employeeId || !leaveTypeVal || !newLeave.fromDate || !toDateVal || !newLeave.description) {
+    if (!companyId) return;
+
+    if (!newLeave.employeeId || !newLeave.leaveTypeId || !newLeave.fromDate || !newLeave.toDate || !newLeave.reason) {
       addToast({ type: 'warning', message: 'Please fill out all required fields.' });
-      return;
-    }
-
-    // Calculate requested duration
-    const duration = getDurationInDays(newLeave.fromDate, toDateVal, leaveTypeVal);
-
-    // Validate against leave type limit
-    if (!isCustom && leaveMaster && leaveMaster.leave_types) {
-      const typeConfig = leaveMaster.leave_types.find(t => t.leave_type === leaveTypeVal);
-      if (typeConfig && typeConfig.leave_days !== null && typeConfig.leave_days !== undefined && typeConfig.leave_days !== "") {
-        const maxDays = parseFloat(typeConfig.leave_days);
-        if (duration > maxDays) {
-          addToast({
-            type: 'error',
-            message: `Requested leave duration (${duration} Days) exceeds the allowed limit for ${leaveTypeVal} (${maxDays} Days).`
-          });
-          return;
-        }
-      }
-    }
-
-    // Validate against employee's remaining balance
-    const getEmployeeRemainingLeaves = (empId) => {
-      const empApprovedRequests = leaveRequests.filter(r => r.employeeId === empId && r.status === 'Approved');
-      if (empApprovedRequests.length > 0) {
-        // Sort by requestDate descending
-        const sorted = [...empApprovedRequests].sort((a, b) => new Date(b.requestDate) - new Date(a.requestDate));
-        return parseFloat(sorted[0].remainingLeaves);
-      }
-      return parseFloat(leaveMaster.yearly_leave_cap) || 0.0;
-    };
-
-    const remainingBalance = getEmployeeRemainingLeaves(newLeave.employeeId);
-    if (duration > remainingBalance) {
-      addToast({
-        type: 'error',
-        message: `Requested leave duration (${duration} Days) exceeds the employee's remaining leaves balance (${remainingBalance} Days).`
-      });
-      return;
-    }
-
-    const companyId = localStorage.getItem('selectedCompany');
-    if (!companyId) {
-      addToast({ type: 'error', message: 'No company selected.' });
       return;
     }
 
     try {
       const createdRequest = await createLeaveRequest({
-        employeeId: newLeave.employeeId,
-        companyId,
-        leaveType: leaveTypeVal,
-        fromDate: newLeave.fromDate,
-        toDate: toDateVal,
-        description: newLeave.description
+        ...newLeave,
+        companyId
       });
 
       setLeaveRequests((prev) => [createdRequest, ...prev]);
-      setIsFormOpen(false);
-      setNewLeave({
-        employeeId: '',
-        leaveType: '',
-        fromDate: '',
-        toDate: '',
-        description: '',
-        singleDay: false
-      });
-      setCustomLeaveDays('');
-      setCustomLeaveDaysError('');
+      handleCloseForm();
       addToast({
         type: 'success',
         message: `Leave request for ${createdRequest.employeeName} submitted successfully!`
       });
+      loadInitialData(); // Reload for live balance counts
     } catch (err) {
       console.error('Error submitting leave request:', err);
-      const errMsg = err.response?.data?.message || err.message || 'Failed to submit leave request.';
+      const errMsg = err.response?.data?.messageToShow || err.message || 'Failed to submit leave request.';
       addToast({ type: 'error', message: errMsg });
     }
   };
@@ -505,12 +261,12 @@ const LeavePage = () => {
       );
       addToast({
         type: 'success',
-        message: `Leave request for ${updated.employeeName} approved successfully!`
+        message: `Leave request approved successfully!`
       });
+      loadInitialData();
     } catch (err) {
-      console.error('Error approving leave request:', err);
-      const errMsg = err.response?.data?.message || err.message || 'Failed to approve leave request.';
-      addToast({ type: 'error', message: errMsg });
+      console.error('Error approving request:', err);
+      addToast({ type: 'error', message: err.message || 'Failed to approve request.' });
     }
   };
 
@@ -523,12 +279,30 @@ const LeavePage = () => {
       );
       addToast({
         type: 'info',
-        message: `Leave request for ${updated.employeeName} has been rejected.`
+        message: `Leave request has been rejected.`
       });
+      loadInitialData();
     } catch (err) {
-      console.error('Error rejecting leave request:', err);
-      const errMsg = err.response?.data?.message || err.message || 'Failed to reject leave request.';
-      addToast({ type: 'error', message: errMsg });
+      console.error('Error rejecting request:', err);
+      addToast({ type: 'error', message: err.message || 'Failed to reject request.' });
+    }
+  };
+
+  // Cancel API Caller
+  const cancelRequest = async (id) => {
+    try {
+      const updated = await cancelLeaveRequest(id);
+      setLeaveRequests((prev) =>
+        prev.map((req) => (req.id === id ? updated : req))
+      );
+      addToast({
+        type: 'info',
+        message: `Approved leave request has been cancelled and balances restored.`
+      });
+      loadInitialData();
+    } catch (err) {
+      console.error('Error cancelling request:', err);
+      addToast({ type: 'error', message: err.message || 'Failed to cancel request.' });
     }
   };
 
@@ -547,11 +321,24 @@ const LeavePage = () => {
     setIsConfirmOpen(true);
   };
 
+  const handleCancel = (id, employeeName) => {
+    setConfirmTargetId(id);
+    setConfirmTargetName(employeeName);
+    setConfirmAction('cancel');
+    setIsConfirmOpen(true);
+  };
+
+  const handleCancelAction = () => {
+    setIsConfirmOpen(false);
+    setConfirmTargetId(null);
+    setConfirmTargetName(null);
+    setConfirmAction(null);
+  };
+
   const handleConfirmAction = async () => {
     const action = confirmAction;
     const id = confirmTargetId;
     
-    // Clear states immediately to avoid overlay flickering
     setIsConfirmOpen(false);
     setConfirmTargetId(null);
     setConfirmTargetName(null);
@@ -562,23 +349,18 @@ const LeavePage = () => {
         await approveRequest(id);
       } else if (action === 'reject') {
         await rejectRequest(id);
+      } else if (action === 'cancel') {
+        await cancelRequest(id);
       }
     }
-  };
-
-  const handleCancelAction = () => {
-    setIsConfirmOpen(false);
-    setConfirmTargetId(null);
-    setConfirmTargetName(null);
-    setConfirmAction(null);
   };
 
   // Calculate statistics for the summary cards
   const stats = useMemo(() => {
     const total = leaveRequests.length;
-    const pending = leaveRequests.filter((r) => r.status === 'Pending').length;
+    const pending = leaveRequests.filter((r) => r.status === 'Submitted').length;
     const approved = leaveRequests.filter((r) => r.status === 'Approved').length;
-    const rejected = leaveRequests.filter((r) => r.status === 'Rejected').length;
+    const rejected = leaveRequests.filter((r) => r.status === 'Rejected' || r.status === 'Cancelled').length;
 
     return { total, pending, approved, rejected };
   }, [leaveRequests]);
@@ -588,281 +370,293 @@ const LeavePage = () => {
     return leaveRequests.filter((req) => {
       const matchesSearch =
         req.employeeName.toLowerCase().includes(search.toLowerCase()) ||
-        req.description.toLowerCase().includes(search.toLowerCase()) ||
+        req.reason.toLowerCase().includes(search.toLowerCase()) ||
         req.category.toLowerCase().includes(search.toLowerCase()) ||
         req.leaveType.toLowerCase().includes(search.toLowerCase()) ||
         req.uan.includes(search) ||
         req.mobile.includes(search);
 
-      const matchesStatus = statusFilter === 'All' || req.status === statusFilter;
+      const matchesStatus =
+        statusFilter === 'All' ||
+        (statusFilter === 'Pending' && req.status === 'Submitted') ||
+        (statusFilter === 'Approved' && req.status === 'Approved') ||
+        (statusFilter === 'Rejected' && (req.status === 'Rejected' || req.status === 'Cancelled'));
 
       return matchesSearch && matchesStatus;
     });
   }, [leaveRequests, search, statusFilter]);
 
-  // Pagination calculations
-  const totalPages = useMemo(() => {
-    const calculated = Math.ceil(filteredRequests.length / rowsPerPage);
-    return Math.max(1, calculated);
-  }, [filteredRequests, rowsPerPage]);
-
+  // Pagination logic
   const paginatedRequests = useMemo(() => {
     const start = (currentPage - 1) * rowsPerPage;
     return filteredRequests.slice(start, start + rowsPerPage);
   }, [filteredRequests, currentPage, rowsPerPage]);
 
-  // Reset page when filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, statusFilter, rowsPerPage]);
+  const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
 
   return (
     <div className={styles.pageContainer}>
-      {/* Title Header */}
+      {/* Header */}
       <div className={styles.headerSection}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 className={styles.pageTitle}>Leave Management</h1>
-            <span className={styles.subTitle}>Manage and audit employee leave allowance requests</span>
-          </div>
-          {!isFormOpen && (
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <button onClick={() => setIsFormOpen(true)} className={styles.addBtn}>
-                + Add Leave
-              </button>
-              <div className={styles.dropdownContainer} ref={dropdownRef}>
-                <button
-                  className={styles.downloadBtn}
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                >
-                  <Download size={18} /> Download
-                </button>
-                {isDropdownOpen && (
-                  <div className={styles.dropdownMenu}>
-                    <button onClick={() => handleExportClick('Excel')}>
-                      <FileSpreadsheet size={16} /> Excel
-                    </button>
-                    <button onClick={handleCopyClick}>
-                      <Copy size={16} /> Copy
-                    </button>
-                    <button onClick={() => handleExportClick('CSV')}>
-                      <FileText size={16} /> CSV
-                    </button>
-                    <button onClick={() => handleExportClick('PDF')}>
-                      <File size={16} /> PDF
-                    </button>
-                    <button onClick={() => handleExportClick('Print')}>
-                      <Printer size={16} /> Print
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+        <div>
+          <h1 className={styles.pageTitle}>Leave Applications</h1>
+          <span className={styles.subTitle}>Manage employee leave applications, approve requests, and review dynamic balances</span>
         </div>
+        {!isFormOpen && (
+          <button onClick={() => setIsFormOpen(true)} className={styles.addBtn}>
+            <Plus size={16} /> Apply for Leave
+          </button>
+        )}
       </div>
 
-      {/* Render form card if open */}
+      {/* Render tabbed form card inline if open */}
       {isFormOpen && (
         <div className={styles.formCard}>
           <div className={styles.formHeader}>
-            <h3 className={styles.formTitle}>New Leave Request</h3>
+            <h2 className={styles.formTitle}>Apply for Leave</h2>
           </div>
-          <form onSubmit={handleFormSubmit}>
-            <div className={styles.formGrid}>
-              <div className={styles.field}>
-                <label className={styles.label}>Select Employee *</label>
-                <select
-                  name="employeeId"
-                  value={newLeave.employeeId}
-                  onChange={handleInputChange}
-                  className={styles.select}
-                  required
-                >
-                  <option value="" disabled>Select Employee</option>
-                  {employeeOptions.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name} ({emp.category})
-                    </option>
-                  ))}
-                </select>
+          
+          <form onSubmit={handleFormSubmit} className={styles.modalForm} style={{ padding: 0 }}>
+            <div className={styles.field} ref={employeeSelectRef} style={{ position: 'relative' }}>
+              <label className={styles.label}>Select Employee *</label>
+              <div 
+                className={styles.searchSelectTrigger}
+                onClick={() => setIsEmployeeSelectOpen(!isEmployeeSelectOpen)}
+              >
+                <span>
+                  {newLeave.employeeId 
+                    ? employees.find(e => e.id === newLeave.employeeId)?.memberName 
+                    : '-- Choose Employee --'}
+                </span>
+                <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />
               </div>
 
+              {isEmployeeSelectOpen && (
+                <div className={styles.searchSelectDropdown}>
+                  <div className={styles.searchSelectInputWrapper}>
+                    <Search size={14} className={styles.searchSelectIcon} />
+                    <input
+                      type="text"
+                      placeholder="Type to search..."
+                      value={employeeSearchQuery}
+                      onChange={(e) => setEmployeeSearchQuery(e.target.value)}
+                      className={styles.searchSelectInput}
+                      autoFocus
+                    />
+                  </div>
+                  <div className={styles.searchSelectList}>
+                    {filteredEmployeeOptions.length > 0 ? (
+                      filteredEmployeeOptions.map(e => (
+                        <div
+                          key={e.id}
+                          className={`${styles.searchSelectItem} ${newLeave.employeeId === e.id ? styles.searchSelectItemActive : ''}`}
+                          onClick={() => {
+                            setNewLeave(prev => ({ ...prev, employeeId: e.id }));
+                            setIsEmployeeSelectOpen(false);
+                            setEmployeeSearchQuery('');
+                          }}
+                        >
+                          {e.memberName} ({e.employeeType || 'N/A'})
+                        </div>
+                      ))
+                    ) : (
+                      <div className={styles.searchSelectEmpty}>No employees found</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Dynamic Balance Preview Card */}
+            {selectedBalance && (
+              <div className={styles.balancePreviewCard}>
+                <div className={styles.balanceHeader}>
+                  <strong>Balance details: {selectedBalance.leave_name} ({selectedBalance.leave_code})</strong>
+                </div>
+                <div className={styles.balanceGrid}>
+                  <div>Allocated: <strong>{selectedBalance.allocated}</strong></div>
+                  <div>Carry Forward: <strong>{selectedBalance.carry_forward}</strong></div>
+                  <div>Used: <strong>{selectedBalance.used}</strong></div>
+                  <div>Pending: <strong>{selectedBalance.pending}</strong></div>
+                  <div style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                    Remaining Available: <strong>{selectedBalance.remaining}</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className={styles.field}>
+              <label className={styles.label}>Leave Type *</label>
+              <select
+                name="leaveTypeId"
+                value={newLeave.leaveTypeId}
+                onChange={handleInputChange}
+                className={styles.input}
+                required
+              >
+                <option value="">-- Choose Leave Type --</option>
+                {leaveTypes.map(t => (
+                  <option key={t.id} value={t.id}>{t.name} ({t.code})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label}>Day Type *</label>
+              <select
+                name="dayType"
+                value={newLeave.dayType}
+                onChange={handleInputChange}
+                className={styles.input}
+                required
+              >
+                <option value="Full Day">Full Day</option>
+                <option value="First Half">First Half Day (0.5)</option>
+                <option value="Second Half">Second Half Day (0.5)</option>
+              </select>
+            </div>
+
+            {newLeave.dayType === 'Full Day' ? (
+              <div className={styles.twoColumnInputs}>
+                <div className={styles.field}>
+                  <label className={styles.label}>From Date *</label>
+                  <input
+                    type="date"
+                    name="fromDate"
+                    value={newLeave.fromDate}
+                    onChange={handleInputChange}
+                    className={styles.input}
+                    required
+                  />
+                </div>
+
+                <div className={styles.field}>
+                  <label className={styles.label}>To Date *</label>
+                  <input
+                    type="date"
+                    name="toDate"
+                    value={newLeave.toDate}
+                    onChange={handleInputChange}
+                    className={styles.input}
+                    required
+                  />
+                </div>
+              </div>
+            ) : (
               <div className={styles.field}>
-                <label className={styles.label}>Custom Leave Days (Optional)</label>
+                <label className={styles.label}>Leave Date *</label>
                 <input
-                  type="text"
-                  name="customLeaveDays"
-                  value={customLeaveDays}
-                  onChange={handleCustomLeaveDaysChange}
-                  placeholder="e.g. 2.5 (Disables Leave Type)"
-                  className={`${styles.input} ${customLeaveDaysError ? styles.inputError : ''}`}
-                />
-                {customLeaveDaysError && (
-                  <span className={styles.errorText} style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: '4px' }}>
-                    {customLeaveDaysError}
-                  </span>
-                )}
-              </div>
-
-              <div className={styles.field}>
-                <label className={styles.label}>Leave Type *</label>
-                <select
-                  name="leaveType"
-                  value={newLeave.leaveType}
-                  onChange={handleInputChange}
-                  className={styles.select}
-                  required={!(customLeaveDays.trim() !== '' && !customLeaveDaysError)}
-                  disabled={customLeaveDays.trim() !== '' && !customLeaveDaysError}
-                >
-                  <option value="" disabled>Select Leave Type</option>
-                  {leaveMaster.leave_types && leaveMaster.leave_types.map(t => (
-                    <option key={t.id} value={t.leave_type}>{t.leave_type}</option>
-                  ))}
-                  {(customLeaveDays.trim() !== '' && !customLeaveDaysError) && (
-                    <option value="Custom Leave">Custom Leave</option>
-                  )}
-                </select>
-              </div>
-
-              <div className={styles.field}>
-                <label className={styles.label}>Select Date *</label>
-                <DatePicker
+                  type="date"
                   name="fromDate"
                   value={newLeave.fromDate}
-                  min={todayStr}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setNewLeave(prev => {
-                      const calculatedTo = calculateToDate(val, prev.leaveType, customLeaveDays, leaveMaster);
-                      return {
-                        ...prev,
-                        fromDate: val,
-                        toDate: calculatedTo
-                      };
-                    });
-                  }}
-                  required
-                />
-                {newLeave.toDate && (
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px', display: 'block' }}>
-                    Calculated To Date: <strong>{formatDateToDMY(newLeave.toDate)}</strong>
-                  </span>
-                )}
-              </div>
-
-              <div className={`${styles.field} ${styles.fieldFull}`}>
-                <label className={styles.label}>Reason / Description *</label>
-                <textarea
-                  name="description"
-                  value={newLeave.description}
                   onChange={handleInputChange}
-                  placeholder="Explain reason for leave request..."
-                  className={styles.textarea}
-                  rows={4}
+                  className={styles.input}
                   required
                 />
               </div>
+            )}
+
+            {calculatedDays !== null && (
+              <div className={styles.durationBanner}>
+                <span>Leave Duration:</span>
+                <strong>{calculatedDays} {calculatedDays === 1 ? 'Day' : 'Days'}</strong>
+              </div>
+            )}
+
+            <div className={styles.field}>
+              <label className={styles.label}>Supporting Document (Optional)</label>
+              <input
+                type="file"
+                onChange={handleFileChange}
+                className={styles.input}
+                accept="image/*,application/pdf"
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label}>Reason for Leave *</label>
+              <textarea
+                name="reason"
+                rows="3"
+                value={newLeave.reason}
+                onChange={handleInputChange}
+                placeholder="Provide details about the leave..."
+                className={styles.input}
+                required
+              />
             </div>
 
             <div className={styles.buttonGroup}>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsFormOpen(false);
-                  setNewLeave({
-                    employeeId: '',
-                    leaveType: '',
-                    fromDate: '',
-                    toDate: '',
-                    description: '',
-                    singleDay: false
-                  });
-                }}
-                className={styles.cancelBtn}
-              >
-                Cancel
-              </button>
-              <button type="submit" className={styles.saveBtn}>
-                Submit Request
-              </button>
+              <button type="submit" className={styles.saveBtn}>Submit Request</button>
+              <button type="button" onClick={handleCloseForm} className={styles.cancelBtn}>Cancel</button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Leave Requests Dashboard & Table View */}
-      <>
-          {/* Summary Cards Grid */}
-          {!isFormOpen && (
-            <div className={styles.statsGrid}>
-              <div className={`${styles.statsCard} ${styles.blueCard}`}>
-                <div className={styles.statsIconWrapper}>
-                  <FileClock size={24} />
-                </div>
-                <div className={styles.statsContent}>
-                  <span className={styles.statsLabel}>Total Requests</span>
-                  <span className={styles.statsValue}>{stats.total}</span>
-                </div>
-              </div>
-
-              <div className={`${styles.statsCard} ${styles.orangeCard}`}>
-                <div className={styles.statsIconWrapper}>
-                  <Calendar size={24} />
-                </div>
-                <div className={styles.statsContent}>
-                  <span className={styles.statsLabel}>Pending Approval</span>
-                  <span className={styles.statsValue}>{stats.pending}</span>
-                </div>
-              </div>
-
-              <div className={`${styles.statsCard} ${styles.greenCard}`}>
-                <div className={styles.statsIconWrapper}>
-                  <FileCheck size={24} />
-                </div>
-                <div className={styles.statsContent}>
-                  <span className={styles.statsLabel}>Approved Leaves</span>
-                  <span className={styles.statsValue}>{stats.approved}</span>
-                </div>
-              </div>
-
-              <div className={`${styles.statsCard} ${styles.redCard}`}>
-                <div className={styles.statsIconWrapper}>
-                  <AlertCircle size={24} />
-                </div>
-                <div className={styles.statsContent}>
-                  <span className={styles.statsLabel}>Rejected Requests</span>
-                  <span className={styles.statsValue}>{stats.rejected}</span>
-                </div>
+      {/* Render Summary Cards & Requests Table if form is closed */}
+      {!isFormOpen && (
+        <>
+          {/* Summary Cards */}
+          <div className={styles.statsGrid}>
+            <div className={`${styles.statsCard} ${styles.blueCard}`}>
+              <div className={styles.statsIconWrapper}><Users size={20} /></div>
+              <div className={styles.statsContent}>
+                <span className={styles.statsLabel}>Total Applications</span>
+                <span className={styles.statsValue}>{stats.total}</span>
               </div>
             </div>
-          )}
 
+            <div className={`${styles.statsCard} ${styles.orangeCard}`}>
+              <div className={styles.statsIconWrapper}><FileClock size={20} /></div>
+              <div className={styles.statsContent}>
+                <span className={styles.statsLabel}>Pending Approvals</span>
+                <span className={styles.statsValue}>{stats.pending}</span>
+              </div>
+            </div>
+
+            <div className={`${styles.statsCard} ${styles.greenCard}`}>
+              <div className={styles.statsIconWrapper}><FileCheck size={20} /></div>
+              <div className={styles.statsContent}>
+                <span className={styles.statsLabel}>Approved Leaves</span>
+                <span className={styles.statsValue}>{stats.approved}</span>
+              </div>
+            </div>
+
+            <div className={`${styles.statsCard} ${styles.redCard}`}>
+              <div className={styles.statsIconWrapper}><AlertCircle size={20} /></div>
+              <div className={styles.statsContent}>
+                <span className={styles.statsLabel}>Rejected & Cancelled</span>
+                <span className={styles.statsValue}>{stats.rejected}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Table Card Container */}
           <div className={styles.tableCard}>
-            {/* Filter Controls Row */}
+            {/* Table Controls (Search and Filters inside the Card) */}
             <div className={styles.tableControls}>
-              <div className={styles.leftControlsPlaceholder}></div>
-              <div className={styles.rightControls}>
-                {/* Status Dropdown Filter */}
-                <div className={styles.selectWrapper}>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className={styles.statusSelect}
+              <div className={styles.filterTabs}>
+                {['All', 'Pending', 'Approved', 'Rejected'].map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => {
+                      setStatusFilter(status);
+                      setCurrentPage(1);
+                    }}
+                    className={`${styles.tabBtn} ${statusFilter === status ? styles.activeTabBtn : ''}`}
                   >
-                    <option value="All">All Statuses ({leaveRequests.length})</option>
-                    <option value="Pending">Pending ({leaveRequests.filter((r) => r.status === 'Pending').length})</option>
-                    <option value="Approved">Approved ({leaveRequests.filter((r) => r.status === 'Approved').length})</option>
-                    <option value="Rejected">Rejected ({leaveRequests.filter((r) => r.status === 'Rejected').length})</option>
-                  </select>
-                </div>
+                    {status} <span className={styles.tabBadge}>{status === 'All' ? stats.total : status === 'Pending' ? stats.pending : status === 'Approved' ? stats.approved : stats.rejected}</span>
+                  </button>
+                ))}
+              </div>
 
-                {/* Search Input */}
+              <div className={styles.rightControls}>
                 <div className={styles.searchWrapper}>
-                  <Search size={16} className={styles.searchIcon} />
+                  <Search size={18} className={styles.searchIcon} />
                   <input
                     type="text"
-                    placeholder="Search employee, leave type..."
+                    placeholder="Search by Employee name, UAN, Leave type..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className={styles.searchInput}
@@ -871,19 +665,18 @@ const LeavePage = () => {
               </div>
             </div>
 
-            {/* Leaves Table Wrapper */}
+            {/* Table Container */}
             <div className={styles.tableContainer}>
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>Employee Name</th>
-                    <th>Contact</th>
-                    <th>Leave Category</th>
-                    <th>Leave Details</th>
-                    <th style={{ textAlign: 'center' }}>Remaining (Yearly CAP {leaveMaster.yearly_leave_cap})</th>
-                    <th>Leave Description</th>
-                    <th style={{ textAlign: 'center' }}>Status</th>
-                    <th style={{ textAlign: 'center', width: '120px' }}>Actions</th>
+                    <th>Employee Details</th>
+                    <th>Leave Type</th>
+                    <th>Duration (Dates)</th>
+                    <th>Days Count</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th style={{ width: '130px', textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -892,171 +685,146 @@ const LeavePage = () => {
                       <tr key={row.id}>
                         <td>
                           <div className={styles.empNameCell}>
-                            <div className={styles.avatar}>
-                              {row.imagePath ? (
-                                <img
-                                  src={getPhotoUrl(row.imagePath)}
-                                  alt={row.employeeName}
-                                  className={styles.avatarImg}
-                                />
-                              ) : (
-                                row.employeeName.charAt(0).toUpperCase()
-                              )}
-                            </div>
-                            <div className={styles.nameDetails}>
-                              <span className={styles.boldCell}>{row.employeeName}</span>
-                              <span className={styles.subTextUan}>UAN: {row.uan}</span>
+                            {row.imagePath ? (
+                              <img src={getPhotoUrl(row.imagePath)} alt="Profile" className={styles.avatar} />
+                            ) : (
+                              <div className={styles.avatar}>{row.employeeName.charAt(0)}</div>
+                            )}
+                            <div className={styles.identityCell}>
+                              <strong className={styles.boldCell}>{row.employeeName}</strong>
+                              <div className={styles.identityUan}>UAN: {row.uan} • <span className={styles.categoryBadge}>{row.category}</span></div>
                             </div>
                           </div>
-                        </td>
-                        <td>
-                          <span className={styles.boldCell}>{row.mobile}</span>
-                        </td>
-                        <td>
-                          <span className={styles.leaveType}>{row.leaveType}</span>
                         </td>
                         <td>
                           <div className={styles.leaveTypeCell}>
-                            {row.fromDate && (
-                              <span className={styles.leaveDuration}>
-                                {row.fromDate === row.toDate 
-                                  ? `${formatDateToDMY(row.fromDate)} (${row.leaveType && row.leaveType.toLowerCase().includes('half day') ? '0.5 Day' : '1 Day'})` 
-                                  : `${formatDateToDMY(row.fromDate)} to ${formatDateToDMY(row.toDate)} (${getDurationInDays(row.fromDate, row.toDate, row.leaveType)} Days)`}
-                              </span>
-                            )}
-                            <span className={styles.requestDate}>Req Date: {formatDateToDMY(row.requestDate)}</span>
+                            <span className={styles.leaveType}>{row.leaveType}</span>
+                            <span className={styles.requestDate}>Code: {row.leaveCode}</span>
                           </div>
                         </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span
-                            className={`${styles.remainingCount} ${
-                              row.remainingLeaves <= 3 ? styles.criticalLeaves : ''
-                            }`}
-                          >
-                            {row.remainingLeaves}
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
+                            <Calendar size={14} style={{ color: 'var(--text-muted)' }} />
+                            <span>
+                              {formatDateToDMY(row.fromDate)} to {formatDateToDMY(row.toDate)}
+                            </span>
+                          </div>
+                          {row.dayType !== 'Full Day' && (
+                            <small className={styles.halfDayTag}>{row.dayType}</small>
+                          )}
+                        </td>
+                        <td>
+                          <span className={styles.remainingCount}>{row.numberOfDays} Days</span>
+                        </td>
+                        <td className={styles.descriptionText} title={row.reason}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span>{row.reason}</span>
+                            {row.attachmentPath && (
+                              <a
+                                href={getPhotoUrl(row.attachmentPath)}
+                                download={`attachment_${row.id}`}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'underline', width: 'fit-content' }}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <File size={12} /> View Document
+                              </a>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`${styles.statusBadge} ${
+                            row.status === 'Approved' ? styles.statusApproved :
+                            row.status === 'Submitted' ? styles.statusPending :
+                            row.status === 'Cancelled' ? styles.statusCancelled : styles.statusRejected
+                          }`}>
+                            {row.status === 'Submitted' ? 'Pending' : row.status}
                           </span>
                         </td>
                         <td>
-                          <p className={styles.descriptionText} title={row.description}>
-                            {row.description}
-                          </p>
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span
-                            className={`${styles.statusBadge} ${
-                              row.status === 'Approved'
-                                ? styles.badgeApproved
-                                : row.status === 'Rejected'
-                                ? styles.badgeRejected
-                                : styles.badgePending
-                            }`}
-                          >
-                            {row.status}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          {row.status === 'Pending' ? (
-                            <div className={styles.actionButtonGroup}>
-                              <button
-                                onClick={() => handleApprove(row.id, row.employeeName)}
-                                className={styles.approveIconBtn}
-                                title="Approve Leave Request"
-                              >
-                                <Check size={16} />
+                          <div className={styles.actionButtons}>
+                            {row.status === 'Submitted' && (
+                              <>
+                                <button onClick={() => handleApprove(row.id, row.employeeName)} className={styles.actionApprove} title="Approve Request">
+                                  <Check size={14} /> Approve
+                                </button>
+                                <button onClick={() => handleReject(row.id, row.employeeName)} className={styles.actionReject} title="Reject Request">
+                                  <X size={14} />
+                                </button>
+                              </>
+                            )}
+                            {row.status === 'Approved' && (
+                              <button onClick={() => handleCancel(row.id, row.employeeName)} className={styles.actionCancel} title="Cancel and Restore Balance">
+                                <Ban size={14} /> Cancel Leave
                               </button>
-                              <button
-                                onClick={() => handleReject(row.id, row.employeeName)}
-                                className={styles.rejectIconBtn}
-                                title="Reject Leave Request"
-                              >
-                                <X size={16} />
-                              </button>
-                            </div>
-                          ) : (
-                            <span className={styles.actionCompletedText}>
-                              Processed
-                            </span>
-                          )}
+                            )}
+                            {row.status !== 'Submitted' && row.status !== 'Approved' && (
+                              <span className={styles.actionCompletedText}>No actions</span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="8" className={styles.emptyTable}>
-                        No leave requests found matching the selection criteria.
-                      </td>
+                      <td colSpan="7" className={styles.emptyTable}>No leave applications found.</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
 
-            {/* Table Footer with Pagination Controls */}
-            <div className={styles.tableFooter}>
-              <div className={styles.footerLeft}>
-                <div className={styles.limitControl}>
-                  <span>Show</span>
-                  <select
-                    value={rowsPerPage}
-                    onChange={(e) => setRowsPerPage(Number(e.target.value))}
-                    className={styles.limitSelect}
-                  >
-                    <option value={5}>5 records</option>
-                    <option value={10}>10 records</option>
-                    <option value={20}>20 records</option>
-                  </select>
-                  <span>per page</span>
+            {/* Table Footer / Pagination */}
+            {totalPages > 1 && (
+              <div className={styles.tableFooter}>
+                <div className={styles.footerLeft}>
+                  <span className={styles.infoText}>Page {currentPage} of {totalPages}</span>
                 </div>
-                <div className={styles.infoText}>
-                  Showing {filteredRequests.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} to{' '}
-                  {Math.min(currentPage * rowsPerPage, filteredRequests.length)} of {filteredRequests.length} entries
-                </div>
-              </div>
-
-              <div className={styles.pagination}>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className={styles.pageBtn}
-                >
-                  Prev
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <div className={styles.pagination}>
                   <button
-                    key={page}
-                    onClick={() => {
-                      setCurrentPage(page);
-                    }}
-                    className={`${styles.pageBtn} ${currentPage === page ? styles.activePageBtn : ''}`}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className={styles.pageBtn}
                   >
-                    {page}
+                    Previous
                   </button>
-                ))}
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className={styles.pageBtn}
-                >
-                  Next
-                </button>
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className={styles.pageBtn}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </>
+      )}
 
-      {/* Reusable Confirm Action Modal */}
+      {/* Confirmation Dialog Modal */}
       <ConfirmModal
         isOpen={isConfirmOpen}
         onClose={handleCancelAction}
         onConfirm={handleConfirmAction}
-        title={confirmAction === 'approve' ? 'Approve Leave Request' : 'Reject Leave Request'}
-        message={
-          confirmAction === 'approve'
-            ? `Are you sure you want to approve the leave request for ${confirmTargetName}?`
-            : `Are you sure you want to reject the leave request for ${confirmTargetName}? This action cannot be undone.`
+        title={
+          confirmAction === 'approve' ? 'Approve Leave Request' : 
+          confirmAction === 'reject' ? 'Reject Leave Request' : 'Cancel Leave Approval'
         }
-        confirmText={confirmAction === 'approve' ? 'Approve' : 'Reject'}
-        theme={confirmAction === 'approve' ? 'success' : 'danger'}
+        message={
+          confirmAction === 'approve' ? `Are you sure you want to approve the leave request for ${confirmTargetName}? This will deduct leaves and record attendance status.` : 
+          confirmAction === 'reject' ? `Are you sure you want to reject the leave request for ${confirmTargetName}?` : 
+          `Are you sure you want to cancel the approved leave for ${confirmTargetName}? This will restore the leave balance and revert attendance changes.`
+        }
       />
     </div>
   );

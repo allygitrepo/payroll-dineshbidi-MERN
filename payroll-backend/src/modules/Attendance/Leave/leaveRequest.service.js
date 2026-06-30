@@ -15,32 +15,7 @@ class LeaveRequestService {
         });
     }
 
-    async getLatestRemainingLeaves(employeeId) {
-        const lastApproved = await db.LeaveRequest.findOne({
-            where: { employee_id: employeeId, status: "Approved" },
-            order: [["updated_at", "DESC"]],
-        });
-        if (lastApproved) {
-            return parseFloat(lastApproved.remaining_leaves);
-        }
 
-        // Fetch company dynamic yearly leave cap
-        try {
-            const employee = await db.Employee.findByPk(employeeId);
-            if (employee && employee.company_id) {
-                const leaveMaster = await db.LeaveMaster.findOne({
-                    where: { company_id: employee.company_id, status: true }
-                });
-                if (leaveMaster && leaveMaster.yearly_leave_cap !== null && leaveMaster.yearly_leave_cap !== undefined) {
-                    return parseFloat(leaveMaster.yearly_leave_cap);
-                }
-            }
-        } catch (e) {
-            console.error("Error fetching dynamic yearly cap:", e);
-        }
-
-        return 0.0;
-    }
 
     async create(data) {
         return await db.LeaveRequest.create(data);

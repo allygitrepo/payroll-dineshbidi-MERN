@@ -110,6 +110,7 @@ const createEmployeeSchema = Joi.object({
     employee_type: Joi.string().max(100).required().messages({
         "any.required": "Type of employee is required.",
     }),
+    employee_type_id: Joi.string().guid().optional().allow(null, ""),
     nationality: Joi.string().max(50).default("INDIAN").optional().allow(null, ""),
     email: Joi.string().email().max(100).optional().allow(null, "").messages({
         "string.email": "Invalid Email ID format.",
@@ -158,6 +159,7 @@ const updateEmployeeSchema = Joi.object({
         "string.pattern.base": "Date of Joining must be in YYYY-MM-DD format.",
     }),
     employee_type: Joi.string().max(100).optional(),
+    employee_type_id: Joi.string().guid().optional().allow(null, ""),
     nationality: Joi.string().max(50).optional().allow(null, ""),
     email: Joi.string().email().max(100).optional().allow(null, "").messages({
         "string.email": "Invalid Email ID format.",

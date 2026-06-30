@@ -53,6 +53,11 @@ const Attendance = sequelize.define("Attendance", {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
     },
+    attendance_status: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+        defaultValue: "Present", // "Present", "Paid Leave", "Unpaid Leave", "Half Day", "Comp Off", "Holiday", "Weekly Off"
+    },
 }, {
     tableName: "attendance",
     timestamps: true,

@@ -1,162 +1,230 @@
-const LeaveMaster = require("./leaveMaster.model");
-const Company = require("../../Masters/Company/company.model");
-
-const verifyCompanyOwnership = async (companyId, userId) => {
-    const company = await Company.findOne({ where: { id: companyId, cstatus: true } });
-    if (!company) {
-        const error = new Error("Company not found.");
-        error.statusCode = 404;
-        error.errorCode = "COMPANY_NOT_FOUND";
-        error.messageToShow = "Company not found.";
-        throw error;
-    }
-
-    if (company.user_id !== userId) {
-        const error = new Error("Access denied.");
-        error.statusCode = 403;
-        error.errorCode = "ACCESS_DENIED";
-        error.messageToShow = "Access denied.";
-        throw error;
-    }
-    return company;
-};
+const db = require("../../../database/models/index");
+const LeaveBalanceService = require("../../Attendance/Leave/leaveBalance.service");
+const LeaveAccrualService = require("../../Attendance/Leave/leaveAccrual.service");
 
 class LeaveMasterService {
     /**
-     * Get Leave Master entries for a company
+     * Tab 1: Leave Types
      */
-    static async getLeaveMasterConfig(companyId, userId) {
-        await verifyCompanyOwnership(companyId, userId);
+    static async getLeaveTypes(companyId) {
+        return await db.LeaveType.findAll({
+            where: { company_id: companyId },
+            order: [["created_at", "ASC"]]
+        });
+    }
 
-        return await LeaveMaster.findAll({
-            where: { company_id: companyId, status: true },
-            order: [["created_at", "ASC"]],
+    static async saveLeaveType(companyId, data) {
+        const { id, name, code, is_paid, half_day_allowed, requires_supporting_document, requires_approval, is_active } = data;
+        
+        if (id) {
+            const existing = await db.LeaveType.findOne({ where: { id, company_id: companyId } });
+            if (!existing) throw new Error("Leave Type not found.");
+            return await existing.update({
+                name,
+                code,
+                is_paid: is_paid !== undefined ? is_paid : existing.is_paid,
+                half_day_allowed: half_day_allowed !== undefined ? half_day_allowed : existing.half_day_allowed,
+                requires_supporting_document: requires_supporting_document !== undefined ? requires_supporting_document : existing.requires_supporting_document,
+                requires_approval: requires_approval !== undefined ? requires_approval : existing.requires_approval,
+                is_active: is_active !== undefined ? is_active : existing.is_active
+            });
+        }
+
+        return await db.LeaveType.create({
+            company_id: companyId,
+            name,
+            code,
+            is_paid: is_paid !== undefined ? is_paid : true,
+            half_day_allowed: half_day_allowed !== undefined ? half_day_allowed : true,
+            requires_supporting_document: requires_supporting_document !== undefined ? requires_supporting_document : false,
+            requires_approval: requires_approval !== undefined ? requires_approval : true,
+            is_active: is_active !== undefined ? is_active : true
+        });
+    }
+
+    static async deleteLeaveType(companyId, id) {
+        const existing = await db.LeaveType.findOne({ where: { id, company_id: companyId } });
+        if (!existing) throw new Error("Leave Type not found.");
+        
+        // Soft delete or hard delete. Since we have associations, let's hard delete if no active requests use it, otherwise mark inactive
+        const usageCount = await db.LeaveRequest.count({ where: { leave_type_id: id } });
+        if (usageCount > 0) {
+            await existing.update({ is_active: false });
+            return { message: "Leave type has associated requests. Marked as inactive." };
+        }
+        
+        await existing.destroy();
+        return { message: "Leave type deleted successfully." };
+    }
+
+    /**
+     * Tab 2: Leave Policies Matrix
+     */
+    static async getLeavePoliciesMatrix(companyId) {
+        const employeeTypes = await db.EmployeeType.findAll({ where: { status: true } });
+        const leaveTypes = await db.LeaveType.findAll({ where: { company_id: companyId, is_active: true } });
+        const existingPolicies = await db.LeavePolicy.findAll({ where: { company_id: companyId } });
+
+        // Build a complete matrix of combinations
+        const matrix = [];
+        for (const empType of employeeTypes) {
+            const row = {
+                employee_type_id: empType.id,
+                employee_type_name: empType.name,
+                policies: []
+            };
+
+            for (const lt of leaveTypes) {
+                // Find existing policy config
+                let policy = existingPolicies.find(
+                    p => p.employee_type_id === empType.id && p.leave_type_id === lt.id
+                );
+
+                if (!policy) {
+                    // Create dynamic defaults if not present
+                    policy = {
+                        id: null,
+                        company_id: companyId,
+                        employee_type_id: empType.id,
+                        leave_type_id: lt.id,
+                        yearly_allocation: 0.00,
+                        monthly_accrual_enabled: false,
+                        monthly_accrual_amount: 0.00,
+                        carry_forward_allowed: false,
+                        max_carry_forward: 0.00
+                    };
+                }
+
+                row.policies.push({
+                    leave_type_id: lt.id,
+                    leave_name: lt.name,
+                    leave_code: lt.code,
+                    policy
+                });
+            }
+            matrix.push(row);
+        }
+
+        return matrix;
+    }
+
+    static async saveLeavePolicy(companyId, data) {
+        const { employee_type_id, leave_type_id, yearly_allocation, monthly_accrual_enabled, monthly_accrual_amount, carry_forward_allowed, max_carry_forward } = data;
+
+        const [policy, created] = await db.LeavePolicy.findOrCreate({
+            where: {
+                company_id: companyId,
+                employee_type_id,
+                leave_type_id
+            },
+            defaults: {
+                company_id: companyId,
+                employee_type_id,
+                leave_type_id,
+                yearly_allocation,
+                monthly_accrual_enabled,
+                monthly_accrual_amount,
+                carry_forward_allowed,
+                max_carry_forward
+            }
+        });
+
+        if (!created) {
+            await policy.update({
+                yearly_allocation,
+                monthly_accrual_enabled,
+                monthly_accrual_amount,
+                carry_forward_allowed,
+                max_carry_forward
+            });
+        }
+
+        return policy;
+    }
+
+    /**
+     * Tab 3: Global Leave Settings
+     */
+    static async getGlobalSettings(companyId) {
+        const company = await db.Company.findByPk(companyId);
+        if (!company) throw new Error("Company not found.");
+        return {
+            leave_year_type: company.leave_year_type,
+            sandwich_policy_enabled: company.sandwich_policy_enabled,
+            comp_off_expiry_days: company.comp_off_expiry_days
+        };
+    }
+
+    static async saveGlobalSettings(companyId, data) {
+        const company = await db.Company.findByPk(companyId);
+        if (!company) throw new Error("Company not found.");
+        const { leave_year_type, sandwich_policy_enabled, comp_off_expiry_days } = data;
+        return await company.update({
+            leave_year_type: leave_year_type || company.leave_year_type,
+            sandwich_policy_enabled: sandwich_policy_enabled !== undefined ? sandwich_policy_enabled : company.sandwich_policy_enabled,
+            comp_off_expiry_days: comp_off_expiry_days !== undefined ? comp_off_expiry_days : company.comp_off_expiry_days
         });
     }
 
     /**
-     * Save Leave Master entries and Yearly Leave Cap
+     * Manual Balance Adjustment (HR manual credits/adjustments)
      */
-    static async saveLeaveMasterConfig(companyId, userId, configData) {
-        await verifyCompanyOwnership(companyId, userId);
+     static async adjustBalance(companyId, data, changedBy = null) {
+        const { employeeId, leaveTypeId, leaveYear, allocated, carryForward, reason } = data;
+        const transaction = await db.sequelize.transaction();
+        try {
+            const balance = await LeaveBalanceService.getOrCreateBalance(companyId, employeeId, leaveTypeId, leaveYear, transaction);
+            const leaveType = await db.LeaveType.findByPk(leaveTypeId, { transaction });
+            
+            const oldAllocated = parseFloat(balance.allocated) || 0.00;
+            const oldCarryForward = parseFloat(balance.carry_forward) || 0.00;
 
-        const { yearly_leave_cap, leave_types } = configData;
-        const cap = parseFloat(yearly_leave_cap) || 12.0;
+            const newAllocated = allocated !== undefined ? parseFloat(allocated) : oldAllocated;
+            const newCarryForward = carryForward !== undefined ? parseFloat(carryForward) : oldCarryForward;
 
-        // If leave_types is empty, we must keep or create at least one placeholder record containing the cap
-        if (!leave_types || leave_types.length === 0) {
-            // Find if any record exists
-            const existingRecords = await LeaveMaster.findAll({
-                where: { company_id: companyId, status: true }
-            });
+            await balance.update({
+                allocated: newAllocated,
+                carry_forward: newCarryForward
+            }, { transaction });
 
-            if (existingRecords.length > 0) {
-                // Update the first record to be a placeholder
-                const first = existingRecords[0];
-                await first.update({
-                    leave_type: null,
-                    leave_days: null,
-                    yearly_leave_cap: cap
-                });
+            // Calculate adjustment offset and write transaction logs
+            const allocatedDiff = newAllocated - oldAllocated;
+            const carryForwardDiff = newCarryForward - oldCarryForward;
 
-                // Delete any other records
-                const otherIds = existingRecords.slice(1).map(r => r.id);
-                if (otherIds.length > 0) {
-                    await LeaveMaster.destroy({ where: { id: otherIds } });
-                }
-            } else {
-                // Create a placeholder record
-                await LeaveMaster.create({
+            if (allocatedDiff !== 0) {
+                await db.LeaveTransaction.create({
                     company_id: companyId,
-                    leave_type: null,
-                    leave_days: null,
-                    yearly_leave_cap: cap,
-                    status: true
-                });
-            }
-        } else {
-            // We have one or more leave types.
-            // Collect incoming non-null IDs
-            const incomingIds = leave_types.map(t => t.id).filter(Boolean);
-
-            // Delete all records that are NOT in the incoming list (including any old placeholders)
-            await LeaveMaster.destroy({
-                where: {
-                    company_id: companyId,
-                    status: true,
-                    id: {
-                        [require("sequelize").Op.notIn]: incomingIds.length > 0 ? incomingIds : ["placeholder-nonexistent-id"]
-                    }
-                }
-            });
-
-            // Process each item
-            for (const t of leave_types) {
-                const leaveDays = t.leave_days !== undefined && t.leave_days !== null && t.leave_days !== "" ? parseFloat(t.leave_days) : null;
-                
-                if (t.id) {
-                    // Update existing
-                    await LeaveMaster.update(
-                        {
-                            leave_type: t.leave_type,
-                            leave_days: leaveDays,
-                            yearly_leave_cap: cap
-                        },
-                        {
-                            where: { id: t.id, company_id: companyId }
-                        }
-                    );
-                } else {
-                    // Create new
-                    await LeaveMaster.create({
-                        company_id: companyId,
-                        leave_type: t.leave_type,
-                        leave_days: leaveDays,
-                        yearly_leave_cap: cap,
-                        status: true
-                    });
-                }
+                    employee_id: employeeId,
+                    leave_type_id: leaveTypeId,
+                    transaction_type: "Manual Balance Adjustment",
+                    leave_year: leaveYear,
+                    days: allocatedDiff,
+                    is_paid: leaveType ? leaveType.is_paid : true,
+                    description: `Manual adjustment of allocated leaves: ${allocatedDiff >= 0 ? '+' : ''}${allocatedDiff} days. Reason: ${reason || 'N/A'}`,
+                    changed_by: changedBy
+                }, { transaction });
             }
 
-            // In case there are other records, make sure they all have the updated cap
-            await LeaveMaster.update(
-                { yearly_leave_cap: cap },
-                { where: { company_id: companyId, status: true } }
-            );
+            if (carryForwardDiff !== 0) {
+                await db.LeaveTransaction.create({
+                    company_id: companyId,
+                    employee_id: employeeId,
+                    leave_type_id: leaveTypeId,
+                    transaction_type: "Carry Forward",
+                    leave_year: leaveYear,
+                    days: carryForwardDiff,
+                    is_paid: leaveType ? leaveType.is_paid : true,
+                    description: `Manual adjustment of carry forward balance: ${carryForwardDiff >= 0 ? '+' : ''}${carryForwardDiff} days. Reason: ${reason || 'N/A'}`,
+                    changed_by: changedBy
+                }, { transaction });
+            }
+
+            await transaction.commit();
+            return balance;
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
         }
-
-        return await this.getLeaveMasterConfig(companyId, userId);
-    }
-
-    /**
-     * Delete a single leave type
-     */
-    static async deleteLeaveType(id, userId) {
-        const record = await LeaveMaster.findByPk(id);
-        if (!record) {
-            const error = new Error("Leave type not found.");
-            error.statusCode = 404;
-            error.errorCode = "LEAVE_TYPE_NOT_FOUND";
-            error.messageToShow = "Leave type not found.";
-            throw error;
-        }
-
-        await verifyCompanyOwnership(record.company_id, userId);
-
-        const companyId = record.company_id;
-
-        // If this is the last record, instead of deleting, convert it to a placeholder
-        const count = await LeaveMaster.count({ where: { company_id: companyId, status: true } });
-        if (count <= 1) {
-            await record.update({
-                leave_type: null,
-                leave_days: null
-            });
-        } else {
-            await record.destroy();
-        }
-
-        return await this.getLeaveMasterConfig(companyId, userId);
     }
 }
 

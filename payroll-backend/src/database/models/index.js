@@ -23,7 +23,11 @@ const BidiRollerEntry = require("../../modules/Entry/BidiRollerEntry/bidiRollerE
 const ChallanDateEntry = require("../../modules/Entry/ChallanDateEntry/challanDateEntry.model");
 const Resignation = require("../../modules/Entry/Resignation/resignation.model");
 const Note = require("../../modules/Todo List/Note/note.model");
-const LeaveMaster = require("../../modules/Setup/LeaveMaster/leaveMaster.model");
+const LeaveType = require("../../modules/Setup/LeaveMaster/leaveType.model");
+const LeavePolicy = require("../../modules/Setup/LeaveMaster/leavePolicy.model");
+const LeaveBalance = require("../../modules/Attendance/Leave/leaveBalance.model");
+const LeaveTransaction = require("../../modules/Attendance/Leave/leaveTransaction.model");
+const EmployeeType = require("../../modules/Masters/EmployeeType/employeeType.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -56,7 +60,11 @@ db.BidiRollerEntry = BidiRollerEntry;
 db.ChallanDateEntry = ChallanDateEntry;
 db.Resignation = Resignation;
 db.Note = Note;
-db.LeaveMaster = LeaveMaster;
+db.LeaveType = LeaveType;
+db.LeavePolicy = LeavePolicy;
+db.LeaveBalance = LeaveBalance;
+db.LeaveTransaction = LeaveTransaction;
+db.EmployeeType = EmployeeType;
 
 // Model associations
 
@@ -398,16 +406,123 @@ db.Note.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
 });
+// Employee <-> EmployeeType
+db.EmployeeType.hasMany(db.Employee, {
+    foreignKey: "employee_type_id",
+    as: "employees",
+});
+db.Employee.belongsTo(db.EmployeeType, {
+    foreignKey: "employee_type_id",
+    as: "employeeType",
+});
 
-// LeaveMaster relationships
-db.Company.hasMany(db.LeaveMaster, {
+// LeaveType <-> Company
+db.Company.hasMany(db.LeaveType, {
     foreignKey: "company_id",
-    as: "leaveMasters",
+    as: "leaveTypes",
     onDelete: "CASCADE",
 });
-db.LeaveMaster.belongsTo(db.Company, {
+db.LeaveType.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
+});
+
+// LeavePolicy relations
+db.Company.hasMany(db.LeavePolicy, {
+    foreignKey: "company_id",
+    as: "leavePolicies",
+    onDelete: "CASCADE",
+});
+db.LeavePolicy.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+db.LeavePolicy.belongsTo(db.EmployeeType, {
+    foreignKey: "employee_type_id",
+    as: "employeeType",
+});
+db.LeavePolicy.belongsTo(db.LeaveType, {
+    foreignKey: "leave_type_id",
+    as: "leaveType",
+});
+db.LeaveType.hasMany(db.LeavePolicy, {
+    foreignKey: "leave_type_id",
+    as: "leavePolicies",
+    onDelete: "CASCADE",
+});
+db.EmployeeType.hasMany(db.LeavePolicy, {
+    foreignKey: "employee_type_id",
+    as: "leavePolicies",
+    onDelete: "CASCADE",
+});
+
+// LeaveBalance relations
+db.Company.hasMany(db.LeaveBalance, {
+    foreignKey: "company_id",
+    as: "leaveBalances",
+    onDelete: "CASCADE",
+});
+db.LeaveBalance.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+db.LeaveBalance.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+db.Employee.hasMany(db.LeaveBalance, {
+    foreignKey: "employee_id",
+    as: "leaveBalances",
+    onDelete: "CASCADE",
+});
+db.LeaveBalance.belongsTo(db.LeaveType, {
+    foreignKey: "leave_type_id",
+    as: "leaveType",
+});
+db.LeaveType.hasMany(db.LeaveBalance, {
+    foreignKey: "leave_type_id",
+    as: "leaveBalances",
+    onDelete: "CASCADE",
+});
+
+// LeaveTransaction relations
+db.Company.hasMany(db.LeaveTransaction, {
+    foreignKey: "company_id",
+    as: "leaveTransactions",
+    onDelete: "CASCADE",
+});
+db.LeaveTransaction.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+db.LeaveTransaction.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+db.Employee.hasMany(db.LeaveTransaction, {
+    foreignKey: "employee_id",
+    as: "leaveTransactions",
+    onDelete: "CASCADE",
+});
+db.LeaveTransaction.belongsTo(db.LeaveType, {
+    foreignKey: "leave_type_id",
+    as: "leaveType",
+});
+db.LeaveType.hasMany(db.LeaveTransaction, {
+    foreignKey: "leave_type_id",
+    as: "leaveTransactions",
+    onDelete: "CASCADE",
+});
+
+// LeaveRequest <-> LeaveType
+db.LeaveRequest.belongsTo(db.LeaveType, {
+    foreignKey: "leave_type_id",
+    as: "leaveType",
+});
+db.LeaveType.hasMany(db.LeaveRequest, {
+    foreignKey: "leave_type_id",
+    as: "leaveRequests",
+    onDelete: "CASCADE",
 });
 
 module.exports = db;

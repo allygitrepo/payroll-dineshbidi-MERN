@@ -310,6 +310,13 @@ class EmployeeService {
 
             await t.commit();
 
+            try {
+                const LeaveBalanceService = require("../../Attendance/Leave/leaveBalance.service");
+                await LeaveBalanceService.autoAllocateForEmployee(newEmployee);
+            } catch (errAlloc) {
+                console.error("Auto balance allocation failed for employee:", errAlloc);
+            }
+
             return await EmployeeService.getEmployeeById(employeeId, user);
         } catch (err) {
             await t.rollback();

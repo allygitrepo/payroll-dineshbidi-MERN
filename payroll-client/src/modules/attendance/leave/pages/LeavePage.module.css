@@ -12,10 +12,11 @@
 
 .headerSection {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  justify-content: space-between;
+  align-items: center;
   border-bottom: 2px solid var(--border);
   padding-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .pageTitle {
@@ -874,3 +875,282 @@
 .inputError:focus {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
 }
+
+/* Custom leave page additions */
+.balancePreviewCard {
+  background-color: var(--bg-main);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 4px;
+}
+.balanceHeader {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+.balanceGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.twoColumnInputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.statusApproved {
+  color: var(--primary) !important;
+  font-weight: 700;
+}
+.statusPending {
+  color: #f59e0b !important;
+  font-weight: 700;
+}
+.statusRejected {
+  color: #ef4444 !important;
+  font-weight: 700;
+}
+.statusCancelled {
+  color: #6b7280 !important;
+  text-decoration: line-through;
+  font-weight: 700;
+}
+.halfDayTag {
+  display: inline-block;
+  font-size: 0.7rem;
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+.actionButtons {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+.actionApprove {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.actionReject {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.actionCancel {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+.actionCancel:hover {
+  background-color: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+/* Modal Layout */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+.modalContent {
+  background-color: var(--card-bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  width: 100%;
+  max-width: 540px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  animation: modalFadeIn 0.3s ease;
+}
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.modalHeader h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.modalForm {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+/* Search Select Styling */
+.searchSelectTrigger {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  cursor: pointer;
+  height: 42px;
+}
+
+.searchSelectDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  z-index: 50;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.searchSelectInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchSelectIcon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted);
+}
+
+.searchSelectInput {
+  width: 100%;
+  padding: 8px 12px 8px 30px;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.searchSelectInput:focus {
+  border-color: var(--primary);
+}
+
+.searchSelectList {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.searchSelectItem {
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.searchSelectItem:hover {
+  background-color: var(--bg-secondary);
+  color: var(--primary);
+}
+
+.searchSelectItemActive {
+  background-color: rgba(39, 214, 138, 0.1);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.searchSelectEmpty {
+  padding: 12px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.durationBanner {
+  background-color: rgba(39, 214, 138, 0.1);
+  border: 1px solid rgba(39, 214, 138, 0.2);
+  color: var(--primary);
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  margin-bottom: 16px;
+}
+

@@ -1,8 +1,8 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../../../config/database");
 
-const Role = sequelize.define(
-    "Role",
+const EmployeeType = sequelize.define(
+    "EmployeeType",
     {
         id: {
             type: DataTypes.UUID,
@@ -10,13 +10,8 @@ const Role = sequelize.define(
             primaryKey: true,
         },
         name: {
-            type: DataTypes.STRING,
+            type: DataTypes.STRING(100),
             allowNull: false,
-        },
-        permissions: {
-            type: DataTypes.JSON,
-            allowNull: false,
-            defaultValue: {},
         },
         status: {
             type: DataTypes.BOOLEAN,
@@ -24,7 +19,7 @@ const Role = sequelize.define(
         },
     },
     {
-        tableName: "Roles",
+        tableName: "employee_types",
         timestamps: true,
         underscored: true,
         indexes: [
@@ -36,4 +31,4 @@ const Role = sequelize.define(
     }
 );
 
-module.exports = Role;
+module.exports = EmployeeType;
