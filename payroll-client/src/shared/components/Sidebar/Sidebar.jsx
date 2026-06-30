@@ -157,6 +157,13 @@ const menuItems = [
     subItems: [
       { name: 'Excel To Text', icon: FileSpreadsheet }
     ]
+  },
+  {
+    name: 'Loan Management',
+    icon: Coins,
+    subItems: [
+      { name: 'Loan Profile', icon: ClipboardList }
+    ]
   }
 ];
 
@@ -249,6 +256,19 @@ const Sidebar = ({ sidebarCollapsed }) => {
   const isContractor = userStr && JSON.parse(userStr)?.role?.name === 'Contractor';
   const isAdmin = userStr && (JSON.parse(userStr)?.role?.name === 'ADMIN' || JSON.parse(userStr)?.role?.name === 'Admin');
 
+  const hasReadPermission = (slug) => {
+    if (isAdmin) return true; // Optionally bypass for admins
+    
+    if (Array.isArray(permissions)) {
+      return permissions.includes(slug);
+    }
+    
+    const perm = permissions[slug];
+    if (typeof perm === 'boolean') return perm;
+    if (typeof perm === 'object' && perm !== null) return !!perm.read;
+    return false;
+  };
+
   // Filter menuItems based on permissions and role
   const filteredMenuItems = menuItems.map(item => {
     let filteredSubItems = null;
@@ -257,25 +277,25 @@ const Sidebar = ({ sidebarCollapsed }) => {
 
         if (sub.nestedItems) {
           // If the parent itself has permission (e.g., Salary Sheet), show it with all nested items
-          if (permissions[nameToSlug(sub.name)]) {
+          if (hasReadPermission(nameToSlug(sub.name))) {
             return sub;
           }
           // Otherwise, filter nested items individually (e.g., Forms -> Form 2)
-          const filteredNested = sub.nestedItems.filter(n => permissions[nameToSlug(n.name)]);
+          const filteredNested = sub.nestedItems.filter(n => hasReadPermission(nameToSlug(n.name)));
           if (filteredNested.length > 0) {
             return { ...sub, nestedItems: filteredNested };
           }
           return null;
         } else {
           const slug = nameToSlug(sub.name);
-          const hasPerm = permissions[slug] || (isAdmin && slug === 'leave');
+          const hasPerm = hasReadPermission(slug) || (isAdmin && slug === 'leave');
           return hasPerm ? sub : null;
         }
       }).filter(Boolean);
       
       if (filteredSubItems.length === 0) return null; // Hide parent if all children are hidden
     } else {
-      if (!permissions[nameToSlug(item.name)]) return null;
+      if (!hasReadPermission(nameToSlug(item.name))) return null;
     }
     
     return { ...item, subItems: filteredSubItems };

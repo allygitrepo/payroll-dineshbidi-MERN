@@ -29,7 +29,7 @@ class UsersService {
     /**
      * Registers a new user.
      */
-    static async registerUser({ user_name, user_id, password, role_id }) {
+    static async registerUser({ user_name, user_id, password, role_id, parent_id }) {
         // Check if user already exists
         const existingUser = await User.findOne({ where: { user_id, status: true } });
         if (existingUser) {
@@ -50,6 +50,7 @@ class UsersService {
             user_id,
             password: hashedPassword,
             role_id: role_id || null,
+            parent_id: parent_id || null,
         });
 
         // Return user details without password
@@ -299,9 +300,16 @@ class UsersService {
     /**
      * Gets all users
      */
-    static async getAllUsers() {
+    static async getAllUsers(currentUser) {
+        const whereClause = { status: true };
+        
+        if (currentUser) {
+            // Both OWNER and ADMIN should only see users they directly created
+            whereClause.parent_id = currentUser.id;
+        }
+
         const users = await User.findAll({
-            where: { status: true },
+            where: whereClause,
             include: [{ model: Role, as: 'role' }]
         });
         return users.map(user => {

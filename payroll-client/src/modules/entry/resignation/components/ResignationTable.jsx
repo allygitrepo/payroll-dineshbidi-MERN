@@ -1,5 +1,6 @@
+import { Pagination } from '../../../../shared/components';
 import React, { useState, useMemo } from 'react';
-import { Edit, Trash2, Search } from 'lucide-react';
+import { Edit, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { MonthYearPicker } from '../../../../shared/components';
 import styles from './ResignationPage.module.css';
 
@@ -23,23 +24,55 @@ const ResignationTable = ({
 }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   // Reset pagination if search, month, or limit changes
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedMonth, pageSize]);
 
+  const sortedData = useMemo(() => {
+    let sortableItems = [...data];
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+        
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [data, sortConfig]);
+
   // Pagination math
-  const totalEntries = data.length;
+  const totalEntries = sortedData.length;
   const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalEntries);
   const paginatedData = useMemo(() => {
-    return data.slice(startIndex, endIndex);
-  }, [data, startIndex, endIndex]);
+    return sortedData.slice(startIndex, endIndex);
+  }, [sortedData, startIndex, endIndex]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
+  };
+
+  const renderSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) return <ArrowUpDown size={14} style={{ opacity: 0.4, marginLeft: '4px' }} />;
+    return sortConfig.direction === 'asc' ? <ArrowUp size={14} style={{ marginLeft: '4px' }} /> : <ArrowDown size={14} style={{ marginLeft: '4px' }} />;
   };
 
   return (
@@ -83,9 +116,15 @@ const ResignationTable = ({
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Account No.</th>
-              <th>Date of Leaving</th>
-              <th>Reason Of Leaving</th>
+              <th onClick={() => handleSort('accountNo')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Account No. {renderSortIcon('accountNo')}</div>
+              </th>
+              <th onClick={() => handleSort('dateOfLeaving')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Date of Leaving {renderSortIcon('dateOfLeaving')}</div>
+              </th>
+              <th onClick={() => handleSort('reasonOfLeaving')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Reason Of Leaving {renderSortIcon('reasonOfLeaving')}</div>
+              </th>
               <th style={{ textAlign: 'center', width: '90px' }}>Action</th>
             </tr>
           </thead>
@@ -164,32 +203,12 @@ const ResignationTable = ({
         </div>
 
         <div className={styles.pagination}>
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className={styles.pageBtn}
-          >
-            Previous
-          </button>
-          
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => handlePageChange(i + 1)}
-              className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className={styles.pageBtn}
-          >
-            Next
-          </button>
-        </div>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
       </div>
     </div>
   );

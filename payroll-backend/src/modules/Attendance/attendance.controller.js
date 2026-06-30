@@ -256,6 +256,45 @@ class AttendanceController {
     }
 
     /**
+     * Admin/System: Retrieves attendance summary (total present days) for a given month and company.
+     */
+    static async getSummary(req, res) {
+        try {
+            const { companyId } = req.params;
+            const { month_year } = req.query; // YYYY-MM
+            if (!companyId || !month_year) {
+                return res.status(400).json(
+                    errorResponse(
+                        "VALIDATION_ERROR",
+                        "Company ID and month_year are required.",
+                        "Company ID and month_year are required."
+                    )
+                );
+            }
+
+            const summaryMap = await AttendanceService.getSummary(companyId, month_year);
+            return res.status(200).json(
+                successResponse(
+                    "ATTENDANCE_SUMMARY_RETRIEVED",
+                    "Attendance summary retrieved successfully.",
+                    "Attendance summary retrieved successfully.",
+                    summaryMap
+                )
+            );
+        } catch (err) {
+            const statusCode = err.statusCode || 500;
+            const errorCode = err.errorCode || "INTERNAL_SERVER_ERROR";
+            return res.status(statusCode).json(
+                errorResponse(
+                    errorCode,
+                    err.message,
+                    err.messageToShow || "Failed to retrieve attendance summary."
+                )
+            );
+        }
+    }
+
+    /**
      * Admin: Deletes an attendance record.
      */
     static async delete(req, res) {

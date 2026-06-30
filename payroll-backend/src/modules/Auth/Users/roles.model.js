@@ -22,6 +22,16 @@ const Role = sequelize.define(
             type: DataTypes.BOOLEAN,
             defaultValue: true,
         },
+        created_by: {
+            type: DataTypes.UUID,
+            allowNull: true,
+            references: {
+                model: "Users",
+                key: "id",
+            },
+            onDelete: "CASCADE",
+            onUpdate: "CASCADE",
+        },
     },
     {
         tableName: "Roles",

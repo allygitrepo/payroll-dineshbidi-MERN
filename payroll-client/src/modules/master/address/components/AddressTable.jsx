@@ -1,24 +1,57 @@
+import { Pagination } from '../../../../shared/components';
 import React, { useState, useMemo } from 'react';
-import { Edit, Trash2, Search } from 'lucide-react';
+import { Edit, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import styles from './AddressPage.module.css';
 
 const AddressTable = ({ data, searchTerm, onSearchChange, statusFilter, onStatusFilterChange, onEdit, onDelete }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   // Reset pagination if search filters change
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, pageSize]);
 
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedData = useMemo(() => {
+    let sortableItems = [...data];
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+        
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [data, sortConfig]);
+
   // Pagination calculations
-  const totalEntries = data.length;
+  const totalEntries = sortedData.length;
   const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalEntries);
   const paginatedData = useMemo(() => {
-    return data.slice(startIndex, endIndex);
-  }, [data, startIndex, endIndex]);
+    return sortedData.slice(startIndex, endIndex);
+  }, [sortedData, startIndex, endIndex]);
+
+  const renderSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) return <ArrowUpDown size={14} style={{ opacity: 0.4, marginLeft: '4px' }} />;
+    return sortConfig.direction === 'asc' ? <ArrowUp size={14} style={{ marginLeft: '4px' }} /> : <ArrowDown size={14} style={{ marginLeft: '4px' }} />;
+  };
 
   return (
     <div className={styles.tableCard}>
@@ -48,11 +81,21 @@ const AddressTable = ({ data, searchTerm, onSearchChange, statusFilter, onStatus
             <tr>
               <th style={{ width: '100px', textAlign: 'center' }}>Action</th>
               <th style={{ width: '60px', textAlign: 'center' }}>Sr. No.</th>
-              <th>Address</th>
-              <th>Postoffice</th>
-              <th>District</th>
-              <th>Pincode</th>
-              <th style={{ textAlign: 'center' }}>Status</th>
+              <th onClick={() => handleSort('address')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Address {renderSortIcon('address')}</div>
+              </th>
+              <th onClick={() => handleSort('postOffice')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Postoffice {renderSortIcon('postOffice')}</div>
+              </th>
+              <th onClick={() => handleSort('district')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>District {renderSortIcon('district')}</div>
+              </th>
+              <th onClick={() => handleSort('pincode')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Pincode {renderSortIcon('pincode')}</div>
+              </th>
+              <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Status {renderSortIcon('status')}</div>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -139,32 +182,12 @@ const AddressTable = ({ data, searchTerm, onSearchChange, statusFilter, onStatus
           </div>
         </div>
         <div className={styles.pagination}>
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className={styles.pageBtn}
-          >
-            Previous
-          </button>
-
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentPage(i + 1)}
-              className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-
-          <button
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className={styles.pageBtn}
-          >
-            Next
-          </button>
-        </div>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
       </div>
     </div>
   );

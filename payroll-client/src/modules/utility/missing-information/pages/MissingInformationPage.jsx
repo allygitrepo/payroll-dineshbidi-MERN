@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, RotateCcw, Edit, AlertCircle } from 'lucide-react';
-import { useToast } from '../../../../shared/components';
+import { useToast, Pagination } from '../../../../shared/components';
 import { getMissingDetails } from '../../../master/employee/services/employeeService';
 import styles from '../components/MissingInformationPage.module.css';
 
@@ -292,31 +292,11 @@ const MissingInformationPage = () => {
           </div>
 
           <div className={styles.pagination}>
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className={styles.pageBtn}
-            >
-              Previous
-            </button>
-
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
-              >
-                {i + 1}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className={styles.pageBtn}
-            >
-              Next
-            </button>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </div>
       </div>

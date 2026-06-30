@@ -1,5 +1,6 @@
+import { Pagination } from '../../../../shared/components';
 import React, { useState, useMemo } from 'react';
-import { Edit, Trash2, Search } from 'lucide-react';
+import { Edit, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import styles from './EpfChallanDatePage.module.css';
 
 const formatDate = (dateStr) => {
@@ -14,23 +15,55 @@ const formatDate = (dateStr) => {
 const EpfChallanDateTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   // Reset pagination if filter changes
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, pageSize]);
 
+  const sortedData = useMemo(() => {
+    let sortableItems = [...data];
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+        
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [data, sortConfig]);
+
   // Pagination calculations
-  const totalEntries = data.length;
+  const totalEntries = sortedData.length;
   const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalEntries);
   const paginatedData = useMemo(() => {
-    return data.slice(startIndex, endIndex);
-  }, [data, startIndex, endIndex]);
+    return sortedData.slice(startIndex, endIndex);
+  }, [sortedData, startIndex, endIndex]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
+  };
+
+  const renderSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) return <ArrowUpDown size={14} style={{ opacity: 0.4, marginLeft: '4px' }} />;
+    return sortConfig.direction === 'asc' ? <ArrowUp size={14} style={{ marginLeft: '4px' }} /> : <ArrowDown size={14} style={{ marginLeft: '4px' }} />;
   };
 
   return (
@@ -60,19 +93,33 @@ const EpfChallanDateTable = ({ data, searchTerm, onSearchChange, onEdit, onDelet
           <thead>
             <tr>
               <th style={{ width: '70px' }}>Sr No.</th>
-              <th>TRRN</th>
-              <th>CRN No</th>
-              <th>Wage Month</th>
-              <th>Due Date</th>
-              <th>Challan Date</th>
+              <th onClick={() => handleSort('trrn')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>TRRN {renderSortIcon('trrn')}</div>
+              </th>
+              <th onClick={() => handleSort('crnNo')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>CRN No {renderSortIcon('crnNo')}</div>
+              </th>
+              <th onClick={() => handleSort('wageMonth')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Wage Month {renderSortIcon('wageMonth')}</div>
+              </th>
+              <th onClick={() => handleSort('dueDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Due Date {renderSortIcon('dueDate')}</div>
+              </th>
+              <th onClick={() => handleSort('challanDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Challan Date {renderSortIcon('challanDate')}</div>
+              </th>
               <th style={{ textAlign: 'right' }}>A/C 1 (EE)</th>
               <th style={{ textAlign: 'right' }}>A/C 1 (ER)</th>
               <th style={{ textAlign: 'right' }}>A/C 2</th>
               <th style={{ textAlign: 'right' }}>A/C 10</th>
               <th style={{ textAlign: 'right' }}>A/C 21</th>
               <th style={{ textAlign: 'right' }}>A/C 22</th>
-              <th style={{ textAlign: 'right' }}>Total Amount</th>
-              <th>Return Date</th>
+              <th onClick={() => handleSort('totalAmount')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>Total Amount {renderSortIcon('totalAmount')}</div>
+              </th>
+              <th onClick={() => handleSort('returnDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>Return Date {renderSortIcon('returnDate')}</div>
+              </th>
               <th style={{ textAlign: 'center', width: '90px' }}>Action</th>
             </tr>
           </thead>
@@ -158,32 +205,12 @@ const EpfChallanDateTable = ({ data, searchTerm, onSearchChange, onEdit, onDelet
         </div>
 
         <div className={styles.pagination}>
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className={styles.pageBtn}
-          >
-            Previous
-          </button>
-          
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => handlePageChange(i + 1)}
-              className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className={styles.pageBtn}
-          >
-            Next
-          </button>
-        </div>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
       </div>
     </div>
   );

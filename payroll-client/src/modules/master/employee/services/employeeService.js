@@ -210,7 +210,7 @@ const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
     physical_handicap: e.physicalHandicap === 'YES',
     pmrpy: e.pmrpy === 'YES',
     abry_applicable: e.abryApplicable || false,
-    status: e.status !== undefined ? e.status : true,
+    status: (e.status === 'Active' || e.status === true || e.status === 'true' || e.status === 1) ? true : false,
     kyc_details: kycDetailsPayload,
     nominees: nomineesPayload,
     family_members: familyMembersPayload

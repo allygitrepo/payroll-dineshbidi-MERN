@@ -30,6 +30,7 @@ class UsersController {
                 user_id: value.user_id,
                 password: value.password,
                 role_id: value.role_id,
+                parent_id: req.user ? req.user.id : null,
             });
 
             return res.status(201).json(
@@ -255,7 +256,7 @@ class UsersController {
      */
     static async getAll(req, res) {
         try {
-            const users = await UsersService.getAllUsers();
+            const users = await UsersService.getAllUsers(req.user);
             return res.status(200).json(
                 successResponse(
                     "USERS_RETRIEVED",

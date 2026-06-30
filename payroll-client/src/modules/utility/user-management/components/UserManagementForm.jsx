@@ -5,7 +5,7 @@ const PERMISSION_GROUPS = [
   {
     title: 'Dashboard',
     items: [
-      { slug: 'dashboard', label: 'Dashboard' }
+      { slug: 'dashboard', label: 'Dashboard', readOnly: true }
     ]
   },
   {
@@ -33,7 +33,7 @@ const PERMISSION_GROUPS = [
     items: [
       { slug: 'attendence-list', label: 'Attendance List' },
       { slug: 'leave-management', label: 'Leave Management' },
-      { slug: 'face-attendance-self', label: 'Face Attendance (Self)' }
+      { slug: 'face-attendance-self', label: 'Face Attendance (Self)', readOnly: true }
     ]
   },
   {
@@ -49,18 +49,18 @@ const PERMISSION_GROUPS = [
   {
     title: 'Report',
     items: [
-      { slug: 'salary-sheet', label: 'Salary Sheet' },
-      { slug: 'form-2', label: 'Form 2' },
-      { slug: 'ecr-report', label: 'ECR Report' },
-      { slug: 'esic-report', label: 'ESIC Report' },
-      { slug: 'pmrpy-report', label: 'PMRPY Report' },
-      { slug: 'pf-challan-yearly', label: 'PF Challan Yearly' },
-      { slug: 'epf-challan', label: 'EPF Challan' },
-      { slug: 'pf-summary', label: 'PF Summary' },
-      { slug: 'payment-advice', label: 'Payment Advice' },
-      { slug: 'bonus-sheet', label: 'Bonus Sheet' },
-      { slug: 'gratuity-calculation', label: 'Gratuity Calculation' },
-      { slug: 'report-pt', label: 'Professional Tax' }
+      { slug: 'salary-sheet', label: 'Salary Sheet', readOnly: true },
+      { slug: 'form-2', label: 'Form 2', readOnly: true },
+      { slug: 'ecr-report', label: 'ECR Report', readOnly: true },
+      { slug: 'esic-report', label: 'ESIC Report', readOnly: true },
+      { slug: 'pmrpy-report', label: 'PMRPY Report', readOnly: true },
+      { slug: 'pf-challan-yearly', label: 'PF Challan Yearly', readOnly: true },
+      { slug: 'epf-challan', label: 'EPF Challan', readOnly: true },
+      { slug: 'pf-summary', label: 'PF Summary', readOnly: true },
+      { slug: 'payment-advice', label: 'Payment Advice', readOnly: true },
+      { slug: 'bonus-sheet', label: 'Bonus Sheet', readOnly: true },
+      { slug: 'gratuity-calculation', label: 'Gratuity Calculation', readOnly: true },
+      { slug: 'report-pt', label: 'Professional Tax', readOnly: true }
     ]
   },
   {
@@ -68,43 +68,39 @@ const PERMISSION_GROUPS = [
     items: [
       { slug: 'calender', label: 'Calender' },
       { slug: 'user-management', label: 'User Management' },
-      { slug: 'employee-data-import', label: 'Employee Data Import' },
-      { slug: 'employee-data-export', label: 'Employee Data Export' },
-      { slug: 'kyc-export', label: 'KYC Export' },
-      { slug: 'attendance-printing', label: 'Attendance Printing' },
-      { slug: 'missing-information', label: 'Missing Information' },
-      { slug: 'delete-month-entry', label: 'Delete Month Entry' },
-      { slug: 'backup', label: 'Backup' },
-      { slug: 'restore', label: 'Restore' }
+      { slug: 'employee-data-import', label: 'Employee Data Import', readOnly: true },
+      { slug: 'employee-data-export', label: 'Employee Data Export', readOnly: true },
+      { slug: 'kyc-export', label: 'KYC Export', readOnly: true },
+      { slug: 'attendance-printing', label: 'Attendance Printing', readOnly: true },
+      { slug: 'missing-information', label: 'Missing Information', readOnly: true },
+      { slug: 'delete-month-entry', label: 'Delete Month Entry', readOnly: true },
+      { slug: 'backup', label: 'Backup', readOnly: true },
+      { slug: 'restore', label: 'Restore', readOnly: true }
     ]
   },
   {
     title: 'Todo List',
     items: [
-      { slug: '3-month-absent-list', label: '3 Month Absent List' },
-      { slug: '58-years-of-age', label: '58 Years of age' },
+      { slug: '3-month-absent-list', label: '3 Month Absent List', readOnly: true },
+      { slug: '58-years-of-age', label: '58 Years of age', readOnly: true },
       { slug: 'notes', label: 'Notes' }
     ]
   },
   {
     title: 'Convert Excel To Text',
     items: [
-      { slug: 'excel-to-text', label: 'Excel To Text' }
+      { slug: 'excel-to-text', label: 'Excel To Text', readOnly: true }
+    ]
+  },
+  {
+    title: 'Loan Management',
+    items: [
+      { slug: 'loan-profile', label: 'Loan Profile' }
     ]
   }
 ];
 
-const ALL_PERMISSION_SLUGS = [
-  'dashboard',
-  'company', 'employee', 'kyc-update', 'contractor', 'address',
-  'packing-wages', 'bidi-roller-wages', 'professional-tax', 'office-staff-salary', 'challan-setup',
-  'attendence-list', 'leave-management', 'face-attendance-self',
-  'office-staff', 'packers', 'bidi-roller', 'epf-challan-date', 'resignation',
-  'salary-sheet', 'form-2', 'ecr-report', 'esic-report', 'pmrpy-report', 'pf-challan-yearly', 'epf-challan', 'pf-summary', 'payment-advice', 'bonus-sheet', 'gratuity-calculation', 'report-pt',
-  'calender', 'user-management', 'employee-data-import', 'employee-data-export', 'kyc-export', 'attendance-printing', 'missing-information', 'delete-month-entry', 'backup', 'restore',
-  '3-month-absent-list', '58-years-of-age', 'notes',
-  'excel-to-text'
-];
+const ALL_PERMISSION_SLUGS = PERMISSION_GROUPS.flatMap(g => g.items.map(i => i.slug));
 
 const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
   const [isCreatingRole, setIsCreatingRole] = useState(false);
@@ -114,45 +110,55 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
     password: '',
     designation: roles.length > 0 ? roles[0].name : '',
     role_id: roles.length > 0 ? roles[0].id : null,
-    permissions: roles.length > 0 ? (roles[0].permissions || {}) : {}
+    permissions: {}
   });
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
 
   useEffect(() => {
-    if (user) {
-      setFormData({
-        userName: user.userName || '',
-        userId: user.userId || '',
-        password: user.password || '',
-        designation: user.designation || (roles[0]?.name || ''),
-        role_id: user.role_id || (roles[0]?.id || null),
-        permissions: user.permissions || {}
-      });
-      setErrors({});
-      setTouched({});
+    let initialPerms = {};
+    if (user && user.permissions) {
+      initialPerms = normalizePermissions(user.permissions);
+    } else if (roles.length > 0 && roles[0].permissions) {
+      initialPerms = normalizePermissions(roles[0].permissions);
     } else {
-      // Create empty permissions map
-      const initialPerms = {};
       ALL_PERMISSION_SLUGS.forEach(slug => {
-        initialPerms[slug] = false;
+        initialPerms[slug] = { read: false, create: false, edit: false, delete: false };
       });
-      
-      const defaultRole = roles.length > 0 ? roles[0] : null;
-
-      setFormData({
-        userName: '',
-        userId: '',
-        password: '',
-        designation: defaultRole ? defaultRole.name : '',
-        role_id: defaultRole ? defaultRole.id : null,
-        permissions: defaultRole ? (defaultRole.permissions || initialPerms) : initialPerms
-      });
-      setErrors({});
-      setTouched({});
     }
+
+    setFormData({
+      userName: user ? user.userName || '' : '',
+      userId: user ? user.userId || '' : '',
+      password: user ? user.password || '' : '',
+      designation: user ? user.designation || (roles[0]?.name || '') : (roles[0]?.name || ''),
+      role_id: user ? user.role_id || (roles[0]?.id || null) : (roles[0]?.id || null),
+      permissions: initialPerms
+    });
+    setErrors({});
+    setTouched({});
   }, [user, roles]);
+
+  const normalizePermissions = (perms) => {
+    const normalized = {};
+    ALL_PERMISSION_SLUGS.forEach(slug => {
+      const val = perms[slug];
+      if (typeof val === 'boolean') {
+        normalized[slug] = { read: val, create: val, edit: val, delete: val };
+      } else if (val && typeof val === 'object') {
+        normalized[slug] = {
+          read: !!val.read,
+          create: !!val.create,
+          edit: !!val.edit,
+          delete: !!val.delete
+        };
+      } else {
+        normalized[slug] = { read: false, create: false, edit: false, delete: false };
+      }
+    });
+    return normalized;
+  };
 
   const validateField = (name, value) => {
     let error = '';
@@ -182,7 +188,6 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
     let finalVal = value;
 
     if (name === 'userId') {
-      // Lowercase alphanumeric only
       finalVal = value.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     }
 
@@ -193,7 +198,7 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
           ...prev,
           designation: selectedRole.name,
           role_id: selectedRole.id,
-          permissions: selectedRole.permissions || prev.permissions
+          permissions: normalizePermissions(selectedRole.permissions || {})
         }));
       } else {
         setFormData(prev => ({
@@ -212,20 +217,44 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
     }
   };
 
-  const handlePermissionChange = (slug) => {
-    setFormData(prev => ({
-      ...prev,
-      permissions: {
-        ...prev.permissions,
-        [slug]: !prev.permissions[slug]
+  const handlePermissionChange = (slug, action) => {
+    setFormData(prev => {
+      const currentPerms = prev.permissions[slug] || { read: false, create: false, edit: false, delete: false };
+      const newValue = !currentPerms[action];
+
+      const newPerms = { ...currentPerms, [action]: newValue };
+
+      // If setting create, edit, or delete to true, ensure read is also true
+      if (newValue && action !== 'read') {
+        newPerms.read = true;
       }
-    }));
+
+      // If setting read to false, ensure others are false
+      if (!newValue && action === 'read') {
+        newPerms.create = false;
+        newPerms.edit = false;
+        newPerms.delete = false;
+      }
+
+      return {
+        ...prev,
+        permissions: {
+          ...prev.permissions,
+          [slug]: newPerms
+        }
+      };
+    });
   };
 
   const handleGroupToggle = (groupItems, checked) => {
     const updated = { ...formData.permissions };
     groupItems.forEach(item => {
-      updated[item.slug] = checked;
+      updated[item.slug] = {
+        read: checked,
+        create: item.readOnly ? false : checked,
+        edit: item.readOnly ? false : checked,
+        delete: item.readOnly ? false : checked,
+      };
     });
     setFormData(prev => ({
       ...prev,
@@ -235,8 +264,15 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
 
   const handleToggleAllPermissions = (select) => {
     const updated = {};
-    ALL_PERMISSION_SLUGS.forEach(slug => {
-      updated[slug] = select;
+    PERMISSION_GROUPS.forEach(group => {
+      group.items.forEach(item => {
+        updated[item.slug] = {
+          read: select,
+          create: item.readOnly ? false : select,
+          edit: item.readOnly ? false : select,
+          delete: item.readOnly ? false : select,
+        };
+      });
     });
     setFormData(prev => ({
       ...prev,
@@ -402,35 +438,85 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
 
             <div className={styles.permissionsGrid}>
               {PERMISSION_GROUPS.map(group => {
-                const isAllSelected = group.items.every(item => formData.permissions[item.slug]);
-                const isSomeSelected = group.items.some(item => formData.permissions[item.slug]) && !isAllSelected;
+                const isAllSelected = group.items.every(item => formData.permissions[item.slug]?.read);
+                const isSomeSelected = group.items.some(item => formData.permissions[item.slug]?.read) && !isAllSelected;
 
                 return (
                   <div key={group.title} className={styles.permissionGroup}>
-                    <div className={styles.groupHeader} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input 
+                    <div className={styles.groupHeader}>
+                      <input
                         type="checkbox"
                         checked={isAllSelected}
                         ref={el => { if (el) el.indeterminate = isSomeSelected; }}
                         onChange={(e) => handleGroupToggle(group.items, e.target.checked)}
                         style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                       />
-                      {group.title}
+                      <span style={{ fontWeight: '600' }}>{group.title}</span>
                     </div>
                     <div className={styles.groupBody}>
-                      {group.items.map(item => (
-                      <label key={item.slug} className={styles.permissionLabel}>
-                        <input
-                          type="checkbox"
-                          checked={!!formData.permissions[item.slug]}
-                          onChange={() => handlePermissionChange(item.slug)}
-                          className={styles.permissionCheckbox}
-                        />
-                        <span>{item.label}</span>
-                      </label>
-                    ))}
+                      <table className={styles.permissionsTable}>
+                        <thead>
+                          <tr>
+                            <th>Module</th>
+                            <th>Read</th>
+                            <th>Create</th>
+                            <th>Edit</th>
+                            <th>Delete</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.items.map(item => {
+                            const perms = formData.permissions[item.slug] || {};
+                            return (
+                              <tr key={item.slug}>
+                                <td>
+                                  {item.label}
+                                </td>
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!perms.read}
+                                    onChange={() => handlePermissionChange(item.slug, 'read')}
+                                    className={styles.permissionCheckbox}
+                                  />
+                                </td>
+                                <td>
+                                  {!item.readOnly && (
+                                    <input
+                                      type="checkbox"
+                                      checked={!!perms.create}
+                                      onChange={() => handlePermissionChange(item.slug, 'create')}
+                                      className={styles.permissionCheckbox}
+                                    />
+                                  )}
+                                </td>
+                                <td>
+                                  {!item.readOnly && (
+                                    <input
+                                      type="checkbox"
+                                      checked={!!perms.edit}
+                                      onChange={() => handlePermissionChange(item.slug, 'edit')}
+                                      className={styles.permissionCheckbox}
+                                    />
+                                  )}
+                                </td>
+                                <td>
+                                  {!item.readOnly && (
+                                    <input
+                                      type="checkbox"
+                                      checked={!!perms.delete}
+                                      onChange={() => handlePermissionChange(item.slug, 'delete')}
+                                      className={styles.permissionCheckbox}
+                                    />
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
                 );
               })}
             </div>
@@ -452,3 +538,4 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
 };
 
 export default UserManagementForm;
+

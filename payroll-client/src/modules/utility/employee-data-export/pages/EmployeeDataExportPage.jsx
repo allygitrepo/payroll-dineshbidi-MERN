@@ -1,3 +1,4 @@
+import { Pagination } from '../../../../shared/components';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
 import { useToast, MonthYearPicker } from '../../../../shared/components';
@@ -47,16 +48,18 @@ const EmployeeDataExportPage = () => {
     fetchEmployees();
   }, []);
 
-  // Filter employees based on joining date <= selected month
-  const filteredByMonth = useMemo(() => {
-    if (!searchTriggeredMonth) return dbEmployees;
+  // Filter employees based on joining date or dob matching selected month
+  const filteredData = useMemo(() => {
+    // Only include Active employees
+    let result = dbEmployees.filter(emp => emp.status === true || emp.status === 'Active' || emp.status === 1 || emp.status === '1');
 
-    // Filter joining dates up to the selected searchTriggeredMonth
-    const result = dbEmployees.filter(emp => {
-      if (!emp.dateOfJoining) return true;
-      const joinMonth = emp.dateOfJoining.substring(0, 7);
-      return joinMonth <= searchTriggeredMonth;
-    });
+    if (searchTriggeredMonth) {
+      result = result.filter(emp => {
+        const joinMonth = emp.dateOfJoining ? emp.dateOfJoining.substring(0, 7) : '';
+        const dobMonth = emp.dob ? emp.dob.substring(0, 7) : '';
+        return joinMonth === searchTriggeredMonth || dobMonth === searchTriggeredMonth;
+      });
+    }
 
     return result;
   }, [dbEmployees, searchTriggeredMonth]);
@@ -64,9 +67,9 @@ const EmployeeDataExportPage = () => {
   // Handle local text search query input
   const searchedData = useMemo(() => {
     const query = localSearch.toLowerCase().trim();
-    if (!query) return filteredByMonth;
+    if (!query) return filteredData;
 
-    return filteredByMonth.filter(emp => {
+    return filteredData.filter(emp => {
       const formattedDob = formatDate(emp.dob).toLowerCase();
       const formattedDoj = formatDate(emp.dateOfJoining).toLowerCase();
       const mobileStr = (emp.mobile || emp.mobileNumber || '').toLowerCase();
@@ -87,7 +90,7 @@ const EmployeeDataExportPage = () => {
         (genderStr && genderStr.includes(query))
       );
     });
-  }, [filteredByMonth, localSearch]);
+  }, [filteredData, localSearch]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -125,7 +128,7 @@ const EmployeeDataExportPage = () => {
     const mStr = selectedMonth ? selectedMonth.split('-')[1] + '/' + selectedMonth.split('-')[0] : 'all';
     addToast({
       type: 'success',
-      message: `Search query completed for wage month: ${mStr}`
+      message: `Search query applied successfully.`
     });
   };
 
@@ -427,31 +430,11 @@ const EmployeeDataExportPage = () => {
           </div>
 
           <div className={styles.pagination}>
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className={styles.pageBtn}
-            >
-              Previous
-            </button>
-
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
-              >
-                {i + 1}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className={styles.pageBtn}
-            >
-              Next
-            </button>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const usersRoutes = require("./modules/Auth/Users/users.routes");
+const saasRoutes = require("./modules/Auth/Users/saas.routes");
 const roleRoutes = require("./modules/Auth/Users/roles.routes");
 const companyRoutes = require("./modules/Masters/Company/company.routes");
 const addressRoutes = require("./modules/Masters/Address/address.routes");
@@ -25,6 +26,8 @@ const noteRoutes = require("./modules/Todo List/Note/note.routes");
 // const attendanceRoutes = require("./modules/Attendance/attendance.routes");
 // const leaveRequestRoutes = require("./modules/Attendance/Leave/leaveRequest.routes");
 const reportRoutes = require("./modules/Report/report.routes");
+const loanRoutes = require("./modules/Loan/loan.routes");
+
 
 router.get("/v1/test", (req, res) => {
     res.json({
@@ -37,6 +40,7 @@ router.get("/v1/test", (req, res) => {
 
 // Register users routes under v1 version prefix
 router.use("/v1/users", usersRoutes);
+router.use("/v1/saas", saasRoutes);
 router.use("/v1/roles", roleRoutes);
 router.use("/v1/companies", companyRoutes);
 router.use("/v1/addresses", addressRoutes);
@@ -61,6 +65,7 @@ router.use("/v1/notes", noteRoutes);
 router.use("/v1/attendance", attendanceRoutes);
 router.use("/v1/leaves", leaveRequestRoutes);
 router.use("/v1/reports", reportRoutes);
+router.use("/v1/loans", loanRoutes);
 router.use("/v1/dashboard", require("./modules/Dashboard/dashboard.routes"));
 router.use("/v1/utility/backup", require("./modules/Utility/Backup/backup.routes"));
 router.use("/v1/utility/restore", require("./modules/Utility/Restore/restore.routes"));

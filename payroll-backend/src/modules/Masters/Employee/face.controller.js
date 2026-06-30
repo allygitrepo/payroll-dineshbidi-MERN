@@ -246,13 +246,6 @@ class FaceController {
                 const gap = secondBest.distance - best.distance;
                 if (gap < MATCH_GAP_THRESHOLD) {
                     // Ambiguous match detection
-                    console.log("FACE_RECOGNITION_DIAGNOSTICS:", {
-                        employee: best.name,
-                        bestDistance: best.distance,
-                        secondBestDistance: secondBestDistVal,
-                        threshold: MATCH_THRESHOLD,
-                        result: "AMBIGUOUS"
-                    });
 
                     return res.status(200).json(
                         successResponse(
@@ -279,14 +272,6 @@ class FaceController {
                 const dbEmp = await Employee.findOne({ where: { id: best.employee_id } });
                 const matchedName = dbEmp ? dbEmp.name : best.name;
 
-                console.log("FACE_RECOGNITION_DIAGNOSTICS:", {
-                    employee: matchedName,
-                    bestDistance: best.distance,
-                    secondBestDistance: secondBestDistVal,
-                    threshold: MATCH_THRESHOLD,
-                    result: "MATCHED"
-                });
-
                 return res.status(200).json(
                     successResponse(
                         "FACE_MATCHED",
@@ -306,14 +291,6 @@ class FaceController {
                     )
                 );
             }
-
-            console.log("FACE_RECOGNITION_DIAGNOSTICS:", {
-                employee: best.name || "None",
-                bestDistance: best.distance,
-                secondBestDistance: secondBestDistVal,
-                threshold: MATCH_THRESHOLD,
-                result: "NOT_MATCHED"
-            });
 
             return res.status(200).json(
                 successResponse(

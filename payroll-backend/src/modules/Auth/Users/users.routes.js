@@ -4,11 +4,11 @@ const UsersController = require("./users.controller");
 const authenticateJWT = require("../../../middlewares/auth.middleware");
 
 // Public routes
-router.post("/register", UsersController.register);
 router.post("/login", UsersController.login);
 router.post("/refresh", UsersController.refresh);
 
 // Protected routes (require JWT verification)
+router.post("/register", authenticateJWT, UsersController.register);
 router.post("/logout", authenticateJWT, UsersController.logout);
 router.post("/select-company", authenticateJWT, UsersController.selectCompany);
 router.get("/me", authenticateJWT, UsersController.getProfile);

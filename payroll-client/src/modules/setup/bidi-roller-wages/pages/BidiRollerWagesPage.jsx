@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
+import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import styles from '../components/BidiRollerWagesPage.module.css';
 import BidiRollerWagesForm from '../components/BidiRollerWagesForm';
 import BidiRollerWagesTable from '../components/BidiRollerWagesTable';
 import { getBidiRollerWages, saveBidiRollerWages, deleteBidiRollerWages } from '../services/bidiRollerWagesService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
+import { parseExcelDate } from '../../../../shared/utils/dateUtils';
 
 const formatDateForExport = (dateStr) => {
   if (!dateStr) return '';
@@ -31,6 +33,7 @@ const BidiRollerWagesPage = () => {
   const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   const dropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const fetchWages = async () => {
     const companyId = localStorage.getItem('selectedCompany');
@@ -80,7 +83,9 @@ const BidiRollerWagesPage = () => {
   const handleEdit = (wages) => {
     setEditingWages(wages);
     setIsFormOpen(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
   };
 
   const handleDeleteClick = (id) => {
@@ -157,6 +162,29 @@ const BidiRollerWagesPage = () => {
   // Export handlers
   const handleExport = async (type) => {
     setIsDropdownOpen(false);
+    
+    if (type === 'Excel' || type === 'Excel Template') {
+      const isTemplate = type === 'Excel Template';
+      const aoa = [
+        ['ID (Do Not Modify)', 'Start Date (YYYY-MM-DD)', 'End Date (YYYY-MM-DD)', 'Rate 1', 'HRA 1', 'Bonus 1', 'Rate 2', 'HRA 2', 'Bonus 2']
+      ];
+      
+      if (!isTemplate) {
+        filteredWages.forEach(w => {
+          aoa.push([
+            w.id, w.startDate, w.endDate, w.rate1, w.hra1, w.bonus1, w.rate2, w.hra2, w.bonus2
+          ]);
+        });
+      }
+      
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'BidiRoller_Wages');
+      XLSX.writeFile(workbook, `BidiRoller_Wages_${isTemplate ? 'Template' : 'Export'}.xlsx`);
+      addToast({ type: 'success', message: `${type} downloaded!` });
+      return;
+    }
+
     if (type === 'Copy') {
       const text = filteredWages.map((w, index) => 
         `${index + 1}\t${formatDateForExport(w.startDate)}\t${formatDateForExport(w.endDate)}\t${w.rate1}\t${w.rate2}\t${w.rate3}\t${w.rate4}\t${w.bonus}`
@@ -176,6 +204,56 @@ const BidiRollerWagesPage = () => {
     }
   };
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'error', message: 'No company selected.' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const workbook = XLSX.read(bstr, { type: 'binary', cellDates: true });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const importedData = XLSX.utils.sheet_to_json(worksheet);
+
+        let successCount = 0;
+        for (const row of importedData) {
+          const wId = row['ID (Do Not Modify)'];
+          
+          const wagesData = {
+            id: wId || undefined,
+            startDate: parseExcelDate(row['Start Date (YYYY-MM-DD)']),
+            endDate: parseExcelDate(row['End Date (YYYY-MM-DD)']),
+            rate1: row['Rate 1'] || 0,
+            hra1: row['HRA 1'] || 0,
+            bonus1: row['Bonus 1'] || 0,
+            rate2: row['Rate 2'] || 0,
+            hra2: row['HRA 2'] || 0,
+            bonus2: row['Bonus 2'] || 0
+          };
+          if (!wagesData.startDate) continue; 
+          
+          await saveBidiRollerWages(wagesData, companyId);
+          successCount++;
+        }
+        
+        addToast({ type: 'success', message: `Successfully uploaded ${successCount} records.` });
+        fetchWages();
+      } catch (error) {
+        console.error('Error importing Excel:', error);
+        addToast({ type: 'error', message: 'Failed to import Excel file.' });
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = null;
+  };
+
   return (
     <div className={styles.container}>
       
@@ -188,6 +266,20 @@ const BidiRollerWagesPage = () => {
               <Plus size={18} /> Bidi Roller Wages
             </button>
           )}
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            style={{ display: 'none' }} 
+          />
+          <button
+            className={styles.downloadBtn}
+            style={{ backgroundColor: 'var(--success-color, #10b981)' }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload size={18} /> Upload Excel
+          </button>
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button 
               className={styles.downloadBtn} 
@@ -199,6 +291,9 @@ const BidiRollerWagesPage = () => {
               <div className={styles.dropdownMenu}>
                 <button onClick={() => handleExport('Excel')}>
                   <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button onClick={() => handleExport('Excel Template')}>
+                  <FileSpreadsheet size={16} /> Excel Template
                 </button>
                 <button onClick={() => handleExport('Copy')}>
                   <Copy size={16} /> Copy

@@ -28,6 +28,9 @@ const LeavePolicy = require("../../modules/Setup/LeaveMaster/leavePolicy.model")
 const LeaveBalance = require("../../modules/Attendance/Leave/leaveBalance.model");
 const LeaveTransaction = require("../../modules/Attendance/Leave/leaveTransaction.model");
 const EmployeeType = require("../../modules/Masters/EmployeeType/employeeType.model");
+const Loan = require("../../modules/Loan/loan.model");
+const LoanTransaction = require("../../modules/Loan/loanTransaction.model");
+
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -65,6 +68,10 @@ db.LeavePolicy = LeavePolicy;
 db.LeaveBalance = LeaveBalance;
 db.LeaveTransaction = LeaveTransaction;
 db.EmployeeType = EmployeeType;
+// db.LeaveMaster = LeaveMaster;
+db.Loan = Loan;
+db.LoanTransaction = LoanTransaction;
+
 
 // Model associations
 
@@ -76,6 +83,15 @@ db.Role.hasMany(db.User, {
 db.User.belongsTo(db.Role, {
     foreignKey: "role_id",
     as: "role",
+});
+
+db.User.hasMany(db.User, {
+    foreignKey: "parent_id",
+    as: "staff",
+});
+db.User.belongsTo(db.User, {
+    foreignKey: "parent_id",
+    as: "creator",
 });
 
 db.User.hasMany(db.RefreshToken, {
@@ -524,6 +540,47 @@ db.LeaveType.hasMany(db.LeaveRequest, {
     as: "leaveRequests",
     onDelete: "CASCADE",
 });
+// Loan relationships
+db.Company.hasMany(db.Loan, {
+    foreignKey: "company_id",
+    as: "loans",
+    onDelete: "CASCADE",
+});
+db.Loan.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+db.Employee.hasMany(db.Loan, {
+    foreignKey: "employee_id",
+    as: "loans",
+    onDelete: "CASCADE",
+});
+db.Loan.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
+db.Loan.hasMany(db.LoanTransaction, {
+    foreignKey: "loan_id",
+    as: "transactions",
+    onDelete: "CASCADE",
+});
+db.LoanTransaction.belongsTo(db.Loan, {
+    foreignKey: "loan_id",
+    as: "loan",
+});
+
+db.Employee.hasMany(db.LoanTransaction, {
+    foreignKey: "employee_id",
+    as: "transactions",
+    onDelete: "CASCADE",
+});
+db.LoanTransaction.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
 
 module.exports = db;
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Briefcase } from 'lucide-react';
+import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Briefcase, CalendarDays, Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import styles from '../components/ContractorPage.module.css';
 import ContractorForm from '../components/ContractorForm';
 import ContractorTable from '../components/ContractorTable';
@@ -8,6 +9,7 @@ import { getContractors, saveContractor, deleteContractor, createContractorLogin
 import { getAddresses } from '../../address/services/addressService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
+import { parseExcelDate } from '../../../../shared/utils/dateUtils';
 
 const ContractorPage = () => {
   const addToast = useToast();
@@ -31,6 +33,8 @@ const ContractorPage = () => {
   const [existingLogin, setExistingLogin] = useState(null);
 
   const dropdownRef = useRef(null);
+  const pageTopRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Load initial contractors and addresses
   useEffect(() => {
@@ -79,7 +83,13 @@ const ContractorPage = () => {
   const handleEdit = (contractor) => {
     setEditingContractor(contractor);
     setIsFormOpen(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      if (pageTopRef.current) {
+        pageTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100);
   };
 
   const handleDeleteClick = (id) => {
@@ -196,6 +206,29 @@ const ContractorPage = () => {
   // Export handlers
   const handleExportClick = async (type) => {
     setIsDropdownOpen(false);
+    
+    if (type === 'Excel' || type === 'Excel Template') {
+      const isTemplate = type === 'Excel Template';
+      const aoa = [
+        ['ID (Do Not Modify)', 'Code', 'Name', 'Address', 'Post Office', 'District', 'Pincode', 'PF Code', 'Date of Joining', 'PAN', 'Aadhaar', 'GST No', 'Bank Account', 'Bank Name', 'IFSC', 'Status']
+      ];
+      
+      if (!isTemplate) {
+        filteredContractors.forEach(c => {
+          aoa.push([
+            c.id, c.ccode, c.name, c.address, c.postOffice, c.district, c.pincode, c.pfCode, c.dateOfJoining, c.pan, c.aadhaar, c.gstNo, c.bankAccount, c.bankName, c.ifsc, c.status
+          ]);
+        });
+      }
+      
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Contractors');
+      XLSX.writeFile(workbook, `Contractors_${isTemplate ? 'Template' : 'Export'}.xlsx`);
+      addToast({ type: 'success', message: `${type} downloaded!` });
+      return;
+    }
+
     try {
       addToast({ type: 'info', message: `${type} export started...` });
       await exportModuleData('contractors', type.toLowerCase());
@@ -204,6 +237,79 @@ const ContractorPage = () => {
       console.error(err);
       addToast({ type: 'error', message: `Failed to export ${type} file.` });
     }
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'error', message: 'No company selected.' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const workbook = XLSX.read(bstr, { type: 'binary', cellDates: true });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const importedData = XLSX.utils.sheet_to_json(worksheet);
+
+        let successCount = 0;
+        for (const row of importedData) {
+          let cId = row['ID (Do Not Modify)'];
+          
+          const safeVal = (val) => {
+            const str = val ? String(val).trim() : '';
+            if (str.toUpperCase() === 'NA' || str.toUpperCase() === 'N/A' || str === '-') return '';
+            return str;
+          };
+
+          if (!cId && row['Code']) {
+            const existingContractor = contractors.find(c => 
+              String(c.ccode).trim().toLowerCase() === String(row['Code']).trim().toLowerCase()
+            );
+            if (existingContractor) {
+              cId = existingContractor.id;
+            }
+          }
+
+          const contractorData = {
+            id: cId || undefined,
+            ccode: row['Code'] ? String(row['Code']) : '',
+            name: row['Name'] ? String(row['Name']) : '',
+            address: row['Address'] ? String(row['Address']) : '',
+            postOffice: row['Post Office'] ? String(row['Post Office']) : '',
+            district: row['District'] ? String(row['District']) : '',
+            pincode: row['Pincode'] ? String(row['Pincode']) : '',
+            pfCode: safeVal(row['PF Code']),
+            dateOfJoining: parseExcelDate(row['Date of Joining']),
+            pan: safeVal(row['PAN']),
+            aadhaar: safeVal(row['Aadhaar']),
+            gstNo: safeVal(row['GST No']),
+            bankAccount: safeVal(row['Bank Account']),
+            bankName: safeVal(row['Bank Name']),
+            ifsc: safeVal(row['IFSC']),
+            status: (row['Status'] === 1 || String(row['Status']).toLowerCase() === 'active' || String(row['Status']).toLowerCase() === 'true') ? 'Active' : 'Inactive'
+          };
+          if (!contractorData.name) continue;
+          
+          await saveContractor(contractorData, companyId, addresses);
+          successCount++;
+        }
+        
+        addToast({ type: 'success', message: `Successfully uploaded ${successCount} contractors.` });
+        const updated = await getContractors(companyId);
+        setContractors(updated);
+      } catch (error) {
+        console.error('Error importing Excel:', error);
+        addToast({ type: 'error', message: 'Failed to import Excel file.' });
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = null;
   };
 
   const handleCopyClick = () => {
@@ -219,7 +325,7 @@ const ContractorPage = () => {
   };
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} ref={pageTopRef}>
       {/* Header section with heading and actions */}
       <div className={styles.headerSection}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -234,6 +340,21 @@ const ContractorPage = () => {
               <Plus size={18} /> Contractor
             </button>
           )}
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            style={{ display: 'none' }} 
+          />
+          <button
+            className={styles.downloadBtn}
+            style={{ backgroundColor: 'var(--success-color, #10b981)' }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload size={18} /> Upload Excel
+          </button>
+          
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
               className={styles.downloadBtn}
@@ -245,6 +366,9 @@ const ContractorPage = () => {
               <div className={styles.dropdownMenu}>
                 <button onClick={() => handleExportClick('Excel')}>
                   <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button onClick={() => handleExportClick('Excel Template')}>
+                  <FileSpreadsheet size={16} /> Excel Template
                 </button>
                 <button onClick={handleCopyClick}>
                   <Copy size={16} /> Copy

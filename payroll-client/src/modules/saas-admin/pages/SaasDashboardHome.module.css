@@ -1,0 +1,64 @@
+.dashboardContainer {
+  padding: 24px;
+  background-color: var(--bg-primary);
+  min-height: 100%;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.statCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.statIconWrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary-light, #e0f2fe);
+  color: var(--primary, #0284c7);
+}
+
+.statInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0 0 4px 0;
+}
+
+.statValue {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.statsGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px; }
+.statCard { background: white; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.statIconWrapper { width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+.statIconWrapper.blue { background: #e0f2fe; color: #0284c7; }
+.statIconWrapper.green { background: #dcfce7; color: #16a34a; }
+.statIconWrapper.purple { background: #f3e8ff; color: #9333ea; }
+.statInfo h3 { font-size: 0.875rem; color: #64748b; margin: 0 0 4px 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.statInfo p { font-size: 1.75rem; font-weight: 700; color: #0f172a; margin: 0; }
+.chartsGrid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+.chartCard { background: white; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.chartTitle { font-size: 1.1rem; font-weight: 600; color: #1e293b; margin: 0 0 20px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; }
+

@@ -1,3 +1,4 @@
+import { Pagination } from '../../../../shared/components';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -48,7 +49,7 @@ const EsicReportPage = () => {
       const companyId = localStorage.getItem('selectedCompany');
       try {
         let dbList = await getEmployees(companyId) || [];
-        dbList = dbList.filter(emp => emp.status === 'Active');
+        dbList = dbList.filter(emp => emp.status === 'Active' || emp.status === true);
         const resignationsList = await getResignations(companyId) || [];
         const officeRes = await getOfficeStaffEntry(searchTriggeredMonth, companyId);
         const packersRes = await getPackersEntry(searchTriggeredMonth, companyId);
@@ -547,31 +548,11 @@ const EsicReportPage = () => {
           </div>
 
           <div className={styles.pagination}>
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className={styles.pageBtn}
-            >
-              Previous
-            </button>
-
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
-              >
-                {i + 1}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className={styles.pageBtn}
-            >
-              Next
-            </button>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </div>
       </div>

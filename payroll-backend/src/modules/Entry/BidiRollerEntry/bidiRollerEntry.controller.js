@@ -20,9 +20,6 @@ exports.getEntries = async (req, res) => {
         const lastDayOfMonthStr = `${year}-${String(month).padStart(2, "0")}-${String(lastDayOfMonth.getDate()).padStart(2, "0")}`;
         const firstDayOfMonthStr = `${year}-${String(month).padStart(2, "0")}-01`;
 
-        console.log(`[DEBUG] getEntries called with company_id: ${company_id}, month_year: ${month_year}`);
-        console.log(`[DEBUG] Searching for BIDI MAKER with date_of_joining <= ${lastDayOfMonthStr}`);
-        
         const employeeWhere = {
             company_id,
             employee_type: "BIDI MAKER",
@@ -38,9 +35,6 @@ exports.getEntries = async (req, res) => {
             where: employeeWhere,
             attributes: ["id", "name", "uan", "member_id", "gender", "status", "date_of_joining", "contractor_id", "company_id"]
         });
-
-        console.log(`[DEBUG] Found ${employees.length} BIDI MAKER employees.`);
-
         if (!employees.length) {
             return res.status(200).json({ status: true, data: [] });
         }

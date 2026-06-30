@@ -108,7 +108,11 @@ const LoginPage = () => {
           message: 'Welcome back! Login successful.',
         });
         
-        navigate('/dashboard');
+        if (user && user.role && user.role.name === 'OWNER') {
+          navigate('/saas-dashboard');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         addToast({
           type: 'error',

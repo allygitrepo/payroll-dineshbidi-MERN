@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
+import { Download, FileSpreadsheet, Copy, FileText, File, Printer, Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import styles from '../components/AddressPage.module.css';
 import AddressForm from '../components/AddressForm';
 import AddressTable from '../components/AddressTable';
@@ -21,6 +22,8 @@ const AddressPage = () => {
   const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   const dropdownRef = useRef(null);
+  const pageTopRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Load initial address records
   useEffect(() => {
@@ -59,7 +62,13 @@ const AddressPage = () => {
 
   const handleEdit = (addr) => {
     setEditingAddress(addr);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      if (pageTopRef.current) {
+        pageTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100);
   };
 
   const handleDeleteClick = (id) => {
@@ -131,9 +140,80 @@ const AddressPage = () => {
   }, [addresses, searchTerm, statusFilter]);
 
   // Export alerts
-  const handleExportClick = (type) => {
-    addToast({ type: 'info', message: `${type} export started for ${filteredAddresses.length} addresses!` });
+  const handleExportClick = async (type) => {
     setIsDropdownOpen(false);
+    
+    if (type === 'Excel' || type === 'Excel Template') {
+      const isTemplate = type === 'Excel Template';
+      const aoa = [
+        ['ID (Do Not Modify)', 'Address', 'Post Office', 'District', 'Pincode', 'Status']
+      ];
+      
+      if (!isTemplate) {
+        filteredAddresses.forEach(a => {
+          aoa.push([
+            a.id, a.address, a.postOffice, a.district, a.pincode, a.status
+          ]);
+        });
+      }
+      
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Addresses');
+      XLSX.writeFile(workbook, `Addresses_${isTemplate ? 'Template' : 'Export'}.xlsx`);
+      addToast({ type: 'success', message: `${type} downloaded!` });
+      return;
+    }
+
+    addToast({ type: 'info', message: `${type} export started for ${filteredAddresses.length} addresses!` });
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'error', message: 'No company selected.' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const importedData = XLSX.utils.sheet_to_json(worksheet);
+
+        let successCount = 0;
+        for (const row of importedData) {
+          const aId = row['ID (Do Not Modify)'];
+          
+          const addressData = {
+            id: aId || undefined,
+            address: row['Address'] ? String(row['Address']) : '',
+            postOffice: row['Post Office'] ? String(row['Post Office']) : '',
+            district: row['District'] ? String(row['District']) : '',
+            pincode: row['Pincode'] ? String(row['Pincode']) : '',
+            status: (row['Status'] === 1 || String(row['Status']).toLowerCase() === 'active' || String(row['Status']).toLowerCase() === 'true') ? 'Active' : 'Inactive'
+          };
+          if (!addressData.address) continue;
+          
+          await saveAddress(addressData, companyId);
+          successCount++;
+        }
+        
+        addToast({ type: 'success', message: `Successfully uploaded ${successCount} addresses.` });
+        const updated = await getAddresses(companyId);
+        setAddresses(updated);
+      } catch (error) {
+        console.error('Error importing Excel:', error);
+        addToast({ type: 'error', message: 'Failed to import Excel file.' });
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = null;
   };
 
   const handleCopyClick = () => {
@@ -146,13 +226,28 @@ const AddressPage = () => {
   };
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} ref={pageTopRef}>
       {/* Header section with heading and actions */}
       <div className={styles.headerSection}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h1 className={styles.title} style={{ fontSize: '1.75rem', fontWeight: 700 }}>Address</h1>
         </div>
         <div className={styles.headerActions}>
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            style={{ display: 'none' }} 
+          />
+          <button
+            className={styles.downloadBtn}
+            style={{ backgroundColor: 'var(--success-color, #10b981)' }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload size={18} /> Upload Excel
+          </button>
+          
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
               className={styles.downloadBtn}
@@ -164,6 +259,9 @@ const AddressPage = () => {
               <div className={styles.dropdownMenu}>
                 <button onClick={() => handleExportClick('Excel')}>
                   <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button onClick={() => handleExportClick('Excel Template')}>
+                  <FileSpreadsheet size={16} /> Excel Template
                 </button>
                 <button onClick={handleCopyClick}>
                   <Copy size={16} /> Copy

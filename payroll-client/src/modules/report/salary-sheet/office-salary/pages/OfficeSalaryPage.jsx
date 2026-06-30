@@ -1,3 +1,4 @@
+import { Pagination } from '../../../../../shared/components';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer, RefreshCw } from 'lucide-react';
 import { useToast, MonthYearPicker } from '../../../../../shared/components';
@@ -36,7 +37,7 @@ const OfficeSalaryPage = () => {
       const companyId = localStorage.getItem('selectedCompany');
       try {
         let dbList = await getEmployees(companyId) || [];
-        dbList = dbList.filter(emp => emp.status === 'Active');
+        dbList = dbList.filter(emp => emp.status === 'Active' || emp.status === true);
         const dbOfficeStaff = dbList.filter(emp => emp.employeeType === 'OFFICE STAFF');
 
         const mappedDbRecords = dbOfficeStaff.map(emp => {
@@ -417,31 +418,11 @@ const OfficeSalaryPage = () => {
           </div>
 
           <div className={styles.pagination}>
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className={styles.pageBtn}
-            >
-              Previous
-            </button>
-
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
-              >
-                {i + 1}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className={styles.pageBtn}
-            >
-              Next
-            </button>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
-import { useToast, DatePicker } from '../../../../shared/components';
+import { useToast, DatePicker, Pagination } from '../../../../shared/components';
 import Input from '../../../../shared/components/Input/Input';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import styles from '../components/KycExportPage.module.css';
@@ -52,8 +52,11 @@ const KycExportPage = () => {
   // Map to Tall format as requested (P, A, B rows for every employee)
   const allKycRecords = useMemo(() => {
     const parsedKyc = [];
+    
+    // Only include Active employees
+    const activeEmployees = dbEmployees.filter(emp => emp.status === true || emp.status === 'Active' || emp.status === 1 || emp.status === '1');
 
-    dbEmployees.forEach((emp) => {
+    activeEmployees.forEach((emp) => {
       const panDoc = emp.kycDetails?.find(k => k.documentType === 'PAN');
       const bankDoc = emp.kycDetails?.find(k => k.documentType === 'BANK PASSBOOK');
       const aadharNum = emp.aadhar || emp.kycDetails?.find(k => k.documentType === 'AADHAAR')?.documentNumber;
@@ -372,8 +375,8 @@ const KycExportPage = () => {
       </div>
 
       <div className={styles.tableCard}>
-        <div className={styles.tableHeader}>
-          <div className={styles.searchBox}>
+        <div className={styles.tableControls}>
+          <div className={styles.searchWrapper}>
             <Search size={16} className={styles.searchIcon} />
             <input 
               type="text" 
@@ -427,35 +430,15 @@ const KycExportPage = () => {
         </div>
 
         {totalPages > 1 && (
-          <div className={styles.pagination}>
-            <div className={styles.pageInfo}>
+          <div className={styles.tableFooter}>
+            <div className={styles.infoText}>
               Showing {startIndex + 1} to {endIndex} of {totalEntries} entries
             </div>
-            <div className={styles.pageControls}>
-              <button 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                Prev
-              </button>
-              <div className={styles.pageNumbers}>
-                {Array.from({ length: totalPages }).map((_, idx) => (
-                  <button 
-                    key={idx + 1}
-                    className={currentPage === idx + 1 ? styles.activePage : ''}
-                    onClick={() => setCurrentPage(idx + 1)}
-                  >
-                    {idx + 1}
-                  </button>
-                ))}
-              </div>
-              <button 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </button>
-            </div>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </div>
