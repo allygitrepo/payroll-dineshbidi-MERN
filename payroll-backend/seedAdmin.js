@@ -10,7 +10,7 @@ const ALL_PERMISSION_SLUGS = [
   'salary-sheet', 'form-2', 'ecr-report', 'esic-report', 'pmrpy-report', 'pf-challan-yearly', 'epf-challan', 'pf-summary', 'payment-advice', 'bonus-sheet', 'gratuity-calculation', 'report-pt',
   'calender', 'user-management', 'employee-data-import', 'employee-data-export', 'kyc-export', 'attendance-printing', 'missing-information', 'delete-month-entry', 'backup', 'restore',
   '3-month-absent-list', '58-years-of-age', 'notes',
-  'excel-to-text'
+  'excel-to-text', 'loan-profile'
 ];
 
 async function seedAdmin() {

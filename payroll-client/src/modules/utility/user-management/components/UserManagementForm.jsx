@@ -91,6 +91,12 @@ const PERMISSION_GROUPS = [
     items: [
       { slug: 'excel-to-text', label: 'Excel To Text', readOnly: true }
     ]
+  },
+  {
+    title: 'Loan Management',
+    items: [
+      { slug: 'loan-profile', label: 'Loan Profile' }
+    ]
   }
 ];
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './LoanPage.module.css';
-import { useToast } from '../../../shared/components';
+import { useToast, DatePicker } from '../../../shared/components';
 
 const LoanForm = ({ employee, onSave, onCancel }) => {
   const addToast = useToast();
@@ -89,7 +89,7 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
               name="totalAmount"
               value={formData.totalAmount}
               onChange={handleChange}
-              placeholder="LOAN AMOUNT"
+              placeholder="Enter loan amount"
               className={styles.input}
             />
             {errors.totalAmount && <span className={styles.errorText}>{errors.totalAmount}</span>}
@@ -104,22 +104,8 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
               onChange={handleChange}
               className={styles.select}
             >
-              <option value="Fixed">FIXED (AUTO-EMI)</option>
-              <option value="Flexible">FLEXIBLE</option>
-            </select>
-          </div>
-
-          {/* Deduction Frequency */}
-          <div className={styles.field}>
-            <label className={styles.label}>Deduction Frequency</label>
-            <select
-              name="deductionType"
-              value={formData.deductionType}
-              onChange={handleChange}
-              className={styles.select}
-            >
-              <option value="Monthly">MONTHLY</option>
-              <option value="Daily">DAILY</option>
+              <option value="Fixed">Fixed (Auto-EMI)</option>
+              <option value="Flexible">Flexible</option>
             </select>
           </div>
 
@@ -131,7 +117,7 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
               name="emiAmount"
               value={formData.emiAmount}
               onChange={handleChange}
-              placeholder="EMI PER PERIOD (OPTIONAL IF TENURE SPECIFIED)"
+              placeholder="EMI per period (optional)"
               className={styles.input}
             />
             {errors.emiAmount && <span className={styles.errorText}>{errors.emiAmount}</span>}
@@ -145,7 +131,7 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
               name="tenureMonths"
               value={formData.tenureMonths}
               onChange={handleChange}
-              placeholder="MONTHS"
+              placeholder="Enter tenure in months"
               className={styles.input}
             />
             {errors.tenureMonths && <span className={styles.errorText}>{errors.tenureMonths}</span>}
@@ -175,8 +161,8 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
               onChange={handleChange}
               className={styles.select}
             >
-              <option value="Flat">FLAT RATE</option>
-              <option value="Reducing">REDUCING BALANCE</option>
+              <option value="Flat">Flat Rate</option>
+              <option value="Reducing">Reducing Balance</option>
             </select>
           </div>
 
@@ -185,12 +171,10 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
             <label className={styles.label}>
               Start Date <span className={styles.required}>*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               name="startDate"
               value={formData.startDate}
               onChange={handleChange}
-              className={styles.input}
             />
             {errors.startDate && <span className={styles.errorText}>{errors.startDate}</span>}
           </div>

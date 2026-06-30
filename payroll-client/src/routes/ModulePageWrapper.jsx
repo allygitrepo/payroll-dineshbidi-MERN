@@ -96,7 +96,7 @@ const ModulePageWrapper = () => {
       return <TodoListPage activeSubMenu={activeSubMenu} />;
     case 'convert-excel-to-text':
       return <ConvertExcelToTextPage activeSubMenu={activeSubMenu} />;
-    case 'loan':
+    case 'loan-management':
       return <LoanPage activeSubMenu={activeSubMenu} />;
     default:
       return <Navigate to="/dashboard" replace />;

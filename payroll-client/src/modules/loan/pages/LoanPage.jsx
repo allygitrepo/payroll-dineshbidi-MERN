@@ -27,6 +27,7 @@ import {
   getLoanSummary 
 } from '../services/loanService';
 import { getEmployees } from '../../master/employee/services/employeeService';
+import { getOfficeStaffSalaries } from '../../setup/office-staff-salary/services/officeStaffSalaryService';
 import { useToast } from '../../../shared/components';
 
 const LoanPage = () => {
@@ -35,6 +36,7 @@ const LoanPage = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [loans, setLoans] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [salaries, setSalaries] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loadingEmployees, setLoadingEmployees] = useState(true);
   const [loadingLoans, setLoadingLoans] = useState(false);
@@ -61,12 +63,14 @@ const LoanPage = () => {
       }
       try {
         setLoadingEmployees(true);
-        const [empData, summaryData] = await Promise.all([
+        const [empData, summaryData, salaryData] = await Promise.all([
           getEmployees(companyId),
-          getLoanSummary(companyId)
+          getLoanSummary(companyId),
+          getOfficeStaffSalaries(companyId).catch(() => [])
         ]);
         setEmployees(empData);
         setSummary(summaryData);
+        setSalaries(salaryData || []);
       } catch (err) {
         console.error('Error fetching initial data:', err);
         addToast({ type: 'error', message: 'Failed to load initial employees or statistics.' });
@@ -98,13 +102,15 @@ const LoanPage = () => {
     fetchEmployeeLoans(emp.id);
   };
 
-  // Filter employees
+  // Filter employees (only show active ones)
   const filteredEmployees = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return employees.filter(emp => 
-      emp.memberName.toLowerCase().includes(term) || 
-      (emp.memberId && emp.memberId.toLowerCase().includes(term)) ||
-      (emp.uan && emp.uan.includes(term))
+      emp.status === true && (
+        emp.memberName.toLowerCase().includes(term) || 
+        (emp.memberId && emp.memberId.toLowerCase().includes(term)) ||
+        (emp.uan && emp.uan.includes(term))
+      )
     );
   }, [employees, searchTerm]);
 
@@ -230,6 +236,13 @@ const LoanPage = () => {
     };
   }, [loans]);
 
+  // Selected employee salary
+  const selectedEmployeeSalary = useMemo(() => {
+    if (!selectedEmployee) return null;
+    const found = salaries.find(s => s.employeeId === selectedEmployee.id);
+    return found ? parseFloat(found.salary) : null;
+  }, [selectedEmployee, salaries]);
+
   return (
     <div className={styles.container}>
       {/* Left Sidebar: Worker Search */}
@@ -308,10 +321,25 @@ const LoanPage = () => {
         {selectedEmployee ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div className={styles.mainHeader}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <h2 className={styles.mainTitle}>{selectedEmployee.memberName} (UPAD Profile)</h2>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  Total Loaned: ₹{employeeTotals.totalLoaned.toFixed(2)} • Outstanding: ₹{employeeTotals.pending.toFixed(2)} • Repaid: ₹{employeeTotals.paid.toFixed(2)}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <h2 className={styles.mainTitle} style={{ color: 'var(--text-primary)', margin: 0 }}>
+                    {selectedEmployee.memberName}
+                  </h2>
+                  <span className={styles.profileBadge}>
+                    UPAD Profile
+                  </span>
+                  <span className={styles.typeBadge}>
+                    {selectedEmployee.employeeType}
+                  </span>
+                  {selectedEmployeeSalary !== null && (
+                    <span className={styles.salaryBadge}>
+                      Salary: ₹{selectedEmployeeSalary.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
+                </div>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                  Total Loaned: <strong style={{ color: 'var(--text-primary)' }}>₹{employeeTotals.totalLoaned.toFixed(2)}</strong> • Outstanding: <strong style={{ color: 'var(--danger)' }}>₹{employeeTotals.pending.toFixed(2)}</strong> • Repaid: <strong style={{ color: 'var(--primary)' }}>₹{employeeTotals.paid.toFixed(2)}</strong>
                 </span>
               </div>
               {!showCreateForm && (
