@@ -232,6 +232,7 @@ const EmployeeDataImportPage = () => {
           }
 
           const employeeObj = {
+            rowNumber: i + 2,
             memberName,
             uan,
             ipNumber: ipNumber,
@@ -263,6 +264,28 @@ const EmployeeDataImportPage = () => {
           const existingMatch = existingEmployees.find(emp => emp.uan === uan);
           if (existingMatch) {
             employeeObj.id = existingMatch.id;
+            
+            // Calculate changed columns
+            const changes = [];
+            const safeStr = (val) => String(val || '').trim().toLowerCase();
+            if (safeStr(employeeObj.memberName) !== safeStr(existingMatch.memberName)) changes.push('Member Name');
+            if (safeStr(employeeObj.ipNumber) !== safeStr(existingMatch.ipNumber)) changes.push('IP Number');
+            if (safeStr(employeeObj.memberId) !== safeStr(existingMatch.memberId)) changes.push('Previous Member Id');
+            if (safeStr(employeeObj.contractor) !== safeStr(existingMatch.contractor)) changes.push('Contractor Name');
+            if (safeStr(employeeObj.employeeType) !== safeStr(existingMatch.employeeType)) changes.push('Type Of Employee');
+            if (safeStr(employeeObj.gender) !== safeStr(existingMatch.gender)) changes.push('Gender');
+            if (safeStr(employeeObj.dob) !== safeStr(existingMatch.dob)) changes.push('Date Of Birth');
+            if (safeStr(employeeObj.dateOfJoining) !== safeStr(existingMatch.dateOfJoining)) changes.push('Date Of Joining');
+            if (safeStr(employeeObj.fatherHusbandName) !== safeStr(existingMatch.fatherHusbandName)) changes.push('Father/Husband Name');
+            if (safeStr(employeeObj.relation) !== safeStr(existingMatch.relation)) changes.push('Relationship');
+            if (safeStr(employeeObj.maritalStatus) !== safeStr(existingMatch.maritalStatus)) changes.push('Marital Status');
+            if (safeStr(employeeObj.mobile) !== safeStr(existingMatch.mobile)) changes.push('Mobile Number');
+            if (safeStr(employeeObj.email) !== safeStr(existingMatch.email)) changes.push('Email Id');
+            if (safeStr(employeeObj.aadhaarCard) !== safeStr(existingMatch.aadhaarCard)) changes.push('Aadhaar Number');
+            if (safeStr(employeeObj.pmrpy) !== safeStr(existingMatch.pmrpy)) changes.push('PMRPY');
+            if (safeStr(employeeObj.addressStr) !== safeStr(existingMatch.address)) changes.push('Address');
+            
+            employeeObj.changedColumns = changes;
             summary.updated.push(employeeObj);
           } else {
             summary.added.push(employeeObj);
@@ -605,6 +628,21 @@ const EmployeeDataImportPage = () => {
                   {analysisSummary.failed.length > 3 && (
                     <li>...and {analysisSummary.failed.length - 3} more.</li>
                   )}
+                </ul>
+              </div>
+            )}
+
+            {analysisSummary.updated.length > 0 && (
+              <div style={{ marginTop: '15px', fontSize: '13px', color: '#854d0e', backgroundColor: '#fef9c3', padding: '12px', borderRadius: '6px' }}>
+                <strong style={{ display: 'block', marginBottom: '8px' }}>Updates Details (Existing UANs):</strong>
+                <ul style={{ margin: '0 0 0 20px', padding: 0, maxHeight: '120px', overflowY: 'auto' }}>
+                  {analysisSummary.updated.map((u, i) => (
+                    <li key={i} style={{ marginBottom: '4px' }}>
+                      Row {u.rowNumber} ({u.memberName}): {u.changedColumns.length > 0 
+                        ? <span style={{ color: '#16a34a' }}>Updating {u.changedColumns.join(', ')}</span> 
+                        : <span style={{ color: '#94a3b8' }}>No fields changed</span>}
+                    </li>
+                  ))}
                 </ul>
               </div>
             )}
