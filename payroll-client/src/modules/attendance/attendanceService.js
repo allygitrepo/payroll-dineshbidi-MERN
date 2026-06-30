@@ -1,8 +1,9 @@
 import apiClient from '../../shared/services/apiClient';
+import { API_ENDPOINTS } from '../../shared/services/endpoints';
 
 export const getCompanyAttendance = async (companyId) => {
   if (!companyId) return [];
-  const response = await apiClient.get(`attendance/company/${companyId}`);
+  const response = await apiClient.get(API_ENDPOINTS.ATTENDANCE.COMPANY(companyId));
   if ((response.data?.status || response.data?.success) && response.data?.data) {
     return response.data.data;
   }
@@ -15,7 +16,7 @@ export const signInEmployee = async (employeeId, locationStr, photoBase64) => {
     location: locationStr,
     photo: photoBase64
   };
-  const response = await apiClient.post('attendance/sign-in', payload);
+  const response = await apiClient.post(API_ENDPOINTS.ATTENDANCE.SIGN_IN, payload);
   return response.data;
 };
 
@@ -25,7 +26,7 @@ export const signOutEmployee = async (employeeId, locationStr, photoBase64) => {
     location: locationStr,
     photo: photoBase64
   };
-  const response = await apiClient.post('attendance/sign-out', payload);
+  const response = await apiClient.post(API_ENDPOINTS.ATTENDANCE.SIGN_OUT, payload);
   return response.data;
 };
 
@@ -35,14 +36,14 @@ export const clockToggleEmployee = async (employeeId, locationStr, photoBase64) 
     location: locationStr,
     photo: photoBase64
   };
-  const response = await apiClient.post('attendance/clock', payload);
+  const response = await apiClient.post(API_ENDPOINTS.ATTENDANCE.CLOCK, payload);
   return response.data;
 };
 
 export const getAttendanceSummary = async (companyId, monthYear) => {
   if (!companyId || !monthYear) return {};
   try {
-    const response = await apiClient.get(`attendance/summary/company/${companyId}?month_year=${monthYear}`);
+    const response = await apiClient.get(API_ENDPOINTS.ATTENDANCE.SUMMARY(companyId, monthYear));
     if (response.data?.status || response.data?.success) {
       return response.data.data || {};
     }

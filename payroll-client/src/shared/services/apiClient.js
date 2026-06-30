@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ENDPOINTS } from './endpoints';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/payroll/v1/',
@@ -65,7 +66,7 @@ apiClient.interceptors.response.use(
       try {
         // Attempt to call refresh token endpoint
         const response = await axios.post(
-          `${apiClient.defaults.baseURL}users/refresh`,
+          `${apiClient.defaults.baseURL}${API_ENDPOINTS.USERS.REFRESH}`,
           {},
           { withCredentials: true }
         );
