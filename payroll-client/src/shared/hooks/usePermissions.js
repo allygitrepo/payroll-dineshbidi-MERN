@@ -1,24 +1,35 @@
-import { useAuth } from '../../../modules/auth/context/AuthContext';
-
-/**
- * Hook to check granular permissions for a given module
- * @param {string} moduleSlug - The slug of the module to check (e.g., 'company', 'employee')
- * @returns {object} An object with boolean flags: { canRead, canCreate, canEdit, canDelete }
- */
 export const usePermissions = (moduleSlug) => {
-  const { user } = useAuth();
+  const userStr = localStorage.getItem('user');
+  let user = null;
+  if (userStr) {
+    try {
+      user = JSON.parse(userStr);
+    } catch (e) {
+      console.error('Error parsing user from localStorage', e);
+    }
+  }
 
   // If there's no user, or they don't have a role, default to false
   if (!user || !user.role) {
     return { canRead: false, canCreate: false, canEdit: false, canDelete: false };
   }
 
-  // Owner role always has full access
-  if (user.role.name === 'OWNER') {
+  // Owner/Admin role always has full access
+  if (user.role.name === 'OWNER' || user.role.name === 'ADMIN' || user.role.name === 'Admin') {
     return { canRead: true, canCreate: true, canEdit: true, canDelete: true };
   }
 
-  const permissions = user.permissions || {};
+  // Extract permissions from user or user.role
+  let rawPermissions = user.permissions || (user.role && user.role.permissions) || {};
+  let permissions = {};
+  if (rawPermissions) {
+    try {
+      permissions = typeof rawPermissions === 'string' ? JSON.parse(rawPermissions) : rawPermissions;
+    } catch (e) {
+      console.error('Error parsing user permissions', e);
+    }
+  }
+
   const modulePerm = permissions[moduleSlug];
 
   let canRead = false;
@@ -42,3 +53,4 @@ export const usePermissions = (moduleSlug) => {
 
   return { canRead, canCreate, canEdit, canDelete };
 };
+

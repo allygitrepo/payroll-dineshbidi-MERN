@@ -8,6 +8,8 @@ import ReportPage from '../modules/report/pages/ReportPage';
 import UtilityPage from '../modules/utility/pages/UtilityPage';
 import TodoListPage from '../modules/todo-list/pages/TodoListPage';
 import ConvertExcelToTextPage from '../modules/convert-excel-to-text/pages/ConvertExcelToTextPage';
+import LoanPage from '../modules/loan/pages/LoanPage';
+
 
 const slugToSubmenuMap = {
   company: 'Company',
@@ -69,7 +71,8 @@ const slugToSubmenuMap = {
   '58-years-of-age': '58 Years of age',
   notes: 'Notes',
   
-  'excel-to-text': 'Excel To Text'
+  'excel-to-text': 'Excel To Text',
+  'loan-profile': 'Loan Profile'
 };
 
 const ModulePageWrapper = () => {
@@ -93,6 +96,8 @@ const ModulePageWrapper = () => {
       return <TodoListPage activeSubMenu={activeSubMenu} />;
     case 'convert-excel-to-text':
       return <ConvertExcelToTextPage activeSubMenu={activeSubMenu} />;
+    case 'loan':
+      return <LoanPage activeSubMenu={activeSubMenu} />;
     default:
       return <Navigate to="/dashboard" replace />;
   }

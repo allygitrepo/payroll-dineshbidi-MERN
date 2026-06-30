@@ -24,6 +24,9 @@ const ChallanDateEntry = require("../../modules/Entry/ChallanDateEntry/challanDa
 const Resignation = require("../../modules/Entry/Resignation/resignation.model");
 const Note = require("../../modules/Todo List/Note/note.model");
 const LeaveMaster = require("../../modules/Setup/LeaveMaster/leaveMaster.model");
+const Loan = require("../../modules/Loan/loan.model");
+const LoanTransaction = require("../../modules/Loan/loanTransaction.model");
+
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -57,6 +60,9 @@ db.ChallanDateEntry = ChallanDateEntry;
 db.Resignation = Resignation;
 db.Note = Note;
 db.LeaveMaster = LeaveMaster;
+db.Loan = Loan;
+db.LoanTransaction = LoanTransaction;
+
 
 // Model associations
 
@@ -409,6 +415,48 @@ db.LeaveMaster.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
 });
+
+// Loan relationships
+db.Company.hasMany(db.Loan, {
+    foreignKey: "company_id",
+    as: "loans",
+    onDelete: "CASCADE",
+});
+db.Loan.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+db.Employee.hasMany(db.Loan, {
+    foreignKey: "employee_id",
+    as: "loans",
+    onDelete: "CASCADE",
+});
+db.Loan.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
+db.Loan.hasMany(db.LoanTransaction, {
+    foreignKey: "loan_id",
+    as: "transactions",
+    onDelete: "CASCADE",
+});
+db.LoanTransaction.belongsTo(db.Loan, {
+    foreignKey: "loan_id",
+    as: "loan",
+});
+
+db.Employee.hasMany(db.LoanTransaction, {
+    foreignKey: "employee_id",
+    as: "transactions",
+    onDelete: "CASCADE",
+});
+db.LoanTransaction.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
 
 module.exports = db;
 

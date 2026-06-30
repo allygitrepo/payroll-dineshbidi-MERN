@@ -157,6 +157,13 @@ const menuItems = [
     subItems: [
       { name: 'Excel To Text', icon: FileSpreadsheet }
     ]
+  },
+  {
+    name: 'Loan Management',
+    icon: Coins,
+    subItems: [
+      { name: 'Loan Profile', icon: ClipboardList }
+    ]
   }
 ];
 

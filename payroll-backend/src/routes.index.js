@@ -25,6 +25,8 @@ const noteRoutes = require("./modules/Todo List/Note/note.routes");
 // const attendanceRoutes = require("./modules/Attendance/attendance.routes");
 // const leaveRequestRoutes = require("./modules/Attendance/Leave/leaveRequest.routes");
 const reportRoutes = require("./modules/Report/report.routes");
+const loanRoutes = require("./modules/Loan/loan.routes");
+
 
 router.get("/v1/test", (req, res) => {
     res.json({
@@ -61,6 +63,7 @@ router.use("/v1/notes", noteRoutes);
 router.use("/v1/attendance", attendanceRoutes);
 router.use("/v1/leaves", leaveRequestRoutes);
 router.use("/v1/reports", reportRoutes);
+router.use("/v1/loans", loanRoutes);
 router.use("/v1/dashboard", require("./modules/Dashboard/dashboard.routes"));
 router.use("/v1/utility/backup", require("./modules/Utility/Backup/backup.routes"));
 router.use("/v1/utility/restore", require("./modules/Utility/Restore/restore.routes"));
