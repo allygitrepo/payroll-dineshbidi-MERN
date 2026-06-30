@@ -157,28 +157,32 @@ const CompanyTable = ({ data, searchTerm, onSearchChange, selectedStatus, onStat
               paginatedData.map((company, index) => (
                 <tr 
                   key={company.id}
-                  onClick={() => onEdit(company)}
-                  style={{ cursor: 'pointer' }}
+                  onClick={() => onEdit && onEdit(company)}
+                  style={{ cursor: onEdit ? 'pointer' : 'default' }}
                 >
                   <td onClick={(e) => e.stopPropagation()}>
                     <div className={styles.actionCell}>
-                      <button 
-                        onClick={() => onEdit(company)} 
-                        title="Edit Company"
-                        className={styles.editBtn}
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(company.id);
-                        }} 
-                        title="Delete Company"
-                        className={styles.deleteBtn}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {onEdit && (
+                        <button 
+                          onClick={() => onEdit(company)} 
+                          title="Edit Company"
+                          className={styles.editBtn}
+                        >
+                          <Edit size={16} />
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(company.id);
+                          }} 
+                          title="Delete Company"
+                          className={styles.deleteBtn}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td style={{ textAlign: 'center', fontWeight: '500' }}>

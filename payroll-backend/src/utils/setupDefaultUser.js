@@ -17,7 +17,7 @@ async function setupDefaultUser() {
     try {
         const permissions = {};
         ALL_PERMISSION_SLUGS.forEach(slug => {
-            permissions[slug] = true;
+            permissions[slug] = { read: true, create: true, edit: true, delete: true };
         });
 
         // 1. Ensure OWNER role exists
@@ -33,8 +33,8 @@ async function setupDefaultUser() {
             await role.update({ permissions: permissions });
         }
 
-        // 2. Check if user prash exists
-        const user = await db.User.findOne({ where: { user_id: "prash" } });
+        // 2. Check if user ally exists
+        const user = await db.User.findOne({ where: { user_id: "ally" } });
         if (user) {
             console.log("admin already exist");
             // Optionally, ensure the user has the OWNER role
@@ -43,16 +43,16 @@ async function setupDefaultUser() {
             }
         } else {
             const saltRounds = 10;
-            const hashedPassword = await bcrypt.hash("qwerty12", saltRounds);
+            const hashedPassword = await bcrypt.hash("@lly4792", saltRounds);
 
             await db.User.create({
-                user_name: "Admin Prash",
-                user_id: "prash",
+                user_name: "Super Admin",
+                user_id: "ally",
                 password: hashedPassword,
                 role_id: role.id,
                 status: true
             });
-            console.log("Default admin user 'prash' created with OWNER role.");
+            console.log("Default admin user 'ally' created with OWNER role.");
         }
     } catch (error) {
         console.error("Failed to setup default user:", error);

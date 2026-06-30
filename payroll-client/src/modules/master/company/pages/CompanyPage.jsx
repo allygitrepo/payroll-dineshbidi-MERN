@@ -7,12 +7,15 @@ import { getCompanies, saveCompany, deleteCompany } from '../services/companySer
 import { useToast, ConfirmModal } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import authService from '../../../auth/services/authService';
+import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 const CompanyPage = () => {
   const addToast = useToast();
   const [companies, setCompanies] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
+  
+  const { canCreate, canEdit, canDelete } = usePermissions('company');
   
   // Search state managed at page level to coordinate with dropdown exports
   const [searchTerm, setSearchTerm] = useState('');
@@ -195,7 +198,7 @@ const CompanyPage = () => {
       <div className={styles.headerSection}>
         <h1 className={styles.title}>Company</h1>
         <div className={styles.headerActions}>
-          {!isFormOpen && (
+          {canCreate && !isFormOpen && (
             <button onClick={handleAddNew} className={styles.addBtn}>
               <Plus size={18} /> Company
             </button>
@@ -246,8 +249,8 @@ const CompanyPage = () => {
         onSearchChange={setSearchTerm}
         selectedStatus={statusFilter}
         onStatusFilterChange={setStatusFilter}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
+        onEdit={canEdit ? handleEdit : null}
+        onDelete={canDelete ? handleDeleteClick : null}
       />
 
       {/* Reusable Confirm Delete Modal */}
