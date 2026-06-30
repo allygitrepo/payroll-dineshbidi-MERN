@@ -658,7 +658,10 @@ const LeavePage = () => {
                     type="text"
                     placeholder="Search by Employee name, UAN, Leave type..."
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setCurrentPage(1);
+                    }}
                     className={styles.searchInput}
                   />
                 </div>
@@ -775,38 +778,80 @@ const LeavePage = () => {
             </div>
 
             {/* Table Footer / Pagination */}
-            {totalPages > 1 && (
-              <div className={styles.tableFooter}>
-                <div className={styles.footerLeft}>
-                  <span className={styles.infoText}>Page {currentPage} of {totalPages}</span>
+            <div className={styles.tableFooter}>
+              <div className={styles.footerLeft}>
+                <div className={styles.limitControl}>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className={styles.limitSelect}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span>records per page</span>
                 </div>
-                <div className={styles.pagination}>
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className={styles.pageBtn}
-                  >
-                    Previous
-                  </button>
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentPage(i + 1)}
-                      className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className={styles.pageBtn}
-                  >
-                    Next
-                  </button>
+                <div className={styles.infoText}>
+                  Showing {filteredRequests.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} to {Math.min(currentPage * rowsPerPage, filteredRequests.length)} of {filteredRequests.length} entries
                 </div>
               </div>
-            )}
+              <div className={styles.pagination}>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={styles.pageBtn}
+                >
+                  Previous
+                </button>
+
+                {(() => {
+                  const pages = [];
+                  if (totalPages <= 7) {
+                    for (let i = 1; i <= totalPages; i++) pages.push(i);
+                  } else {
+                    if (currentPage <= 4) {
+                      for (let i = 1; i <= 5; i++) pages.push(i);
+                      pages.push('...');
+                      pages.push(totalPages);
+                    } else if (currentPage >= totalPages - 3) {
+                      pages.push(1);
+                      pages.push('...');
+                      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+                    } else {
+                      pages.push(1);
+                      pages.push('...');
+                      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+                      pages.push('...');
+                      pages.push(totalPages);
+                    }
+                  }
+                  return pages.map((p, i) => (
+                    <button
+                      key={i}
+                      onClick={() => p !== '...' && setCurrentPage(p)}
+                      disabled={p === '...'}
+                      className={`${styles.pageBtn} ${currentPage === p ? styles.activePageBtn : ''}`}
+                      style={p === '...' ? { border: 'none', background: 'transparent', cursor: 'default' } : {}}
+                    >
+                      {p}
+                    </button>
+                  ));
+                })()}
+
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className={styles.pageBtn}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         </>
       )}
