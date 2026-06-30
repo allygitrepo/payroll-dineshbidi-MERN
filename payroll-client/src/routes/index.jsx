@@ -6,10 +6,33 @@ import DashboardHome from '../modules/dashboard/pages/DashboardHome';
 import ModulePageWrapper from './ModulePageWrapper';
 import FaceAttendanceSelfPage from '../modules/attendance/self/pages/FaceAttendanceSelfPage';
 
+import SaasDashboardPage from '../modules/saas-admin/pages/SaasDashboardPage';
+import SaasDashboardHome from '../modules/saas-admin/pages/SaasDashboardHome';
+import SaasClientManagementPage from '../modules/saas-admin/pages/SaasClientManagementPage';
+import SaasCoAdminsPage from '../modules/saas-admin/pages/SaasCoAdminsPage';
+
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <LoginPage />
+  },
+  {
+    path: '/saas-dashboard',
+    element: <SaasDashboardPage />,
+    children: [
+      {
+        path: '',
+        element: <SaasDashboardHome />
+      },
+      {
+        path: 'clients',
+        element: <SaasClientManagementPage />
+      },
+      {
+        path: 'co-admins',
+        element: <SaasCoAdminsPage />
+      }
+    ]
   },
   {
     path: '/',

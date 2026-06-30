@@ -70,6 +70,15 @@ db.User.belongsTo(db.Role, {
     as: "role",
 });
 
+db.User.hasMany(db.User, {
+    foreignKey: "parent_id",
+    as: "staff",
+});
+db.User.belongsTo(db.User, {
+    foreignKey: "parent_id",
+    as: "creator",
+});
+
 db.User.hasMany(db.RefreshToken, {
     foreignKey: "user_id",
     as: "refreshTokens",

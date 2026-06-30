@@ -46,6 +46,16 @@ const User = sequelize.define(
             type: DataTypes.BOOLEAN,
             defaultValue: true,
         },
+        parent_id: {
+            type: DataTypes.UUID,
+            allowNull: true,
+            references: {
+                model: "Users",
+                key: "id",
+            },
+            onDelete: "CASCADE",
+            onUpdate: "CASCADE",
+        },
     },
     {
         tableName: "Users",

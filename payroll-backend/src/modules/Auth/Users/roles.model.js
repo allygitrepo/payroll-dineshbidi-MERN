@@ -12,7 +12,6 @@ const Role = sequelize.define(
         name: {
             type: DataTypes.STRING,
             allowNull: false,
-            unique: true,
         },
         permissions: {
             type: DataTypes.JSON,
@@ -22,6 +21,16 @@ const Role = sequelize.define(
         status: {
             type: DataTypes.BOOLEAN,
             defaultValue: true,
+        },
+        created_by: {
+            type: DataTypes.UUID,
+            allowNull: true,
+            references: {
+                model: "Users",
+                key: "id",
+            },
+            onDelete: "CASCADE",
+            onUpdate: "CASCADE",
         },
     },
     {
