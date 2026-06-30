@@ -38,7 +38,8 @@ import {
   Notebook,
   FileSpreadsheet,
   Folder,
-  ClipboardList
+  ClipboardList,
+  MessageCircle
 } from 'lucide-react';
 import styles from './Sidebar.module.css';
 
@@ -131,6 +132,7 @@ const menuItems = [
     subItems: [
       { name: 'Calender', icon: Calendar },
       { name: 'User Management', icon: UserCog },
+      { name: 'WhatsApp Gateway', icon: MessageCircle },
       { name: 'Employee Data Import', icon: FileUp },
       { name: 'Employee Data Export', icon: FileDown },
       { name: 'KYC Export', icon: Fingerprint },

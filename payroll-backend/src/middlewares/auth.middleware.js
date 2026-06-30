@@ -21,14 +21,14 @@ const authenticateJWT = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-        
+
         // Attach the decoded token payload (which includes id, user_id, role) to the request object
         req.user = decoded;
-        
+
         if (decoded.company_id) {
             req.companyId = decoded.company_id;
             req.params.companyId = decoded.company_id;
-            
+
             if (req.body) {
                 if (req.method === "POST") {
                     req.body.company_id = decoded.company_id;
@@ -37,7 +37,7 @@ const authenticateJWT = (req, res, next) => {
                 }
             }
         }
-        
+
         next();
     } catch (err) {
         let code = "TOKEN_INVALID";

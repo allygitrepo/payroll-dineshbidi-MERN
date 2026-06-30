@@ -70,5 +70,6 @@ router.use("/v1/dashboard", require("./modules/Dashboard/dashboard.routes"));
 router.use("/v1/utility/backup", require("./modules/Utility/Backup/backup.routes"));
 router.use("/v1/utility/restore", require("./modules/Utility/Restore/restore.routes"));
 router.use("/v1/utility/uan-to-ip", require("./modules/Utility/UanToIp/uanToIp.routes"));
+router.use("/v1/whatsapp", require("./modules/Setup/WhatsApp/whatsapp.routes"));
 
 module.exports = router;
