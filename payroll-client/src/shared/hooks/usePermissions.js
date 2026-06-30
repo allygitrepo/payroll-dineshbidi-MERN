@@ -73,3 +73,4 @@ export const usePermissions = (moduleSlug) => {
 
   return permissions;
 };
+

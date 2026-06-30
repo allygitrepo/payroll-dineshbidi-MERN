@@ -375,8 +375,8 @@ const KycExportPage = () => {
       </div>
 
       <div className={styles.tableCard}>
-        <div className={styles.tableHeader}>
-          <div className={styles.searchBox}>
+        <div className={styles.tableControls}>
+          <div className={styles.searchWrapper}>
             <Search size={16} className={styles.searchIcon} />
             <input 
               type="text" 
@@ -430,8 +430,8 @@ const KycExportPage = () => {
         </div>
 
         {totalPages > 1 && (
-          <div className={styles.pagination}>
-            <div className={styles.pageInfo}>
+          <div className={styles.tableFooter}>
+            <div className={styles.infoText}>
               Showing {startIndex + 1} to {endIndex} of {totalEntries} entries
             </div>
             <Pagination 
