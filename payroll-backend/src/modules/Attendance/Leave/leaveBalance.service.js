@@ -34,7 +34,7 @@ class LeaveBalanceService {
     /**
      * Auto-allocate leaves for a newly created employee
      */
-    static async autoAllocateForEmployee(employee) {
+    static async autoAllocateForEmployee(employee, targetYear = null) {
         try {
             const { id: employeeId, company_id: companyId, employee_type_id: employeeTypeId, date_of_joining: dojStr } = employee;
             if (!employeeTypeId) return;
@@ -43,8 +43,14 @@ class LeaveBalanceService {
             const company = await db.Company.findByPk(companyId);
             const leaveYearType = company ? company.leave_year_type : "Calendar Year";
 
-            // Calculate current leave year string
-            const currentYearStr = this.getLeaveYearString(dojStr, leaveYearType);
+            // Calculate current leave year string if not explicitly passed
+            if (!targetYear) {
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, "0");
+                const dd = String(today.getDate()).padStart(2, "0");
+                targetYear = this.getLeaveYearString(`${yyyy}-${mm}-${dd}`, leaveYearType);
+            }
 
             // Fetch active policies for this employee type
             const policies = await db.LeavePolicy.findAll({
@@ -55,13 +61,16 @@ class LeaveBalanceService {
                 include: [{ model: db.LeaveType, as: "leaveType", where: { is_active: true } }]
             });
 
+            // Parse Date of Joining
             const joinDate = new Date(dojStr);
-            const joinMonth = joinDate.getMonth() + 1; // 1-12
-            
+            const joinYearStr = this.getLeaveYearString(dojStr, leaveYearType);
+
             for (const policy of policies) {
-                // Prorate allocation based on joining month for calendar/financial year types
                 let allocatedDays = parseFloat(policy.yearly_allocation) || 0;
-                if (!policy.monthly_accrual_enabled && allocatedDays > 0) {
+
+                // Prorate ONLY if the target allocation year is the same as the employee's joining year
+                if (targetYear === joinYearStr && !policy.monthly_accrual_enabled && allocatedDays > 0) {
+                    const joinMonth = joinDate.getMonth() + 1; // 1-12
                     if (leaveYearType === "Calendar Year") {
                         const remainingMonths = 13 - joinMonth; // e.g. July (7) -> 13-7 = 6 months remaining
                         allocatedDays = parseFloat(((allocatedDays * remainingMonths) / 12).toFixed(2));
@@ -75,10 +84,12 @@ class LeaveBalanceService {
                         }
                         allocatedDays = parseFloat(((allocatedDays * remainingMonths) / 12).toFixed(2));
                     }
+                    // Round to the nearest half-day (0.5) increment
+                    allocatedDays = Math.round(allocatedDays * 2) / 2;
                 }
 
                 // Get or create balance row
-                const balance = await this.getOrCreateBalance(companyId, employeeId, policy.leave_type_id, currentYearStr);
+                const balance = await this.getOrCreateBalance(companyId, employeeId, policy.leave_type_id, targetYear);
                 
                 if (allocatedDays > 0) {
                     await balance.update({ allocated: allocatedDays });
@@ -89,10 +100,10 @@ class LeaveBalanceService {
                         employee_id: employeeId,
                         leave_type_id: policy.leave_type_id,
                         transaction_type: "Yearly Allocation",
-                        leave_year: currentYearStr,
+                        leave_year: targetYear,
                         days: allocatedDays,
                         is_paid: policy.leaveType.is_paid,
-                        description: `Automatic proration allocation on joining (DoJ: ${dojStr})`
+                        description: `Automatic allocation for leave year ${targetYear} (DoJ: ${dojStr})`
                     });
                 }
             }
@@ -114,6 +125,17 @@ class LeaveBalanceService {
             const mm = String(today.getMonth() + 1).padStart(2, "0");
             const dd = String(today.getDate()).padStart(2, "0");
             leaveYear = this.getLeaveYearString(`${yyyy}-${mm}-${dd}`, leaveYearType);
+        }
+
+        // Lazy allocation check: if no balance records exist for this year, allocate them dynamically now.
+        const existingCount = await db.LeaveBalance.count({
+            where: { employee_id: employeeId, leave_year: leaveYear }
+        });
+        if (existingCount === 0) {
+            const employee = await db.Employee.findByPk(employeeId);
+            if (employee) {
+                await this.autoAllocateForEmployee(employee, leaveYear);
+            }
         }
 
         const leaveTypes = await db.LeaveType.findAll({
