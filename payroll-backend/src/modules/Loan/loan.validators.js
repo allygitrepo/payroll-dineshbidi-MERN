@@ -38,6 +38,7 @@ const createLoanSchema = Joi.object({
         "date.base": "Start date must be a valid ISO date string.",
         "any.required": "Start date is required.",
     }),
+    company_id: Joi.string().guid().optional(),
 });
 
 const updateLoanSchema = Joi.object({
@@ -61,6 +62,7 @@ const manualRepaymentSchema = Joi.object({
         "any.required": "Payment source is required.",
     }),
     description: Joi.string().allow("", null).optional(),
+    company_id: Joi.string().guid().optional(),
 });
 
 const fifoDeductionSchema = Joi.object({
@@ -75,6 +77,7 @@ const fifoDeductionSchema = Joi.object({
         "any.required": "Deduction amount is required.",
     }),
     description: Joi.string().allow("", null).optional(),
+    company_id: Joi.string().guid().optional(),
 });
 
 module.exports = {
