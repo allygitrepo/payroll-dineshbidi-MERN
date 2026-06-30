@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer } from 'lucide-react';
+import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import styles from '../components/ProfessionalTaxPage.module.css';
 import ProfessionalTaxForm from '../components/ProfessionalTaxForm';
 import ProfessionalTaxTable from '../components/ProfessionalTaxTable';
 import { getProfessionalTax, saveProfessionalTax, deleteProfessionalTax } from '../services/professionalTaxService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
+import { parseExcelDate } from '../../../../shared/utils/dateUtils';
 
 const formatDateForExport = (dateStr) => {
   if (!dateStr) return '';
@@ -31,6 +33,7 @@ const ProfessionalTaxPage = () => {
   const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   const dropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const fetchTaxes = async () => {
     const companyId = localStorage.getItem('selectedCompany');
@@ -80,7 +83,9 @@ const ProfessionalTaxPage = () => {
   const handleEdit = (wages) => {
     setEditingWages(wages);
     setIsFormOpen(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
   };
 
   const handleDeleteClick = (id) => {
@@ -155,6 +160,29 @@ const ProfessionalTaxPage = () => {
   // Export handlers
   const handleExport = async (type) => {
     setIsDropdownOpen(false);
+    
+    if (type === 'Excel' || type === 'Excel Template') {
+      const isTemplate = type === 'Excel Template';
+      const aoa = [
+        ['ID (Do Not Modify)', 'Start Date (YYYY-MM-DD)', 'End Date (YYYY-MM-DD)', 'Slab Range From', 'Slab Range To', 'Tax Rate']
+      ];
+      
+      if (!isTemplate) {
+        filteredWages.forEach(w => {
+          aoa.push([
+            w.id, w.startDate, w.endDate, w.from, w.to, w.taxRate
+          ]);
+        });
+      }
+      
+      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Professional_Tax');
+      XLSX.writeFile(workbook, `Professional_Tax_${isTemplate ? 'Template' : 'Export'}.xlsx`);
+      addToast({ type: 'success', message: `${type} downloaded!` });
+      return;
+    }
+
     if (type === 'Copy') {
       const text = filteredWages.map((w, index) => 
         `${index + 1}\t${formatDateForExport(w.startDate)}\t${formatDateForExport(w.endDate)}\t${w.from}\t${w.to}\t${w.taxRate}`
@@ -174,6 +202,53 @@ const ProfessionalTaxPage = () => {
     }
   };
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'error', message: 'No company selected.' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const workbook = XLSX.read(bstr, { type: 'binary', cellDates: true });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const importedData = XLSX.utils.sheet_to_json(worksheet);
+
+        let successCount = 0;
+        for (const row of importedData) {
+          const wId = row['ID (Do Not Modify)'];
+          
+          const taxData = {
+            id: wId || undefined,
+            startDate: parseExcelDate(row['Start Date (YYYY-MM-DD)']),
+            endDate: parseExcelDate(row['End Date (YYYY-MM-DD)']),
+            from: row['Slab Range From'] || 0,
+            to: row['Slab Range To'] || 0,
+            taxRate: row['Tax Rate'] || 0
+          };
+          if (!taxData.startDate) continue; 
+          
+          await saveProfessionalTax(taxData, companyId);
+          successCount++;
+        }
+        
+        addToast({ type: 'success', message: `Successfully uploaded ${successCount} records.` });
+        fetchTaxes();
+      } catch (error) {
+        console.error('Error importing Excel:', error);
+        addToast({ type: 'error', message: 'Failed to import Excel file.' });
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = null;
+  };
+
   return (
     <div className={styles.container}>
       
@@ -186,6 +261,20 @@ const ProfessionalTaxPage = () => {
               <Plus size={18} /> Professional Tax
             </button>
           )}
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            style={{ display: 'none' }} 
+          />
+          <button
+            className={styles.downloadBtn}
+            style={{ backgroundColor: 'var(--success-color, #10b981)' }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload size={18} /> Upload Excel
+          </button>
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button 
               className={styles.downloadBtn} 
@@ -197,6 +286,9 @@ const ProfessionalTaxPage = () => {
               <div className={styles.dropdownMenu}>
                 <button onClick={() => handleExport('Excel')}>
                   <FileSpreadsheet size={16} /> Excel
+                </button>
+                <button onClick={() => handleExport('Excel Template')}>
+                  <FileSpreadsheet size={16} /> Excel Template
                 </button>
                 <button onClick={() => handleExport('Copy')}>
                   <Copy size={16} /> Copy

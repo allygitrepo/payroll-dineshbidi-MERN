@@ -21,13 +21,9 @@ const mapToFrontend = (c) => ({
 });
 
 const mapToBackend = (c, companyId, addresses = []) => {
-  // Try to find matching address from database address list
-  const matchingAddress = addresses.find(a => a.address === c.address);
-  const addressId = matchingAddress?.id || c.address_id || c.address;
-
   return {
     company_id: companyId,
-    address_id: addressId,
+    address_id: c.address_id,
     ccode: c.ccode,
     name: c.name,
     pf_code: c.pfCode,
@@ -52,10 +48,51 @@ export const getContractors = async (companyId) => {
 };
 
 export const saveContractor = async (contractor, companyId, addresses = []) => {
+  const safeStr = (str) => (str || '').toString().trim().toLowerCase();
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  const resolveOrCreateAddress = async (addressStr, postOffice, district, pincode) => {
+    if (!addressStr) return null;
+    if (uuidRegex.test(addressStr)) return addressStr;
+    const matchingAddress = addresses.find(a => safeStr(a.address) === safeStr(addressStr));
+    if (matchingAddress) return matchingAddress.id;
+
+    try {
+      const res = await apiClient.post('addresses', {
+        company_id: companyId,
+        address: addressStr.toUpperCase(),
+        post_office: (postOffice || 'UNKNOWN').toUpperCase(),
+        district: (district || 'UNKNOWN').toUpperCase(),
+        pincode: pincode || '000000',
+        status: true
+      });
+      if (res.data?.data?.id) {
+        addresses.push(res.data.data);
+        return res.data.data.id;
+      }
+    } catch (e) {
+      console.error("Failed to auto-create address", e);
+    }
+    return addressStr;
+  };
+
+  // Pre-resolve or auto-create address
+  contractor.address_id = await resolveOrCreateAddress(
+    contractor.address || contractor.address_id,
+    contractor.postOffice,
+    contractor.district,
+    contractor.pincode
+  );
+
+  if (contractor.address_id && !uuidRegex.test(contractor.address_id)) {
+    throw new Error(`Failed to resolve Address ID for ${contractor.address}. Please ensure the address exists.`);
+  }
+
   const payload = mapToBackend(contractor, companyId, addresses);
   if (contractor.id) {
-    // Update
-    await apiClient.put(`contractors/${contractor.id}`, payload);
+    // Strip company_id for update if needed (some backend schemas strictly forbid company_id in PUT)
+    const { company_id, ...updatePayload } = payload;
+    await apiClient.put(`contractors/${contractor.id}`, updatePayload);
   } else {
     // Create
     await apiClient.post('contractors', payload);
