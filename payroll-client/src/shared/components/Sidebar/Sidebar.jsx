@@ -258,6 +258,11 @@ const Sidebar = ({ sidebarCollapsed }) => {
 
   const hasReadPermission = (slug) => {
     if (isAdmin) return true; // Optionally bypass for admins
+    
+    if (Array.isArray(permissions)) {
+      return permissions.includes(slug);
+    }
+    
     const perm = permissions[slug];
     if (typeof perm === 'boolean') return perm;
     if (typeof perm === 'object' && perm !== null) return !!perm.read;
