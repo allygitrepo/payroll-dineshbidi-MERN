@@ -16,7 +16,6 @@ const Company = sequelize.define(
         establishment_id: {
             type: DataTypes.STRING(15),
             allowNull: false,
-            unique: true,
         },
         company_name: {
             type: DataTypes.STRING(200),
@@ -83,11 +82,32 @@ const Company = sequelize.define(
             type: DataTypes.BOOLEAN,
             defaultValue: true,
         },
+        leave_year_type: {
+            type: DataTypes.STRING(50),
+            allowNull: false,
+            defaultValue: "Calendar Year", // "Calendar Year", "Financial Year", "Joining Anniversary"
+        },
+        sandwich_policy_enabled: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+        comp_off_expiry_days: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 90,
+        },
     },
     {
         tableName: "companies",
         timestamps: true,
         underscored: true,
+        indexes: [
+            {
+                unique: true,
+                fields: ["establishment_id"]
+            }
+        ]
     }
 );
 

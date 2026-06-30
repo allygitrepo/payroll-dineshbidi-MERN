@@ -16,7 +16,6 @@ const RefreshToken = sequelize.define(
         token: {
             type: DataTypes.STRING(500),
             allowNull: false,
-            unique: true,
         },
         expires_at: {
             type: DataTypes.DATE,
@@ -27,6 +26,12 @@ const RefreshToken = sequelize.define(
         tableName: "refresh_tokens",
         timestamps: true,
         underscored: true,
+        indexes: [
+            {
+                unique: true,
+                fields: ["token"]
+            }
+        ]
     }
 );
 

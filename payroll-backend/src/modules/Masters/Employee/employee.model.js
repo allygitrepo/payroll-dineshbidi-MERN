@@ -81,6 +81,10 @@ const Employee = sequelize.define(
             type: DataTypes.STRING(100),
             allowNull: false,
         },
+        employee_type_id: {
+            type: DataTypes.UUID,
+            allowNull: true, // Nullable initially to allow backward-compatible sync
+        },
         nationality: {
             type: DataTypes.STRING(50),
             allowNull: false,

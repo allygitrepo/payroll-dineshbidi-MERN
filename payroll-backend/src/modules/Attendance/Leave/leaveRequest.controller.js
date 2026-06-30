@@ -1,32 +1,61 @@
-const LeaveRequestService = require("./leaveRequest.service");
+const LeaveValidationService = require("./leaveValidation.service");
+const LeaveBalanceService = require("./leaveBalance.service");
+const db = require("../../../database/models/index");
 const { successResponse, errorResponse } = require("../../../utils/response");
+const logger = require("../../../utils/logger");
+const { LEAVE_STATUS, TRANSACTION_TYPE, ATTENDANCE_STATUS, DAY_TYPE } = require("./leave.constants");
+const fs = require("fs");
+const path = require("path");
 
-const getDurationInDays = (fromDate, toDate, leaveType) => {
-    if (leaveType && leaveType.startsWith("Custom Leave (")) {
-        const match = leaveType.match(/Custom Leave \(([\d.]+)\s*Days?\)/i);
-        if (match && match[1]) {
-            return parseFloat(match[1]);
+// Helper to save base64 to file
+function saveBase64File(base64Str, employeeId) {
+    if (!base64Str || !base64Str.startsWith("data:")) {
+        return base64Str;
+    }
+
+    try {
+        const matches = base64Str.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (!matches || matches.length !== 3) {
+            return base64Str;
         }
-    }
-    if (leaveType && leaveType.toLowerCase().includes("half day")) return 0.5;
-    if (!fromDate || !toDate) return 0;
-    const start = new Date(fromDate);
-    const end = new Date(toDate);
-    const diffTime = end - start;
-    if (diffTime < 0) return 0;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-};
 
-const formatRequestWithLatestBalance = async (request) => {
-    if (!request) return null;
-    const reqJson = request.toJSON ? request.toJSON() : request;
-    if (reqJson.status === "Pending" || reqJson.status === "Rejected") {
-        reqJson.remaining_leaves = await LeaveRequestService.getLatestRemainingLeaves(reqJson.employee_id);
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+        const buffer = Buffer.from(base64Data, "base64");
+
+        let ext = "bin";
+        if (mimeType.includes("pdf")) {
+            ext = "pdf";
+        } else if (mimeType.includes("png")) {
+            ext = "png";
+        } else if (mimeType.includes("jpeg") || mimeType.includes("jpg")) {
+            ext = "jpg";
+        } else if (mimeType.includes("gif")) {
+            ext = "gif";
+        }
+
+        const uploadsDir = path.join(__dirname, "..", "..", "..", "..", "uploads", "leave_doc");
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+
+        const filename = `leave_${employeeId}_${Date.now()}.${ext}`;
+        const filePath = path.join(uploadsDir, filename);
+
+        fs.writeFileSync(filePath, buffer);
+
+        // Served statically at /payroll/uploads/leave_doc/
+        return `uploads/leave_doc/${filename}`;
+    } catch (err) {
+        console.error("Failed to save base64 file upload:", err);
+        return base64Str;
     }
-    return reqJson;
-};
+}
 
 class LeaveRequestController {
+    /**
+     * Get all leave requests for a company
+     */
     async getAll(req, res) {
         try {
             const { companyId } = req.params;
@@ -35,19 +64,39 @@ class LeaveRequestController {
                     errorResponse("VALIDATION_ERROR", "Company ID is required.", "Company ID is required.")
                 );
             }
-            const requests = await LeaveRequestService.getAllByCompany(companyId);
-            
-            const cache = {};
+
+            const requests = await db.LeaveRequest.findAll({
+                where: { company_id: companyId },
+                include: [
+                    {
+                        model: db.Employee,
+                        as: "employee",
+                        attributes: ["id", "name", "image_path", "uan", "mobile", "employee_type"],
+                    },
+                    {
+                        model: db.LeaveType,
+                        as: "leaveType",
+                        attributes: ["id", "name", "code", "is_paid"],
+                    }
+                ],
+                order: [["created_at", "DESC"]],
+            });
+
+            // Format requests with their live dynamic balances calculated on-the-fly
             const formattedRequests = [];
             for (const r of requests) {
                 const reqJson = r.toJSON ? r.toJSON() : r;
-                if (reqJson.status === "Pending" || reqJson.status === "Rejected") {
-                    const empId = reqJson.employee_id;
-                    if (cache[empId] === undefined) {
-                        cache[empId] = await LeaveRequestService.getLatestRemainingLeaves(empId);
-                    }
-                    reqJson.remaining_leaves = cache[empId];
-                }
+                const yearStr = reqJson.from_date.split("-")[0];
+                
+                // Get dynamic remaining balance
+                const remaining = await LeaveValidationService.getDynamicRemainingBalance(
+                    companyId,
+                    reqJson.employee_id,
+                    reqJson.leave_type_id,
+                    yearStr
+                );
+
+                reqJson.remaining_leaves = remaining;
                 formattedRequests.push(reqJson);
             }
 
@@ -55,7 +104,7 @@ class LeaveRequestController {
                 successResponse("LEAVE_REQUESTS_RETRIEVED", "Leave requests retrieved successfully.", "Leave requests retrieved successfully.", formattedRequests)
             );
         } catch (err) {
-            console.error("Error fetching leave requests:", err);
+            logger.error("Error fetching leave requests", err, { companyId: req.params.companyId });
             return res.status(500).json(
                 errorResponse("LEAVE_REQUESTS_RETRIEVE_FAILED", err.message, "Failed to retrieve leave requests.")
             );
@@ -63,146 +112,426 @@ class LeaveRequestController {
     }
 
     async create(req, res) {
+        const transaction = await db.sequelize.transaction();
         try {
-            const { employeeId, companyId, leaveType, fromDate, toDate, description } = req.body;
-            if (!employeeId || !companyId || !leaveType || !fromDate || !toDate || !description) {
+            const { employeeId, companyId, leaveTypeId, fromDate, toDate, dayType, reason, status, attachmentPath } = req.body;
+            if (!employeeId || !companyId || !leaveTypeId || !fromDate || !toDate || !dayType) {
+                await transaction.rollback();
                 return res.status(400).json(
-                    errorResponse("VALIDATION_ERROR", "All fields are required.", "All fields are required.")
+                    errorResponse("VALIDATION_ERROR", "Required fields are missing.", "Required fields are missing.")
                 );
             }
 
-            // Get current remaining leaves for the employee
-            const latestRemaining = await LeaveRequestService.getLatestRemainingLeaves(employeeId);
+            const appliedStatus = status || LEAVE_STATUS.SUBMITTED; // Default to Submitted if not Draft
 
-            // Calculate requested duration
-            const duration = getDurationInDays(fromDate, toDate, leaveType);
+            const savedAttachmentPath = attachmentPath && attachmentPath.startsWith("data:")
+                ? saveBase64File(attachmentPath, employeeId)
+                : attachmentPath;
 
-            // Fetch LeaveMaster configs for the company to validate
-            try {
-                const db = require("../../../database/models/index");
-                const leaveConfigs = await db.LeaveMaster.findAll({
-                    where: { company_id: companyId, status: true }
-                });
-                
-                // 1. Validate specific leave type duration limits
-                const leaveConfig = leaveConfigs.find(c => c.leave_type === leaveType);
-                if (leaveConfig && leaveConfig.leave_days !== null && leaveConfig.leave_days !== undefined && leaveConfig.leave_days !== "") {
-                    const maxDays = parseFloat(leaveConfig.leave_days);
-                    if (duration > maxDays) {
-                        return res.status(400).json(
-                            errorResponse("LEAVE_LIMIT_EXCEEDED", `Requested leave duration (${duration} days) exceeds the maximum allowed limit for ${leaveType} (${maxDays} days).`, `Leave type limit exceeded. Max allowed is ${maxDays} days.`)
-                        );
-                    }
-                }
-            } catch (err) {
-                console.error("Error validating leave limits:", err);
+            // 1. Run full leave validation (only if not a draft)
+            let leaveDays = 1.0;
+            let leaveYear = fromDate.split("-")[0];
+            let leaveType = null;
+
+            if (appliedStatus === LEAVE_STATUS.SUBMITTED) {
+                const validation = await LeaveValidationService.validateApplication(companyId, {
+                    employeeId,
+                    leaveTypeId,
+                    fromDate,
+                    toDate,
+                    dayType,
+                    attachmentPath: savedAttachmentPath
+                }, null, transaction);
+                leaveDays = validation.leaveDays;
+                leaveYear = validation.leaveYear;
+                leaveType = validation.leaveType;
+            } else {
+                // For Drafts, calculate simple duration using standard calender sandwich toggle
+                const company = await db.Company.findByPk(companyId, { transaction });
+                const sandwichEnabled = company ? company.sandwich_policy_enabled : false;
+                leaveDays = await LeaveValidationService.calculateLeaveDays(companyId, fromDate, toDate, dayType, sandwichEnabled);
+                leaveType = await db.LeaveType.findByPk(leaveTypeId, { transaction });
             }
 
-            // 2. Validate overall remaining leaves balance
-            if (duration > latestRemaining) {
-                return res.status(400).json(
-                    errorResponse("INSUFFICIENT_LEAVES", `Requested leave duration (${duration} days) exceeds the employee's remaining leaves balance (${latestRemaining} days).`, `Insufficient remaining leaves balance (${latestRemaining} days).`)
-                );
-            }
-
-            const requestDate = new Date().toISOString().split("T")[0];
-
-            // Get dynamic yearly leave cap
-            let yearlyCap = 0;
-            try {
-                const db = require("../../../database/models/index");
-                const leaveMaster = await db.LeaveMaster.findOne({
-                    where: { company_id: companyId, status: true }
-                });
-                if (leaveMaster && leaveMaster.yearly_leave_cap !== null && leaveMaster.yearly_leave_cap !== undefined) {
-                    yearlyCap = parseFloat(leaveMaster.yearly_leave_cap);
-                }
-            } catch (e) {
-                console.error("Error fetching dynamic yearly cap for leave request:", e);
-            }
-
-            const request = await LeaveRequestService.create({
+            // 2. Create the request
+            const newRequest = await db.LeaveRequest.create({
                 employee_id: employeeId,
                 company_id: companyId,
-                leave_type: leaveType,
+                leave_type_id: leaveTypeId,
+                leave_type: leaveType ? leaveType.name : "Unknown",
                 from_date: fromDate,
                 to_date: toDate,
-                description,
-                status: "Pending",
-                request_date: requestDate,
-                total_leaves: yearlyCap,
-                remaining_leaves: latestRemaining,
+                number_of_days: leaveDays,
+                day_type: dayType,
+                reason: reason || "",
+                attachment_path: savedAttachmentPath || null,
+                status: appliedStatus,
+                applied_date: new Date().toISOString().split("T")[0]
+            }, { transaction });
+
+            // 3. Log initial transaction if submitted
+            if (appliedStatus === LEAVE_STATUS.SUBMITTED) {
+                await db.LeaveTransaction.create({
+                    company_id: companyId,
+                    employee_id: employeeId,
+                    leave_type_id: leaveTypeId,
+                    leave_request_id: newRequest.id,
+                    transaction_type: TRANSACTION_TYPE.LEAVE_APPLIED,
+                    leave_year: leaveYear,
+                    days: -leaveDays, // Shows potential deduction
+                    is_paid: leaveType ? leaveType.is_paid : true,
+                    description: `Leave application submitted from ${fromDate} to ${toDate} (${leaveDays} days)`
+                }, { transaction });
+            }
+
+            await transaction.commit();
+
+            const fullRequest = await db.LeaveRequest.findByPk(newRequest.id, {
+                include: [
+                    { model: db.Employee, as: "employee", attributes: ["id", "name", "employee_type"] },
+                    { model: db.LeaveType, as: "leaveType", attributes: ["id", "name", "code", "is_paid"] }
+                ]
             });
 
-            // Fetch created request with employee details loaded
-            const fullRequest = await LeaveRequestService.getById(request.id);
-            const formatted = await formatRequestWithLatestBalance(fullRequest);
             return res.status(201).json(
-                successResponse("LEAVE_REQUEST_CREATED", "Leave request submitted successfully.", "Leave request submitted successfully.", formatted)
+                successResponse("LEAVE_REQUEST_CREATED", "Leave request submitted successfully.", "Leave request submitted successfully.", fullRequest)
             );
         } catch (err) {
-            console.error("Error creating leave request:", err);
+            await transaction.rollback();
+            const logBody = { ...req.body };
+            if (logBody.attachmentPath && logBody.attachmentPath.startsWith("data:")) {
+                logBody.attachmentPath = `[Base64 File Content: ${logBody.attachmentPath.substring(0, 30)}...]`;
+            }
+            logger.error("Error creating leave request", err, { body: logBody });
+
+            const errMsg = err.message || "";
+            // Overlapping leave range -> 409 Conflict
+            if (errMsg.includes("overlapping") || errMsg.includes("overlap")) {
+                return res.status(409).json(
+                    errorResponse("LEAVE_OVERLAP", errMsg, "There is an overlapping leave request already submitted or approved for this date range.")
+                );
+            }
+            // Balance, document required, inactive leave type, half-day date mismatch -> 422 Unprocessable Entity
+            if (errMsg.includes("Insufficient") || errMsg.includes("Supporting document") || errMsg.includes("inactive") || errMsg.includes("Half-day")) {
+                return res.status(422).json(
+                    errorResponse("LEAVE_VALIDATION_FAILED", errMsg, errMsg)
+                );
+            }
+
             return res.status(500).json(
                 errorResponse("LEAVE_REQUEST_CREATE_FAILED", err.message, "Failed to submit leave request.")
             );
         }
     }
 
-    async approve(req, res) {
+    /**
+     * Calculate Leave Days dynamically
+     */
+    async calculateDays(req, res) {
         try {
-            const { id } = req.params;
-            const request = await LeaveRequestService.getById(id);
-            if (!request) {
-                return res.status(404).json(
-                    errorResponse("NOT_FOUND", "Leave request not found.", "Leave request not found.")
-                );
-            }
-
-            if (request.status === "Approved") {
+            const { companyId, fromDate, toDate, dayType } = req.body;
+            if (!companyId || !fromDate || !toDate) {
                 return res.status(400).json(
-                    errorResponse("ALREADY_APPROVED", "Leave request is already approved.", "Leave request is already approved.")
+                    errorResponse("VALIDATION_ERROR", "companyId, fromDate, and toDate are required.", "Invalid query parameters.")
                 );
             }
 
-            // Get latest remaining leaves balance for the employee
-            const latestRemaining = await LeaveRequestService.getLatestRemainingLeaves(request.employee_id);
+            const company = await db.Company.findByPk(companyId);
+            const sandwichEnabled = company ? company.sandwich_policy_enabled : false;
+            
+            const days = await LeaveValidationService.calculateLeaveDays(
+                companyId,
+                fromDate,
+                toDate,
+                dayType || "Full Day",
+                sandwichEnabled
+            );
 
-            // Deduct days count
-            const duration = getDurationInDays(request.from_date, request.to_date, request.leave_type);
-            const newRemaining = Math.max(0, latestRemaining - duration);
-
-            const updatedRequest = await LeaveRequestService.updateStatus(id, "Approved", newRemaining);
-            const formatted = await formatRequestWithLatestBalance(updatedRequest);
             return res.status(200).json(
-                successResponse("LEAVE_REQUEST_APPROVED", "Leave request approved successfully.", "Leave request approved successfully.", formatted)
+                successResponse("DAYS_CALCULATED", "Leave days calculated successfully.", "Calculated leave days count.", { days })
             );
         } catch (err) {
-            console.error("Error approving leave request:", err);
+            logger.error("Error calculating leave days", err, { body: req.body });
+            return res.status(500).json(
+                errorResponse("CALCULATE_DAYS_FAILED", err.message, "Failed to calculate leave days.")
+            );
+        }
+    }
+
+    /**
+     * Approve a submitted leave request
+     */
+    async approve(req, res) {
+        const transaction = await db.sequelize.transaction();
+        try {
+            const { id } = req.params;
+            const changedBy = req.user ? req.user.id : null;
+
+            const request = await db.LeaveRequest.findByPk(id, {
+                include: [{ model: db.LeaveType, as: "leaveType" }]
+            });
+
+            if (!request) {
+                await transaction.rollback();
+                return res.status(404).json(errorResponse("NOT_FOUND", "Leave request not found.", "Leave request not found."));
+            }
+
+            if (request.status !== LEAVE_STATUS.SUBMITTED) {
+                await transaction.rollback();
+                return res.status(400).json(errorResponse("INVALID_STATE", `Cannot approve a leave request in status: ${request.status}.`, "Invalid request status."));
+            }
+
+            const leaveYear = request.from_date.split("-")[0];
+            const duration = parseFloat(request.number_of_days);
+
+            // Double check remaining balance right before approval for Paid types
+            if (request.leaveType && request.leaveType.is_paid) {
+                const dynamicRemaining = await LeaveValidationService.getDynamicRemainingBalance(
+                    request.company_id,
+                    request.employee_id,
+                    request.leave_type_id,
+                    leaveYear,
+                    transaction
+                );
+                if (dynamicRemaining < 0) {
+                    throw new Error(`Insufficient leave balance to approve this request.`);
+                }
+            }
+
+            // 1. Update request status
+            await request.update({ status: LEAVE_STATUS.APPROVED }, { transaction });
+
+            // 2. Adjust Leave Balance (Used is incremented)
+            const balanceObj = await LeaveBalanceService.getOrCreateBalance(request.company_id, request.employee_id, request.leave_type_id, leaveYear, transaction);
+            const currentUsed = parseFloat(balanceObj.used) || 0.00;
+            await balanceObj.update({ used: parseFloat((currentUsed + duration).toFixed(2)) }, { transaction });
+
+            // 3. Create Leave Transaction ledger
+            await db.LeaveTransaction.create({
+                company_id: request.company_id,
+                employee_id: request.employee_id,
+                leave_type_id: request.leave_type_id,
+                leave_request_id: request.id,
+                transaction_type: TRANSACTION_TYPE.LEAVE_APPROVAL,
+                leave_year: leaveYear,
+                days: -duration,
+                is_paid: request.leaveType ? request.leaveType.is_paid : true,
+                description: `Approved leave application from ${request.from_date} to ${request.to_date}`,
+                changed_by: changedBy
+            }, { transaction });
+
+            // 4. Update Attendance records automatically
+            const start = LeaveValidationService.parseLocalDate(request.from_date);
+            const end = LeaveValidationService.parseLocalDate(request.to_date);
+            let current = new Date(start);
+
+            const company = await db.Company.findByPk(request.company_id, { transaction });
+            const sandwichEnabled = company ? company.sandwich_policy_enabled : false;
+
+            while (current <= end) {
+                const yyyy = current.getFullYear();
+                const mm = String(current.getMonth() + 1).padStart(2, "0");
+                const dd = String(current.getDate()).padStart(2, "0");
+                const currentStr = `${yyyy}-${mm}-${dd}`;
+
+                let shouldUpdateAttendance = true;
+                if (!sandwichEnabled) {
+                    const holiday = await LeaveValidationService.isHoliday(request.company_id, currentStr);
+                    if (holiday) shouldUpdateAttendance = false;
+                }
+
+                if (shouldUpdateAttendance) {
+                    let attStatus = ATTENDANCE_STATUS.PAID_LEAVE;
+                    if (request.leaveType) {
+                        if (!request.leaveType.is_paid) {
+                            attStatus = ATTENDANCE_STATUS.UNPAID_LEAVE;
+                        } else if (request.leaveType.code === "COMP_OFF") {
+                            attStatus = ATTENDANCE_STATUS.COMP_OFF;
+                        }
+                    }
+
+                    if (request.day_type === DAY_TYPE.FIRST_HALF || request.day_type === DAY_TYPE.SECOND_HALF) {
+                        attStatus = ATTENDANCE_STATUS.HALF_DAY;
+                    }
+
+                    // Find or create attendance for this date
+                    const [attRecord] = await db.Attendance.findOrCreate({
+                        where: { employee_id: request.employee_id, date: currentStr },
+                        defaults: {
+                            employee_id: request.employee_id,
+                            date: currentStr,
+                            status: true,
+                            attendance_status: attStatus
+                        },
+                        transaction
+                    });
+
+                    // Update existing records
+                    if (attRecord.attendance_status !== attStatus) {
+                        await attRecord.update({ attendance_status: attStatus }, { transaction });
+                    }
+                }
+
+                current.setDate(current.getDate() + 1);
+            }
+
+            await transaction.commit();
+
+            const fullRequest = await db.LeaveRequest.findByPk(id, {
+                include: [
+                    { model: db.Employee, as: "employee", attributes: ["id", "name", "employee_type"] },
+                    { model: db.LeaveType, as: "leaveType", attributes: ["id", "name", "code", "is_paid"] }
+                ]
+            });
+
+            return res.status(200).json(
+                successResponse("LEAVE_REQUEST_APPROVED", "Leave request approved successfully.", "Leave request approved successfully.", fullRequest)
+            );
+        } catch (err) {
+            await transaction.rollback();
+            logger.error("Error approving leave request", err, { id: req.params.id });
+
+            const errMsg = err.message || "";
+            if (errMsg.includes("Insufficient")) {
+                return res.status(422).json(
+                    errorResponse("INSUFFICIENT_BALANCE", errMsg, errMsg)
+                );
+            }
+
             return res.status(500).json(
                 errorResponse("LEAVE_REQUEST_APPROVE_FAILED", err.message, "Failed to approve leave request.")
             );
         }
     }
 
+    /**
+     * Reject a submitted leave request
+     */
     async reject(req, res) {
+        const transaction = await db.sequelize.transaction();
         try {
             const { id } = req.params;
-            const request = await LeaveRequestService.getById(id);
+
+            const request = await db.LeaveRequest.findByPk(id, { transaction });
             if (!request) {
-                return res.status(404).json(
-                    errorResponse("NOT_FOUND", "Leave request not found.", "Leave request not found.")
-                );
+                await transaction.rollback();
+                return res.status(404).json(errorResponse("NOT_FOUND", "Leave request not found.", "Leave request not found."));
             }
 
-            const updatedRequest = await LeaveRequestService.updateStatus(id, "Rejected");
-            const formatted = await formatRequestWithLatestBalance(updatedRequest);
+            if (request.status !== LEAVE_STATUS.SUBMITTED) {
+                await transaction.rollback();
+                return res.status(400).json(errorResponse("INVALID_STATE", `Cannot reject a leave request in status: ${request.status}.`, "Invalid request status."));
+            }
+
+            await request.update({ status: LEAVE_STATUS.REJECTED }, { transaction });
+
+            await transaction.commit();
+
             return res.status(200).json(
-                successResponse("LEAVE_REQUEST_REJECTED", "Leave request rejected successfully.", "Leave request rejected successfully.", formatted)
+                successResponse("LEAVE_REQUEST_REJECTED", "Leave request rejected successfully.", "Leave request rejected successfully.", request)
             );
         } catch (err) {
-            console.error("Error rejecting leave request:", err);
+            await transaction.rollback();
+            logger.error("Error rejecting leave request", err, { id: req.params.id });
             return res.status(500).json(
                 errorResponse("LEAVE_REQUEST_REJECT_FAILED", err.message, "Failed to reject leave request.")
+            );
+        }
+    }
+
+    /**
+     * Cancel an approved leave request and restore balances
+     */
+    async cancel(req, res) {
+        const transaction = await db.sequelize.transaction();
+        try {
+            const { id } = req.params;
+            const changedBy = req.user ? req.user.id : null;
+
+            const request = await db.LeaveRequest.findByPk(id, {
+                include: [{ model: db.LeaveType, as: "leaveType" }]
+            });
+
+            if (!request) {
+                await transaction.rollback();
+                return res.status(404).json(errorResponse("NOT_FOUND", "Leave request not found.", "Leave request not found."));
+            }
+
+            if (request.status !== LEAVE_STATUS.APPROVED) {
+                await transaction.rollback();
+                return res.status(400).json(errorResponse("INVALID_STATE", "Only approved leave requests can be cancelled.", "Only approved leaves can be cancelled."));
+            }
+
+            const leaveYear = request.from_date.split("-")[0];
+            const duration = parseFloat(request.number_of_days);
+
+            // 1. Update request status to Cancelled
+            await request.update({ status: LEAVE_STATUS.CANCELLED }, { transaction });
+
+            // 2. Revert Leave Balance (Used is decremented)
+            const balanceObj = await LeaveBalanceService.getOrCreateBalance(request.company_id, request.employee_id, request.leave_type_id, leaveYear, transaction);
+            const currentUsed = parseFloat(balanceObj.used) || 0.00;
+            const newUsed = Math.max(0, currentUsed - duration);
+            await balanceObj.update({ used: parseFloat(newUsed.toFixed(2)) }, { transaction });
+
+            // 3. Log Cancelled Transaction ledger (positive correction)
+            await db.LeaveTransaction.create({
+                company_id: request.company_id,
+                employee_id: request.employee_id,
+                leave_type_id: request.leave_type_id,
+                leave_request_id: request.id,
+                transaction_type: TRANSACTION_TYPE.LEAVE_CANCELLATION,
+                leave_year: leaveYear,
+                days: duration,
+                is_paid: request.leaveType ? request.leaveType.is_paid : true,
+                description: `Cancelled approved leave application from ${request.from_date} to ${request.to_date}`,
+                changed_by: changedBy
+            }, { transaction });
+
+            // 4. Restore Attendance records (Remove or revert leave status to default Present)
+            const start = LeaveValidationService.parseLocalDate(request.from_date);
+            const end = LeaveValidationService.parseLocalDate(request.to_date);
+            let current = new Date(start);
+
+            while (current <= end) {
+                const yyyy = current.getFullYear();
+                const mm = String(current.getMonth() + 1).padStart(2, "0");
+                const dd = String(current.getDate()).padStart(2, "0");
+                const currentStr = `${yyyy}-${mm}-${dd}`;
+
+                const attRecord = await db.Attendance.findOne({
+                    where: { employee_id: request.employee_id, date: currentStr },
+                    transaction
+                });
+
+                if (attRecord) {
+                    if (attRecord.sign_in_time === null && attRecord.sign_out_time === null) {
+                        await attRecord.destroy({ transaction });
+                    } else {
+                        await attRecord.update({ attendance_status: ATTENDANCE_STATUS.PRESENT }, { transaction });
+                    }
+                }
+
+                current.setDate(current.getDate() + 1);
+            }
+
+            await transaction.commit();
+
+            const fullRequest = await db.LeaveRequest.findByPk(id, {
+                include: [
+                    { model: db.Employee, as: "employee", attributes: ["id", "name", "employee_type"] },
+                    { model: db.LeaveType, as: "leaveType", attributes: ["id", "name", "code", "is_paid"] }
+                ]
+            });
+
+            return res.status(200).json(
+                successResponse("LEAVE_REQUEST_CANCELLED", "Leave request cancelled and balances restored.", "Leave request cancelled successfully.", fullRequest)
+            );
+        } catch (err) {
+            await transaction.rollback();
+            logger.error("Error cancelling leave request", err, { id: req.params.id });
+            return res.status(500).json(
+                errorResponse("LEAVE_REQUEST_CANCEL_FAILED", err.message, "Failed to cancel leave request.")
             );
         }
     }
