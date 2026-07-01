@@ -459,3 +459,314 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Add Leave Type Button */
+.addBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--primary);
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px -1px rgba(39, 214, 138, 0.2);
+}
+
+.addBtn:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px -2px rgba(39, 214, 138, 0.3);
+}
+
+/* Modal Overlay and Container */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modalContent {
+  background-color: var(--card-bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-width: 550px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modalHeader {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.closeBtn:hover {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.modalForm {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  max-height: 75vh;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.checkboxGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: var(--bg-main);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+/* Pagination footer (matching Employee master exactly) */
+.tableFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.footerLeft {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.infoText {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.pagination {
+  display: flex;
+  gap: 4px;
+}
+
+.pageBtn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.activePageBtn {
+  background-color: var(--primary) !important;
+  color: white !important;
+  border-color: var(--primary) !important;
+}
+
+.pageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.limitControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.limitSelect {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  outline: none;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.limitSelect:focus {
+  border-color: var(--primary);
+}
+
+.searchableSelectContainer {
+  position: relative;
+  width: 100%;
+}
+
+.searchableSelectTrigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  min-height: 40px;
+}
+
+.searchableSelectTrigger:hover {
+  border-color: var(--primary);
+}
+
+.chevronIcon {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.searchableSelectDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  margin-top: 4px;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  max-height: 250px;
+}
+
+.searchableSelectSearch {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  outline: none;
+  margin-bottom: 6px;
+}
+
+.searchableSelectSearch:focus {
+  border-color: var(--primary);
+}
+
+.searchableSelectOptions {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.searchableSelectOption {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.searchableSelectOption:hover {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.searchableSelectOptionActive {
+  background-color: var(--primary) !important;
+  color: white !important;
+}
+
+.searchableSelectNoOptions {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+}
