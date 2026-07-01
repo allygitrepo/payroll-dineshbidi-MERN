@@ -21,7 +21,9 @@ const mapToFrontend = (req) => {
     status: req.status || 'Draft',
     appliedDate: req.applied_date || req.request_date || '',
     fromDate: req.from_date,
-    toDate: req.to_date
+    toDate: req.to_date,
+    actionByName: req.action_by_name || null,
+    actionByRole: req.action_by_role || null
   };
 };
 

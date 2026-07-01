@@ -4,6 +4,7 @@ const Attendance = require("./attendance.model");
 const Employee = require("../Masters/Employee/employee.model");
 const Company = require("../Masters/Company/company.model");
 const Contractor = require("../Masters/Contractor/contractor.model");
+const User = require("../Auth/Users/users.model");
 const fs = require("fs");
 const path = require("path");
 
@@ -487,9 +488,14 @@ class AttendanceService {
             throw error;
         }
 
+        const userObj = await User.findByPk(user.id);
+        const actionByName = userObj ? userObj.user_name : (user.user_name || user.user_id);
+
         await record.update({
             approval_status: "Approved",
-            status: true // Marks them as present
+            status: true, // Marks them as present
+            action_by_name: actionByName,
+            action_by_role: user.role_name
         });
 
         return await Attendance.findByPk(recordId, {
@@ -537,9 +543,14 @@ class AttendanceService {
             throw error;
         }
 
+        const userObj = await User.findByPk(user.id);
+        const actionByName = userObj ? userObj.user_name : (user.user_name || user.user_id);
+
         await record.update({
             approval_status: "Rejected",
-            status: false // Marks them as absent/not present
+            status: false, // Marks them as absent/not present
+            action_by_name: actionByName,
+            action_by_role: user.role_name
         });
 
         return await Attendance.findByPk(recordId, {

@@ -694,6 +694,7 @@ const LeavePage = () => {
                     <th>Days Count</th>
                     <th>Reason</th>
                     <th>Status</th>
+                    <th>Action By</th>
                     <th style={{ width: '130px', textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
@@ -760,25 +761,30 @@ const LeavePage = () => {
                           </span>
                         </td>
                         <td>
+                          {row.actionByName ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.82rem' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{row.actionByName}</span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>({row.actionByRole})</span>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
+                          )}
+                        </td>
+                        <td>
                           <div className={styles.actionButtons}>
                             {canApproveOrReject ? (
                               <>
                                 {row.status === 'Submitted' && (
                                   <>
                                     <button onClick={() => handleApprove(row.id, row.employeeName)} className={styles.actionApprove} title="Approve Request">
-                                      <Check size={14} /> Approve
+                                      <Check size={14} />
                                     </button>
                                     <button onClick={() => handleReject(row.id, row.employeeName)} className={styles.actionReject} title="Reject Request">
                                       <X size={14} />
                                     </button>
                                   </>
                                 )}
-                                {row.status === 'Approved' && (
-                                  <button onClick={() => handleCancel(row.id, row.employeeName)} className={styles.actionCancel} title="Cancel and Restore Balance">
-                                    <Ban size={14} /> Cancel Leave
-                                  </button>
-                                )}
-                                {row.status !== 'Submitted' && row.status !== 'Approved' && (
+                                {row.status !== 'Submitted' && (
                                   <span className={styles.actionCompletedText}>No actions</span>
                                 )}
                               </>
@@ -791,7 +797,7 @@ const LeavePage = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" className={styles.emptyTable}>No leave applications found.</td>
+                      <td colSpan="8" className={styles.emptyTable}>No leave applications found.</td>
                     </tr>
                   )}
                 </tbody>
@@ -890,6 +896,14 @@ const LeavePage = () => {
           confirmAction === 'approve' ? `Are you sure you want to approve the leave request for ${confirmTargetName}? This will deduct leaves and record attendance status.` : 
           confirmAction === 'reject' ? `Are you sure you want to reject the leave request for ${confirmTargetName}?` : 
           `Are you sure you want to cancel the approved leave for ${confirmTargetName}? This will restore the leave balance and revert attendance changes.`
+        }
+        confirmText={
+          confirmAction === 'approve' ? 'Approve' :
+          confirmAction === 'reject' ? 'Reject' : 'Cancel Leave'
+        }
+        theme={
+          confirmAction === 'approve' ? 'success' :
+          confirmAction === 'reject' ? 'danger' : 'warning'
         }
       />
     </div>

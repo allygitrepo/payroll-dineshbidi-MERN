@@ -17,7 +17,7 @@ import {
   Camera,
   Check
 } from 'lucide-react';
-import { useToast, DatePicker } from '../../../../shared/components';
+import { useToast, DatePicker, ConfirmModal } from '../../../../shared/components';
 import styles from './AttendanceListPage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { getCompanyAttendance, approveAttendance, rejectAttendance } from '../../attendanceService';
@@ -280,6 +280,12 @@ const AttendanceListPage = () => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [activeLocationTab, setActiveLocationTab] = useState('in');
+
+  // Confirmation Modal States
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null); // 'approve' | 'reject'
+  const [confirmTargetId, setConfirmTargetId] = useState(null);
+  const [confirmTargetName, setConfirmTargetName] = useState(null);
 
   // Fetch real data from DB
   useEffect(() => {
@@ -647,6 +653,45 @@ const AttendanceListPage = () => {
     }
   };
 
+  const triggerApproveConfirm = (id, name) => {
+    setConfirmTargetId(id);
+    setConfirmTargetName(name);
+    setConfirmAction('approve');
+    setIsConfirmOpen(true);
+  };
+
+  const triggerRejectConfirm = (id, name) => {
+    setConfirmTargetId(id);
+    setConfirmTargetName(name);
+    setConfirmAction('reject');
+    setIsConfirmOpen(true);
+  };
+
+  const handleCancelConfirm = () => {
+    setIsConfirmOpen(false);
+    setConfirmTargetId(null);
+    setConfirmTargetName(null);
+    setConfirmAction(null);
+  };
+
+  const handleExecuteConfirm = async () => {
+    const action = confirmAction;
+    const id = confirmTargetId;
+
+    setIsConfirmOpen(false);
+    setConfirmTargetId(null);
+    setConfirmTargetName(null);
+    setConfirmAction(null);
+
+    if (id && action) {
+      if (action === 'approve') {
+        await handleApprove(id);
+      } else if (action === 'reject') {
+        await handleReject(id);
+      }
+    }
+  };
+
   const getPageNumbers = () => {
     const pages = [];
     if (totalPages <= 7) {
@@ -801,6 +846,7 @@ const AttendanceListPage = () => {
               <th>Category</th>
               <th>Date & Time</th>
               <th>Status</th>
+              <th>Action By</th>
               <th style={{ textAlign: 'center' }}>Actions</th>
             </tr>
           </thead>
@@ -874,6 +920,16 @@ const AttendanceListPage = () => {
                       )}
                     </td>
                     <td>
+                      {rec.record?.action_by_name ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.82rem' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{rec.record.action_by_name}</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>({rec.record.action_by_role})</span>
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
+                      )}
+                    </td>
+                    <td>
                       <div className={styles.actions}>
                         {canApproveOrReject && rec.status === 'Pending' && (
                           <>
@@ -884,19 +940,16 @@ const AttendanceListPage = () => {
                                 color: 'white',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '4px',
-                                padding: '6px 10px',
+                                padding: '6px 8px',
                                 borderRadius: '4px',
                                 border: 'none',
                                 cursor: 'pointer',
-                                fontSize: '0.8rem',
-                                fontWeight: '600',
                                 marginRight: '6px'
                               }}
-                              onClick={() => handleApprove(rec.id)}
+                              onClick={() => triggerApproveConfirm(rec.id, rec.name)}
                               title="Approve Attendance"
                             >
-                              <Check size={14} /> Approve
+                              <Check size={14} />
                             </button>
                             <button
                               className={styles.actionBtn}
@@ -905,19 +958,16 @@ const AttendanceListPage = () => {
                                 color: 'white',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '4px',
-                                padding: '6px 10px',
+                                padding: '6px 8px',
                                 borderRadius: '4px',
                                 border: 'none',
                                 cursor: 'pointer',
-                                fontSize: '0.8rem',
-                                fontWeight: '600',
                                 marginRight: '6px'
                               }}
-                              onClick={() => handleReject(rec.id)}
+                              onClick={() => triggerRejectConfirm(rec.id, rec.name)}
                               title="Reject Attendance"
                             >
-                              <X size={14} /> Reject
+                              <X size={14} />
                             </button>
                           </>
                         )}
@@ -946,7 +996,7 @@ const AttendanceListPage = () => {
               })
             ) : (
               <tr>
-                <td colSpan="7" className={styles.emptyTable}>
+                <td colSpan="8" className={styles.emptyTable}>
                   No attendance records found for {selectedDate ? formatDateFriendly(selectedDate) : 'selected query'}
                 </td>
               </tr>
@@ -1188,6 +1238,20 @@ const AttendanceListPage = () => {
           </div>
         </div>
       )}
+      {/* Confirmation Dialog Modal */}
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={handleCancelConfirm}
+        onConfirm={handleExecuteConfirm}
+        title={confirmAction === 'approve' ? 'Approve Attendance' : 'Reject Attendance'}
+        message={
+          confirmAction === 'approve'
+            ? `Are you sure you want to approve the attendance check-in for ${confirmTargetName}? This will mark them as Present.`
+            : `Are you sure you want to reject the attendance check-in for ${confirmTargetName}? This will mark them as Absent.`
+        }
+        confirmText={confirmAction === 'approve' ? 'Approve' : 'Reject'}
+        theme={confirmAction === 'approve' ? 'success' : 'danger'}
+      />
       </div>
     </div>
   );

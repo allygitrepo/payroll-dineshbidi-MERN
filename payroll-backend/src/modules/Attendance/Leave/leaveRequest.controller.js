@@ -347,8 +347,15 @@ class LeaveRequestController {
                 }
             }
 
+            const userObj = await db.User.findByPk(req.user.id, { transaction });
+            const actionByName = userObj ? userObj.user_name : (req.user.user_name || req.user.user_id);
+
             // 1. Update request status
-            await request.update({ status: LEAVE_STATUS.APPROVED }, { transaction });
+            await request.update({ 
+                status: LEAVE_STATUS.APPROVED,
+                action_by_name: actionByName,
+                action_by_role: req.user.role_name
+            }, { transaction });
 
             // 2. Adjust Leave Balance (Used is incremented)
             const balanceObj = await LeaveBalanceService.getOrCreateBalance(request.company_id, request.employee_id, request.leave_type_id, leaveYear, transaction);
@@ -495,7 +502,14 @@ class LeaveRequestController {
                 return res.status(400).json(errorResponse("INVALID_STATE", `Cannot reject a leave request in status: ${request.status}.`, "Invalid request status."));
             }
 
-            await request.update({ status: LEAVE_STATUS.REJECTED }, { transaction });
+            const userObj = await db.User.findByPk(req.user.id, { transaction });
+            const actionByName = userObj ? userObj.user_name : (req.user.user_name || req.user.user_id);
+
+            await request.update({ 
+                status: LEAVE_STATUS.REJECTED,
+                action_by_name: actionByName,
+                action_by_role: req.user.role_name
+            }, { transaction });
 
             await transaction.commit();
 
@@ -561,8 +575,15 @@ class LeaveRequestController {
             const leaveYear = request.from_date.split("-")[0];
             const duration = parseFloat(request.number_of_days);
 
+            const userObj = await db.User.findByPk(req.user.id, { transaction });
+            const actionByName = userObj ? userObj.user_name : (req.user.user_name || req.user.user_id);
+
             // 1. Update request status to Cancelled
-            await request.update({ status: LEAVE_STATUS.CANCELLED }, { transaction });
+            await request.update({ 
+                status: LEAVE_STATUS.CANCELLED,
+                action_by_name: actionByName,
+                action_by_role: req.user.role_name
+            }, { transaction });
 
             // 2. Revert Leave Balance (Used is decremented)
             const balanceObj = await LeaveBalanceService.getOrCreateBalance(request.company_id, request.employee_id, request.leave_type_id, leaveYear, transaction);
