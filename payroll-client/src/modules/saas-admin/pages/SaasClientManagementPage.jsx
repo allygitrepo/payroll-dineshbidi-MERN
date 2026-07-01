@@ -3,12 +3,22 @@ import { Plus, Edit2, Trash2, Search, Building2 } from 'lucide-react';
 import styles from './SaasClientManagementPage.module.css';
 import { getSaasClients } from '../services/saasService';
 import SaasClientModal from './SaasClientModal';
+import { Pagination } from '../../../shared/components';
 
 const SaasClientManagementPage = () => {
   const [clients, setClients] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, itemsPerPage]);
 
   useEffect(() => {
     fetchClients();
@@ -43,6 +53,13 @@ const SaasClientManagementPage = () => {
     c.user_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Pagination calculation
+  const totalEntries = filteredClients.length;
+  const totalPages = Math.ceil(totalEntries / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalEntries);
+  const currentClients = filteredClients.slice(startIndex, endIndex);
+
   return (
     <div className={styles.container}>
       <div className={styles.headerSection}>
@@ -56,7 +73,20 @@ const SaasClientManagementPage = () => {
 
       <div className={styles.tableCard}>
         <div className={styles.tableControls}>
-          <div className={styles.limitControl}>Total Clients: {clients.length}</div>
+          <div className={styles.limitControl}>
+            <span>Show</span>
+            <select 
+              className={styles.limitSelect}
+              value={itemsPerPage}
+              onChange={e => setItemsPerPage(Number(e.target.value))}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span>entries</span>
+          </div>
           <div className={styles.searchWrapper}>
             <Search size={16} className={styles.searchIcon} />
             <input 
@@ -81,7 +111,7 @@ const SaasClientManagementPage = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredClients.map((client) => (
+              {currentClients.map((client) => (
                 <tr key={client.id}>
                   <td>
                     <div style={{ fontWeight: 500 }}>{client.user_name}</div>
@@ -117,6 +147,19 @@ const SaasClientManagementPage = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            Showing {totalEntries > 0 ? startIndex + 1 : 0} to {endIndex} of {totalEntries} entries
+          </div>
+          <div className={styles.pagination}>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </div>
       </div>
 

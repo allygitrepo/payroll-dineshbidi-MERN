@@ -11,45 +11,12 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [company, setCompany] = useState('');
-  const [companyOptions, setCompanyOptions] = useState([]);
-  const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const addToast = useToast();
 
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const response = await authService.getPublicCompanies();
-        if ((response.status || response.success) && response.data) {
-          const options = response.data.map((c) => ({
-            value: c.id,
-            label: c.company_name,
-          }));
-          setCompanyOptions(options);
-          if (options.length === 1) {
-            setCompany(options[0].value);
-          }
-        } else {
-          addToast({
-            type: 'error',
-            message: 'Failed to load company options.',
-          });
-        }
-      } catch (err) {
-        console.error('Error fetching companies:', err);
-        addToast({
-          type: 'error',
-          message: err.response?.data?.messageToShow || 'Error loading companies from server.',
-        });
-      } finally {
-        setLoadingCompanies(false);
-      }
-    };
-    fetchCompanies();
-  }, [addToast]);
+
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
@@ -81,7 +48,6 @@ const LoginPage = () => {
     const newErrors = {};
     if (!username.trim()) newErrors.username = 'User ID is required!';
     if (!password) newErrors.password = 'Password is required!';
-    if (companyOptions.length > 0 && !company) newErrors.company = 'Company is required!';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -92,16 +58,13 @@ const LoginPage = () => {
     
     setIsSubmitting(true);
     try {
-      const response = await authService.login(username, password, company || undefined);
+      const response = await authService.login(username, password);
       if ((response.status || response.success) && response.data) {
         const { user, accessToken } = response.data;
         localStorage.setItem('accessToken', accessToken);
         localStorage.setItem('user', JSON.stringify(user));
-        if (company) {
-          localStorage.setItem('selectedCompany', company);
-        } else {
-          localStorage.removeItem('selectedCompany');
-        }
+        // Remove company selection handling from login
+        // localStorage.removeItem('selectedCompany');
         
         addToast({
           type: 'success',
@@ -187,22 +150,6 @@ const LoginPage = () => {
                 icon={Lock}
                 error={errors.password}
                 disabled={isSubmitting}
-              />
-            </div>
-
-            <div className={styles.fieldGroup}>
-              <Select
-                name="company"
-                value={company}
-                onChange={(e) => {
-                  setCompany(e.target.value);
-                  if (errors.company) setErrors(prev => ({ ...prev, company: '' }));
-                }}
-                options={companyOptions}
-                placeholder={loadingCompanies ? "Loading companies..." : "Select Company"}
-                disabled={loadingCompanies || isSubmitting}
-                icon={Building2}
-                error={errors.company}
               />
             </div>
 

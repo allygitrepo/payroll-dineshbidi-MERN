@@ -1,4 +1,4 @@
-const { User, Role, Company } = require("../../../database/models");
+const { User, Role, Company, Employee, EmployeeType } = require("../../../database/models");
 const bcrypt = require("bcrypt");
 const { successResponse, errorResponse } = require("../../../utils/response");
 
@@ -85,6 +85,7 @@ class SaasController {
             const clients = await User.findAll({
                 where: {
                     status: true,
+                    role_id: { [Op.ne]: req.user.role_id }, // Exclude Co-Admins
                     id: { [Op.ne]: req.user.id }, // Exclude self
                     [Op.or]: [
                         { parent_id: req.user.id },
@@ -129,6 +130,7 @@ class SaasController {
             const clients = await User.findAll({
                 where: {
                     status: true,
+                    role_id: { [Op.ne]: req.user.role_id }, // Exclude Co-Admins
                     id: { [Op.ne]: req.user.id },
                     [Op.or]: [
                         { parent_id: req.user.id },
@@ -271,6 +273,85 @@ class SaasController {
         } catch (error) {
             console.error("Co-Admin Creation Error:", error);
             return res.status(500).json(errorResponse("SERVER_ERROR", error.message, "Failed to create Co-Admin."));
+        }
+    }
+    static async getEmployeeReports(req, res) {
+        try {
+            const users = await User.findAll({
+                where: { status: true },
+                attributes: ['id', 'user_name', 'user_id', 'status'],
+                include: [
+                    {
+                        model: Company,
+                        as: 'companies',
+                        attributes: ['id', 'company_name', 'cstatus'],
+                        include: [
+                            {
+                                model: Employee,
+                                as: 'employees',
+                                attributes: ['id', 'status', 'employee_type']
+                            }
+                        ]
+                    }
+                ],
+                order: [['user_name', 'ASC'], [{ model: Company, as: 'companies' }, 'company_name', 'ASC']]
+            });
+
+            const reports = users
+                .filter(user => user.companies && user.companies.length > 0)
+                .map(user => {
+                    let totalUserEmployees = 0;
+                    
+                    const companiesData = user.companies.map(company => {
+                        const employees = company.employees || [];
+                        const employeesTotal = employees.length;
+                        const employeesActive = employees.filter(e => e.status === true).length;
+                        const employeesInactive = employeesTotal - employeesActive;
+                        
+                        totalUserEmployees += employeesTotal;
+                        
+                        const typeBreakdown = {};
+                        employees.forEach(emp => {
+                            const typeName = emp.employee_type ? emp.employee_type.toUpperCase() : 'UNASSIGNED';
+                            if (!typeBreakdown[typeName]) {
+                                typeBreakdown[typeName] = { total: 0, active: 0, inactive: 0 };
+                            }
+                            typeBreakdown[typeName].total += 1;
+                            if (emp.status === true) {
+                                typeBreakdown[typeName].active += 1;
+                            } else {
+                                typeBreakdown[typeName].inactive += 1;
+                            }
+                        });
+
+                        return {
+                            companyId: company.id,
+                            companyName: company.company_name,
+                            employeesTotal,
+                            employeesActive,
+                            employeesInactive,
+                            typeBreakdown
+                        };
+                    });
+
+                    return {
+                        userId: user.id,
+                        userName: user.user_name,
+                        totalCompanies: user.companies.length,
+                        totalEmployees: totalUserEmployees,
+                        companies: companiesData
+                    };
+                });
+
+            return res.status(200).json(successResponse(
+                "EMPLOYEE_REPORTS_RETRIEVED",
+                "Employee reports retrieved successfully",
+                "Employee reports retrieved successfully",
+                reports
+            ));
+        } catch (error) {
+            console.error("Get Employee Reports Error:", error);
+            return res.status(500).json(errorResponse("SERVER_ERROR", error.message, "Failed to retrieve employee reports."));
         }
     }
 }

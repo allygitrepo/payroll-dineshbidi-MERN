@@ -7,9 +7,11 @@ import ContractorTable from '../components/ContractorTable';
 import ContractorLoginModal from '../components/ContractorLoginModal';
 import { getContractors, saveContractor, deleteContractor, createContractorLogin, getContractorLogin } from '../services/contractorService';
 import { getAddresses } from '../../address/services/addressService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Pagination } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import { parseExcelDate } from '../../../../shared/utils/dateUtils';
+import { MessageCircle } from 'lucide-react';
+import WhatsAppBulkSendModal from '../../../utility/whatsapp/components/WhatsAppBulkSendModal';
 
 const ContractorPage = () => {
   const addToast = useToast();
@@ -20,8 +22,18 @@ const ContractorPage = () => {
 
   // Search filter and download dropdown states
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Active');
+  const [statusFilter, setStatusFilter] = useState('ACTIVE');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [whatsAppEmployees, setWhatsAppEmployees] = useState([]);
+  const [isFetchingWhatsApp, setIsFetchingWhatsApp] = useState(false);
+  
+  // Pagination & Loading States
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalEntries, setTotalEntries] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Confirm delete states
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -36,28 +48,53 @@ const ContractorPage = () => {
   const pageTopRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Load initial contractors and addresses
+  // Load initial addresses
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchStaticData = async () => {
       const companyId = localStorage.getItem('selectedCompany');
-      if (!companyId) {
-        addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
-        return;
-      }
+      if (!companyId) return;
       try {
-        const [loadedContractors, loadedAddresses] = await Promise.all([
-          getContractors(companyId),
-          getAddresses(companyId)
-        ]);
-        setContractors(loadedContractors);
+        const loadedAddresses = await getAddresses(companyId);
         setAddresses(loadedAddresses);
       } catch (err) {
-        console.error('Error loading contractor initial data:', err);
-        addToast({ type: 'error', message: 'Failed to load contractor data.' });
+        console.error('Error loading contractor static data:', err);
       }
     };
-    fetchInitialData();
-  }, [addToast]);
+    fetchStaticData();
+  }, []);
+
+  // Fetch contractors dynamically with pagination and filtering
+  const fetchContractors = async () => {
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const params = {
+          page: currentPage,
+          limit: pageSize,
+          search: searchTerm,
+          status: statusFilter === 'ACTIVE' ? '1' : statusFilter === 'INACTIVE' ? '0' : ''
+      };
+      
+      const response = await getContractors(companyId, params);
+      setContractors(response.data || []);
+      setTotalEntries(response.total || 0);
+      setTotalPages(response.totalPages || 1);
+    } catch (err) {
+      console.error('Error fetching contractors:', err);
+      addToast({ type: 'error', message: 'Failed to load contractor data.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContractors();
+  }, [currentPage, pageSize, searchTerm, statusFilter, addToast]);
 
   // Close download dropdown if clicked outside
   useEffect(() => {
@@ -101,8 +138,8 @@ const ContractorPage = () => {
     if (deleteTargetId) {
       const companyId = localStorage.getItem('selectedCompany');
       try {
-        const updated = await deleteContractor(deleteTargetId, companyId);
-        setContractors(updated);
+        await deleteContractor(deleteTargetId, companyId);
+        fetchContractors();
         addToast({ type: 'success', message: 'Contractor deleted successfully!' });
       } catch (err) {
         console.error('Error deleting contractor:', err);
@@ -121,8 +158,8 @@ const ContractorPage = () => {
   const handleSave = async (contractorData) => {
     const companyId = localStorage.getItem('selectedCompany');
     try {
-      const updated = await saveContractor(contractorData, companyId, addresses);
-      setContractors(updated);
+      await saveContractor(contractorData, companyId, addresses);
+      fetchContractors();
       setIsFormOpen(false);
       setEditingContractor(null);
       addToast({
@@ -177,31 +214,31 @@ const ContractorPage = () => {
     }
   };
 
+  const handleOpenWhatsAppModal = async () => {
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) return;
+
+    setIsFetchingWhatsApp(true);
+    try {
+      const params = {
+        search: searchTerm,
+        status: statusFilter === 'ACTIVE' ? '1' : statusFilter === 'INACTIVE' ? '0' : ''
+        // Intentionally omitting page and limit to fetch all matching records
+      };
+      
+      const response = await getContractors(companyId, params);
+      setWhatsAppEmployees(response.data || []);
+      setIsWhatsAppModalOpen(true);
+    } catch (err) {
+      console.error('Error fetching contractors for WhatsApp:', err);
+      addToast({ type: 'error', message: 'Failed to load contractors for WhatsApp.' });
+    } finally {
+      setIsFetchingWhatsApp(false);
+    }
+  };
+
   // Filtered listing based on Search and Status Filter
-  const filteredContractors = useMemo(() => {
-    return contractors.filter((contractor) => {
-      // 1. Status Filter
-      if (statusFilter !== 'All' && contractor.status !== statusFilter) {
-        return false;
-      }
-      // 2. Keyword Search
-      const search = searchTerm.toLowerCase();
-      return (
-        (contractor.ccode && contractor.ccode.toLowerCase().includes(search)) ||
-        (contractor.name && contractor.name.toLowerCase().includes(search)) ||
-        (contractor.address && contractor.address.toLowerCase().includes(search)) ||
-        (contractor.postOffice && contractor.postOffice.toLowerCase().includes(search)) ||
-        (contractor.district && contractor.district.toLowerCase().includes(search)) ||
-        (contractor.pincode && contractor.pincode.toLowerCase().includes(search)) ||
-        (contractor.pfCode && contractor.pfCode.toLowerCase().includes(search)) ||
-        (contractor.pan && contractor.pan.toLowerCase().includes(search)) ||
-        (contractor.aadhaar && contractor.aadhaar.toLowerCase().includes(search)) ||
-        (contractor.bankAccount && contractor.bankAccount.toLowerCase().includes(search)) ||
-        (contractor.bankName && contractor.bankName.toLowerCase().includes(search)) ||
-        (contractor.ifsc && contractor.ifsc.toLowerCase().includes(search))
-      );
-    });
-  }, [contractors, searchTerm, statusFilter]);
+  const filteredContractors = contractors;
 
   // Export handlers
   const handleExportClick = async (type) => {
@@ -355,6 +392,15 @@ const ContractorPage = () => {
             <Upload size={18} /> Upload Excel
           </button>
           
+          <button 
+            className={styles.addBtn} 
+            style={{ backgroundColor: '#25D366', opacity: isFetchingWhatsApp ? 0.7 : 1, cursor: isFetchingWhatsApp ? 'not-allowed' : 'pointer' }}
+            onClick={handleOpenWhatsAppModal}
+            disabled={isFetchingWhatsApp}
+          >
+            <MessageCircle size={18} /> {isFetchingWhatsApp ? 'Loading...' : 'WhatsApp'}
+          </button>
+          
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
               className={styles.downloadBtn}
@@ -399,16 +445,56 @@ const ContractorPage = () => {
       )}
 
       {/* Render table card containing list */}
-      <ContractorTable
-        data={filteredContractors}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
-        onCreateLogin={handleCreateLoginClick}
-      />
+      <div style={{ position: 'relative' }}>
+        {isLoading && (
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="loader"></div>
+            </div>
+        )}
+        <ContractorTable
+          data={filteredContractors}
+          searchTerm={searchTerm}
+          onSearchChange={(val) => { setSearchTerm(val); setCurrentPage(1); }}
+          statusFilter={statusFilter}
+          onStatusFilterChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+          onEdit={handleEdit}
+          onDelete={handleDeleteClick}
+          onCreateLogin={handleCreateLoginClick}
+        />
+        
+        {/* Pagination controls */}
+        {!isFormOpen && totalEntries > 0 && (
+          <div className={styles.tableFooter} style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--card-bg)' }}>
+            <div className={styles.footerLeft} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div className={styles.limitControl} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                  className={styles.limitSelect}
+                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>records per page</span>
+              </div>
+              <div className={styles.infoText} style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalEntries)} of {totalEntries} entries
+              </div>
+            </div>
+
+            <div className={styles.pagination}>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       <ContractorLoginModal
         isOpen={isLoginModalOpen}
@@ -426,6 +512,14 @@ const ContractorPage = () => {
         title="Delete Contractor"
         message="Are you sure you want to delete this contractor? This action cannot be undone."
       />
+
+      {isWhatsAppModalOpen && (
+        <WhatsAppBulkSendModal
+          employees={whatsAppEmployees} // Works for contractors too
+          recipientType="contractor"
+          onClose={() => setIsWhatsAppModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

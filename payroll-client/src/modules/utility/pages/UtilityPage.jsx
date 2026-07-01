@@ -1,6 +1,7 @@
 import React from 'react';
 import CalenderPage from '../calender/pages/CalenderPage';
 import UserManagementPage from '../user-management/pages/UserManagementPage';
+import WhatsAppGatewayPage from '../whatsapp/pages/WhatsAppGatewayPage';
 import EmployeeDataImportPage from '../employee-data-import/pages/EmployeeDataImportPage';
 import EmployeeDataExportPage from '../employee-data-export/pages/EmployeeDataExportPage';
 import KycExportPage from '../kyc-export/pages/KycExportPage';
@@ -17,6 +18,8 @@ const UtilityPage = ({ activeSubMenu }) => {
       return <CalenderPage />;
     case 'User Management':
       return <UserManagementPage />;
+    case 'WhatsApp Gateway':
+      return <WhatsAppGatewayPage />;
     case 'Employee Data Import':
       return <EmployeeDataImportPage />;
     case 'Employee Data Export':

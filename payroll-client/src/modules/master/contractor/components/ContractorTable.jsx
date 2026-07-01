@@ -22,14 +22,7 @@ const ContractorTable = ({
   onDelete,
   onCreateLogin
 }) => {
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-
-  // Reset pagination if filter changes
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, pageSize, statusFilter]);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -57,14 +50,7 @@ const ContractorTable = ({
     return sortableItems;
   }, [data, sortConfig]);
 
-  // Pagination calculations
-  const totalEntries = sortedData.length;
-  const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, totalEntries);
-  const paginatedData = useMemo(() => {
-    return sortedData.slice(startIndex, endIndex);
-  }, [sortedData, startIndex, endIndex]);
+  const paginatedData = sortedData;
 
   const renderSortIcon = (columnKey) => {
     if (sortConfig.key !== columnKey) return <ArrowUpDown size={14} style={{ opacity: 0.4, marginLeft: '4px' }} />;
@@ -75,11 +61,7 @@ const ContractorTable = ({
     <div className={styles.tableCard}>
       {/* Table Controls containing Status Filter on left, Search on right */}
       <div className={styles.tableControls}>
-        <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-          Total Contractors: {totalEntries}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginLeft: 'auto' }}>
           <select
             value={statusFilter}
             onChange={(e) => onStatusFilterChange(e.target.value)}
@@ -212,7 +194,7 @@ const ContractorTable = ({
                     </div>
                   </td>
                   <td style={{ textAlign: 'center', fontWeight: '500' }}>
-                    {startIndex + index + 1}
+                    {index + 1}
                   </td>
                   <td>{contractor.ccode}</td>
                   <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
@@ -247,35 +229,6 @@ const ContractorTable = ({
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Footer Controls */}
-      <div className={styles.tableFooter}>
-        <div className={styles.footerLeft}>
-          <div className={styles.limitControl}>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              className={styles.limitSelect}
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-            <span>records per page</span>
-          </div>
-          <div className={styles.infoText}>
-            Showing {totalEntries > 0 ? startIndex + 1 : 0} to {endIndex} of {totalEntries} entries
-          </div>
-        </div>
-        <div className={styles.pagination}>
-            <Pagination 
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          </div>
       </div>
     </div>
   );

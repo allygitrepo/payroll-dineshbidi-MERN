@@ -142,18 +142,33 @@ class ContractorService {
     }
 
     /**
-     * Retrieves all active contractors for a specific company.
+     * Retrieves all contractors for a specific company with pagination and filtering.
      */
-    static async getAllContractors(companyId, user) {
+    static async getAllContractors(companyId, user, options = {}) {
         // Verify company ownership
         await verifyCompanyAccess(companyId, user);
 
+        const { page, limit, search, status } = options;
         const whereClause = { company_id: companyId };
+        
         if (user.role_name === 'Contractor' && user.contractor_id) {
             whereClause.id = user.contractor_id;
         }
 
-        return await Contractor.findAll({
+        if (status !== undefined && status !== '') {
+            whereClause.status = status === '1' || status === 'true' || status === true;
+        }
+
+        if (search) {
+            whereClause[Op.or] = [
+                { name: { [Op.like]: `%${search}%` } },
+                { ccode: { [Op.like]: `%${search}%` } },
+                { pf_code: { [Op.like]: `%${search}%` } },
+                { pan: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        const queryOptions = {
             where: whereClause,
             include: [
                 {
@@ -162,7 +177,33 @@ class ContractorService {
                 }
             ],
             order: [["createdAt", "DESC"]],
-        });
+        };
+
+        if (page && limit) {
+            const pageNumber = parseInt(page, 10) || 1;
+            const pageSize = parseInt(limit, 10) || 20;
+            const offset = (pageNumber - 1) * pageSize;
+            
+            queryOptions.limit = pageSize;
+            queryOptions.offset = offset;
+
+            const { count, rows } = await Contractor.findAndCountAll(queryOptions);
+            return {
+                rows,
+                total: count,
+                totalPages: Math.ceil(count / pageSize),
+                currentPage: pageNumber
+            };
+        }
+
+        // Return array directly if no pagination
+        const rows = await Contractor.findAll(queryOptions);
+        return {
+            rows,
+            total: rows.length,
+            totalPages: 1,
+            currentPage: 1
+        };
     }
 
     /**

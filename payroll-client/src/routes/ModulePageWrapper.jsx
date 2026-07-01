@@ -57,6 +57,7 @@ const slugToSubmenuMap = {
   
   calender: 'Calender',
   'user-management': 'User Management',
+  'whatsapp-gateway': 'WhatsApp Gateway',
   'employee-data-import': 'Employee Data Import',
   'employee-data-export': 'Employee Data Export',
   'kyc-export': 'KYC Export',

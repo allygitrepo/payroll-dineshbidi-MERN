@@ -1,10 +1,10 @@
 import { Pagination } from '../../../../shared/components';
 import React, { useState, useMemo } from 'react';
-import { Edit, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Edit, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Star } from 'lucide-react';
 import styles from './CompanyPage.module.css';
 import { useToast } from '../../../../shared/components';
 
-const CompanyTable = ({ data, searchTerm, onSearchChange, selectedStatus, onStatusFilterChange, onEdit, onDelete }) => {
+const CompanyTable = ({ data, searchTerm, onSearchChange, selectedStatus, onStatusFilterChange, onEdit, onDelete, onSetDefault }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -181,6 +181,19 @@ const CompanyTable = ({ data, searchTerm, onSearchChange, selectedStatus, onStat
                           className={styles.deleteBtn}
                         >
                           <Trash2 size={16} />
+                        </button>
+                      )}
+                      {onSetDefault && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSetDefault(company.id);
+                          }}
+                          title="Set as Default Company"
+                          className={styles.editBtn}
+                          style={{ color: company.id === localStorage.getItem('selectedCompany') ? '#f59e0b' : 'var(--text-secondary)' }}
+                        >
+                          <Star size={16} fill={company.id === localStorage.getItem('selectedCompany') ? '#f59e0b' : 'none'} />
                         </button>
                       )}
                     </div>

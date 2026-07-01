@@ -10,6 +10,7 @@ import SaasDashboardPage from '../modules/saas-admin/pages/SaasDashboardPage';
 import SaasDashboardHome from '../modules/saas-admin/pages/SaasDashboardHome';
 import SaasClientManagementPage from '../modules/saas-admin/pages/SaasClientManagementPage';
 import SaasCoAdminsPage from '../modules/saas-admin/pages/SaasCoAdminsPage';
+import SaasEmployeeReportPage from '../modules/saas-admin/pages/SaasEmployeeReportPage';
 
 export const router = createBrowserRouter([
   {
@@ -31,6 +32,10 @@ export const router = createBrowserRouter([
       {
         path: 'co-admins',
         element: <SaasCoAdminsPage />
+      },
+      {
+        path: 'employee-stats',
+        element: <SaasEmployeeReportPage />
       }
     ]
   },

@@ -41,6 +41,7 @@ const createContractorSchema = Joi.object({
     bank_ac: Joi.string().optional().allow(null, ""),
     bank_name: Joi.string().max(100).optional().allow(null, ""),
     ifsc: Joi.string().optional().allow(null, ""),
+    whatsapp_number: Joi.string().optional().allow(null, ""),
     status: Joi.boolean().optional(),
 });
 
@@ -60,6 +61,7 @@ const updateContractorSchema = Joi.object({
     bank_ac: Joi.string().optional().allow(null, ""),
     bank_name: Joi.string().max(100).optional().allow(null, ""),
     ifsc: Joi.string().optional().allow(null, ""),
+    whatsapp_number: Joi.string().optional().allow(null, ""),
     status: Joi.boolean().optional(),
 });
 

@@ -146,6 +146,21 @@ const CompanyPage = () => {
     setEditingCompany(null);
   };
 
+  const handleSetDefault = async (companyId) => {
+    try {
+      const res = await authService.selectCompany(companyId);
+      if (res.status || res.success) {
+        localStorage.setItem('accessToken', res.data.accessToken);
+        localStorage.setItem('selectedCompany', companyId);
+        addToast({ type: 'success', message: 'Default company updated successfully!' });
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('Failed to set default company', err);
+      addToast({ type: 'error', message: 'Failed to set default company.' });
+    }
+  };
+
   // Filtered data based on search term
   const filteredCompanies = useMemo(() => {
     return companies.filter(company => {
@@ -249,8 +264,9 @@ const CompanyPage = () => {
         onSearchChange={setSearchTerm}
         selectedStatus={statusFilter}
         onStatusFilterChange={setStatusFilter}
-        onEdit={canEdit ? handleEdit : null}
-        onDelete={canDelete ? handleDeleteClick : null}
+        onEdit={canEdit ? handleEdit : undefined}
+        onDelete={canDelete ? handleDeleteClick : undefined}
+        onSetDefault={handleSetDefault}
       />
 
       {/* Reusable Confirm Delete Modal */}

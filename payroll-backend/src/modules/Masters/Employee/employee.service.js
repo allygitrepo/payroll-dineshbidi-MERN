@@ -325,17 +325,37 @@ class EmployeeService {
     }
 
     /**
-     * Retrieves all active employees for a company.
+     * Retrieves all employees for a company with pagination, filtering, and search.
      */
-    static async getAllEmployees(companyId, user) {
+    static async getAllEmployees(companyId, user, options = {}) {
         await verifyCompanyAccess(companyId, user);
 
+        const { page, limit, search, status, employeeType } = options;
+
         const whereClause = { company_id: companyId };
+        
         if (user.role_name === 'Contractor' && user.contractor_id) {
             whereClause.contractor_id = user.contractor_id;
         }
 
-        return await Employee.findAll({
+        if (status !== undefined && status !== '') {
+            whereClause.status = status === '1' || status === 'true' || status === true;
+        }
+
+        if (employeeType) {
+            whereClause.employee_type = employeeType;
+        }
+
+        if (search) {
+            whereClause[Op.or] = [
+                { name: { [Op.like]: `%${search}%` } },
+                { uan: { [Op.like]: `%${search}%` } },
+                { ip_number: { [Op.like]: `%${search}%` } },
+                { aadhar: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        const queryOptions = {
             where: whereClause,
             include: [
                 { model: EmployeeKycDetail, as: "kycDetail", where: { status: true }, required: false },
@@ -345,7 +365,33 @@ class EmployeeService {
                 { model: Contractor, as: "contractor", required: false },
             ],
             order: [["createdAt", "DESC"]],
-        });
+        };
+
+        if (page && limit) {
+            const pageNumber = parseInt(page, 10) || 1;
+            const pageSize = parseInt(limit, 10) || 20;
+            const offset = (pageNumber - 1) * pageSize;
+            
+            queryOptions.limit = pageSize;
+            queryOptions.offset = offset;
+
+            const { count, rows } = await Employee.findAndCountAll(queryOptions);
+            return {
+                rows,
+                total: count,
+                totalPages: Math.ceil(count / pageSize),
+                currentPage: pageNumber
+            };
+        }
+
+        // Return array directly if no pagination
+        const rows = await Employee.findAll(queryOptions);
+        return {
+            rows,
+            total: rows.length,
+            totalPages: 1,
+            currentPage: 1
+        };
     }
 
     /**

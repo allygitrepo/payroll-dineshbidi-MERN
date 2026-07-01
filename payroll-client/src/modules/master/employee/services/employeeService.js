@@ -217,13 +217,40 @@ const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
   };
 };
 
-export const getEmployees = async (companyId) => {
-  if (!companyId) return [];
-  const response = await apiClient.get(`employees/company/${companyId}`);
+export const getEmployees = async (companyId, params = {}) => {
+  if (!companyId) return { data: [], total: 0, totalPages: 1 };
+  
+  const query = new URLSearchParams();
+  if (params.page) query.append('page', params.page);
+  if (params.limit) query.append('limit', params.limit);
+  if (params.search) query.append('search', params.search);
+  if (params.status !== undefined && params.status !== '') query.append('status', params.status);
+  if (params.employeeType) query.append('employeeType', params.employeeType);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  const response = await apiClient.get(`employees/company/${companyId}${queryString}`);
+  
   if ((response.data?.status || response.data?.success) && response.data?.data) {
-    return response.data.data.map(mapToFrontend);
+    if (response.data.data.rows) {
+        // Paginated response
+        return {
+            data: response.data.data.rows.map(mapToFrontend),
+            total: response.data.data.total,
+            totalPages: response.data.data.totalPages,
+            currentPage: response.data.data.currentPage
+        };
+    } else {
+        // Non-paginated response fallback
+        const arr = Array.isArray(response.data.data) ? response.data.data : [];
+        return {
+            data: arr.map(mapToFrontend),
+            total: arr.length,
+            totalPages: 1,
+            currentPage: 1
+        };
+    }
   }
-  return [];
+  return { data: [], total: 0, totalPages: 1 };
 };
 
 export const getMissingDetails = async (companyId, fields) => {

@@ -23,13 +23,16 @@ const BidiRollerEntry = require("../../modules/Entry/BidiRollerEntry/bidiRollerE
 const ChallanDateEntry = require("../../modules/Entry/ChallanDateEntry/challanDateEntry.model");
 const Resignation = require("../../modules/Entry/Resignation/resignation.model");
 const Note = require("../../modules/Todo List/Note/note.model");
+const LeaveMaster = require("../../modules/Setup/LeaveMaster/leaveMaster.model");
+const Loan = require("../../modules/Loan/loan.model");
+const LoanTransaction = require("../../modules/Loan/loanTransaction.model");
 const LeaveType = require("../../modules/Setup/LeaveMaster/leaveType.model");
 const LeavePolicy = require("../../modules/Setup/LeaveMaster/leavePolicy.model");
 const LeaveBalance = require("../../modules/Attendance/Leave/leaveBalance.model");
 const LeaveTransaction = require("../../modules/Attendance/Leave/leaveTransaction.model");
-const Loan = require("../../modules/Loan/loan.model");
-const LoanTransaction = require("../../modules/Loan/loanTransaction.model");
-
+const EmployeeType = require("../../modules/Masters/EmployeeType/employeeType.model");
+const WhatsAppInstance = require("../../modules/Setup/WhatsApp/whatsAppInstance.model");
+const WhatsAppTemplate = require("../../modules/Setup/WhatsApp/whatsappTemplate.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -66,8 +69,9 @@ db.LeaveType = LeaveType;
 db.LeavePolicy = LeavePolicy;
 db.LeaveBalance = LeaveBalance;
 db.LeaveTransaction = LeaveTransaction;
-db.Loan = Loan;
-db.LoanTransaction = LoanTransaction;
+db.EmployeeType = EmployeeType;
+db.WhatsAppInstance = WhatsAppInstance;
+db.WhatsAppTemplate = WhatsAppTemplate;
 
 
 // Model associations
@@ -430,6 +434,47 @@ db.LeaveType.belongsTo(db.Company, {
     as: "company",
 });
 
+// Loan relationships
+db.Company.hasMany(db.Loan, {
+    foreignKey: "company_id",
+    as: "loans",
+    onDelete: "CASCADE",
+});
+db.Loan.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
+
+db.Employee.hasMany(db.Loan, {
+    foreignKey: "employee_id",
+    as: "loans",
+    onDelete: "CASCADE",
+});
+db.Loan.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
+db.Loan.hasMany(db.LoanTransaction, {
+    foreignKey: "loan_id",
+    as: "transactions",
+    onDelete: "CASCADE",
+});
+db.LoanTransaction.belongsTo(db.Loan, {
+    foreignKey: "loan_id",
+    as: "loan",
+});
+
+db.Employee.hasMany(db.LoanTransaction, {
+    foreignKey: "employee_id",
+    as: "transactions",
+    onDelete: "CASCADE",
+});
+db.LoanTransaction.belongsTo(db.Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+});
+
 // LeavePolicy relations
 db.Company.hasMany(db.LeavePolicy, {
     foreignKey: "company_id",
@@ -518,47 +563,25 @@ db.LeaveType.hasMany(db.LeaveRequest, {
     as: "leaveRequests",
     onDelete: "CASCADE",
 });
-// Loan relationships
-db.Company.hasMany(db.Loan, {
+
+
+// WhatsApp relationships
+db.Company.hasOne(db.WhatsAppInstance, {
     foreignKey: "company_id",
-    as: "loans",
-    onDelete: "CASCADE",
+    as: "whatsapp_instance",
 });
-db.Loan.belongsTo(db.Company, {
+db.WhatsAppInstance.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
 });
 
-db.Employee.hasMany(db.Loan, {
-    foreignKey: "employee_id",
-    as: "loans",
-    onDelete: "CASCADE",
+db.Company.hasMany(db.WhatsAppTemplate, {
+    foreignKey: "company_id",
+    as: "whatsapp_templates",
 });
-db.Loan.belongsTo(db.Employee, {
-    foreignKey: "employee_id",
-    as: "employee",
+db.WhatsAppTemplate.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
 });
-
-db.Loan.hasMany(db.LoanTransaction, {
-    foreignKey: "loan_id",
-    as: "transactions",
-    onDelete: "CASCADE",
-});
-db.LoanTransaction.belongsTo(db.Loan, {
-    foreignKey: "loan_id",
-    as: "loan",
-});
-
-db.Employee.hasMany(db.LoanTransaction, {
-    foreignKey: "employee_id",
-    as: "transactions",
-    onDelete: "CASCADE",
-});
-db.LoanTransaction.belongsTo(db.Employee, {
-    foreignKey: "employee_id",
-    as: "employee",
-});
-
 
 module.exports = db;
-

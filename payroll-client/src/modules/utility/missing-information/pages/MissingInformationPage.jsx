@@ -1,9 +1,28 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, RotateCcw, Edit, AlertCircle } from 'lucide-react';
+import { Search, RotateCcw, Edit, AlertCircle, MessageCircle } from 'lucide-react';
 import { useToast, Pagination } from '../../../../shared/components';
 import { getMissingDetails } from '../../../master/employee/services/employeeService';
+import { getWhatsAppStatus } from '../../whatsapp/services/whatsappService';
+import WhatsAppBulkSendModal from '../../whatsapp/components/WhatsAppBulkSendModal';
 import styles from '../components/MissingInformationPage.module.css';
+
+const WhatsAppIcon = ({ size = 24 }) => (
+  <svg
+    xmlns="http://www.w3.org/2aa templa000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+    <path d="M12 21.942a9.92 9.92 0 0 1-5.068-1.385L2 22l1.492-4.786A9.926 9.926 0 1 1 12 21.942z" />
+  </svg>
+);
 
 const DIAGNOSTIC_FIELDS = [
   { key: 'Name', label: 'Name' },
@@ -36,6 +55,19 @@ const MissingInformationPage = () => {
 
   const [diagnosticResults, setDiagnosticResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [isWaConnected, setIsWaConnected] = useState(false);
+
+  useEffect(() => {
+    // Check WhatsApp status on mount
+    getWhatsAppStatus().then(res => {
+      if (res && res.status === true && res.data) {
+        setIsWaConnected(res.data.status === 'connected');
+      } else {
+        setIsWaConnected(false);
+      }
+    }).catch(() => setIsWaConnected(false));
+  }, []);
 
   // Apply query text matching locally after fetching from DB
   const searchedResults = useMemo(() => {
@@ -64,9 +96,9 @@ const MissingInformationPage = () => {
   }, [searchedResults, startIndex, endIndex]);
 
   const handleToggleField = (key) => {
-    setSelectedFields(prev => 
-      prev.includes(key) 
-        ? prev.filter(k => k !== key) 
+    setSelectedFields(prev =>
+      prev.includes(key)
+        ? prev.filter(k => k !== key)
         : [...prev, key]
     );
   };
@@ -79,7 +111,7 @@ const MissingInformationPage = () => {
       });
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const companyId = localStorage.getItem('selectedCompany');
@@ -87,11 +119,11 @@ const MissingInformationPage = () => {
         addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
         return;
       }
-      
+
       const res = await getMissingDetails(companyId, selectedFields);
       setDiagnosticResults(res || []);
       setAppliedFields(selectedFields);
-      
+
       addToast({
         type: 'success',
         message: `Diagnostic audit completed for ${selectedFields.length} selected categories.`
@@ -141,7 +173,7 @@ const MissingInformationPage = () => {
           <AlertCircle size={18} style={{ color: 'var(--primary)' }} />
           Select Diagnostic Categories
         </h3>
-        
+
         <div className={styles.checkboxGrid}>
           {DIAGNOSTIC_FIELDS.map(field => {
             const isActive = selectedFields.includes(field.key);
@@ -154,7 +186,7 @@ const MissingInformationPage = () => {
                 <input
                   type="checkbox"
                   checked={isActive}
-                  onChange={() => {}} // Toggled by parent click
+                  onChange={() => { }} // Toggled by parent click
                   className={styles.checkboxInput}
                 />
                 <span className={styles.checkboxLabel}>{field.label}</span>
@@ -196,6 +228,16 @@ const MissingInformationPage = () => {
               className={styles.searchInput}
             />
           </div>
+          {diagnosticResults.length > 0 && isWaConnected && (
+            <button
+              className={styles.resetBtn}
+              style={{ backgroundColor: '#25D366', color: 'white', borderColor: '#25D366', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontWeight: 'bold' }}
+              onClick={() => setIsWhatsAppModalOpen(true)}
+            >
+              <WhatsAppIcon size={18} />
+              Send WhatsApp Message
+            </button>
+          )}
         </div>
 
         {/* Data Table */}
@@ -242,9 +284,8 @@ const MissingInformationPage = () => {
                           return (
                             <span
                               key={f}
-                              className={`${styles.badge} ${
-                                isAuditTarget ? styles.badgeActive : styles.badgeInactive
-                              }`}
+                              className={`${styles.badge} ${isAuditTarget ? styles.badgeActive : styles.badgeInactive
+                                }`}
                             >
                               {f}
                             </span>
@@ -292,7 +333,7 @@ const MissingInformationPage = () => {
           </div>
 
           <div className={styles.pagination}>
-            <Pagination 
+            <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
@@ -300,6 +341,13 @@ const MissingInformationPage = () => {
           </div>
         </div>
       </div>
+
+      {isWhatsAppModalOpen && (
+        <WhatsAppBulkSendModal
+          employees={diagnosticResults}
+          onClose={() => setIsWhatsAppModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
