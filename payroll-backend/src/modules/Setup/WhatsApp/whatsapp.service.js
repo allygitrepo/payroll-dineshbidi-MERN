@@ -21,13 +21,17 @@ class WhatsAppService {
             // Find existing instance in our DB
             let instance = await WhatsAppInstance.findOne({ where: { company_id: companyId } });
             
+            // Fetch company details for naming
+            const company = await Company.findByPk(companyId);
+            const companyName = company && company.company_name ? company.company_name : companyId;
+
             let requestBody = {};
             if (instance && instance.instance_key) {
                 // Refresh existing instance
                 requestBody = { instanceKey: instance.instance_key };
             } else {
                 // Initialize new instance for this company
-                requestBody = { name: `Company-${companyId}` };
+                requestBody = { name: `Payroll_${companyName}` };
             }
 
             let response;
@@ -39,7 +43,7 @@ class WhatsAppService {
                 // If it fails because instance was not found on the server (deleted, expired), create a new one
                 if (err.response && err.response.status === 404 && err.response.data?.message === "Instance not found") {
                     // We can also clear the stale key from the request body
-                    requestBody = { name: `Company-${companyId}` };
+                    requestBody = { name: `Payroll_${companyName}` };
                     response = await axios.post(`${WA_MITRA_API_URL}/instance/initiate`, requestBody, {
                         headers: this.getHeaders()
                     });
