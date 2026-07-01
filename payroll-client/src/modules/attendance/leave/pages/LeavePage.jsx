@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Check, X, FileCheck, Calendar, Users, AlertCircle, FileClock, Download, Copy, File, Printer, ArrowLeft, Ban, Plus, ChevronDown } from 'lucide-react';
+import { Search, Check, X, FileCheck, Calendar, Users, AlertCircle, FileClock, Download, Copy, File, Printer, ArrowLeft, Ban, Plus, ChevronDown, Upload } from 'lucide-react';
 import styles from './LeavePage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { useToast, ConfirmModal, DatePicker } from '../../../../shared/components';
@@ -11,7 +11,7 @@ import {
   cancelLeaveRequest,
   calculateLeaveDays
 } from '../services/leaveService';
-import { getLeaveTypes, getEmployeeBalances } from '../../../setup/leave-master/services/leaveMasterService';
+import { getLeaveTypes, getEmployeeBalances, getEmployeeTypes } from '../../../setup/leave-master/services/leaveMasterService';
 
 const formatDateToDMY = (dateStr) => {
   if (!dateStr) return '-';
@@ -26,11 +26,29 @@ const LeavePage = () => {
   const addToast = useToast();
   const companyId = localStorage.getItem('selectedCompany');
 
+  const userStr = localStorage.getItem('user');
+  const userObj = useMemo(() => {
+    if (!userStr) return null;
+    try {
+      return JSON.parse(userStr);
+    } catch (e) {
+      return null;
+    }
+  }, [userStr]);
+
+  const userRole = userObj?.role?.name || '';
+  const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
+  const isContractor = userRole === 'Contractor';
+  const canApproveOrReject = isAdmin || isContractor;
+
   const [employees, setEmployees] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [dbEmployeeTypes, setDbEmployeeTypes] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -40,6 +58,15 @@ const LeavePage = () => {
   const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
   const [isEmployeeSelectOpen, setIsEmployeeSelectOpen] = useState(false);
   const employeeSelectRef = useRef(null);
+
+  // Search Select States & Refs for Leave Type dropdown
+  const [leaveTypeSearchQuery, setLeaveTypeSearchQuery] = useState('');
+  const [isLeaveTypeSelectOpen, setIsLeaveTypeSelectOpen] = useState(false);
+  const leaveTypeSelectRef = useRef(null);
+
+  // File Upload State & Ref
+  const [fileName, setFileName] = useState('');
+  const fileInputRef = useRef(null);
 
   // Live employee balances preview state
   const [employeeBalances, setEmployeeBalances] = useState([]);
@@ -101,6 +128,9 @@ const LeavePage = () => {
 
       const typesData = await getLeaveTypes(companyId);
       setLeaveTypes(typesData.filter(t => t.is_active));
+
+      const empTypesData = await getEmployeeTypes();
+      setDbEmployeeTypes(empTypesData || []);
     } catch (err) {
       console.error('Failed to load leave requests info:', err);
       addToast({ type: 'error', message: 'Failed to load leave records.' });
@@ -111,11 +141,14 @@ const LeavePage = () => {
     loadInitialData();
   }, [companyId]);
 
-  // Handle click outside for searchable employee dropdown
+  // Handle click outside for searchable dropdowns
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (employeeSelectRef.current && !employeeSelectRef.current.contains(event.target)) {
         setIsEmployeeSelectOpen(false);
+      }
+      if (leaveTypeSelectRef.current && !leaveTypeSelectRef.current.contains(event.target)) {
+        setIsLeaveTypeSelectOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -130,6 +163,15 @@ const LeavePage = () => {
              type.toLowerCase().includes(employeeSearchQuery.toLowerCase());
     });
   }, [employees, employeeSearchQuery]);
+
+  const filteredLeaveTypeOptions = useMemo(() => {
+    return leaveTypes.filter(t => {
+      const name = t.name || '';
+      const code = t.code || '';
+      return name.toLowerCase().includes(leaveTypeSearchQuery.toLowerCase()) ||
+             code.toLowerCase().includes(leaveTypeSearchQuery.toLowerCase());
+    });
+  }, [leaveTypes, leaveTypeSearchQuery]);
 
   // Fetch balances when employee is selected
   useEffect(() => {
@@ -210,6 +252,11 @@ const LeavePage = () => {
   const handleCloseForm = () => {
     setIsFormOpen(false);
     setCalculatedDays(null);
+    setIsEmployeeSelectOpen(false);
+    setIsLeaveTypeSelectOpen(false);
+    setEmployeeSearchQuery('');
+    setLeaveTypeSearchQuery('');
+    setFileName('');
     setNewLeave({
       employeeId: '',
       leaveTypeId: '',
@@ -365,7 +412,7 @@ const LeavePage = () => {
     return { total, pending, approved, rejected };
   }, [leaveRequests]);
 
-  // Filter requests based on search query and status tab
+  // Filter requests based on search query, category, status, and selected date
   const filteredRequests = useMemo(() => {
     return leaveRequests.filter((req) => {
       const matchesSearch =
@@ -376,15 +423,28 @@ const LeavePage = () => {
         req.uan.includes(search) ||
         req.mobile.includes(search);
 
+      const matchesCategory =
+        categoryFilter === 'All' ||
+        (req.category && req.category.toUpperCase().trim() === categoryFilter.toUpperCase().trim());
+
       const matchesStatus =
         statusFilter === 'All' ||
         (statusFilter === 'Pending' && req.status === 'Submitted') ||
         (statusFilter === 'Approved' && req.status === 'Approved') ||
         (statusFilter === 'Rejected' && (req.status === 'Rejected' || req.status === 'Cancelled'));
 
-      return matchesSearch && matchesStatus;
+      const matchesDate = !selectedDate || (
+        selectedDate >= req.fromDate && selectedDate <= req.toDate
+      );
+
+      return matchesSearch && matchesCategory && matchesStatus && matchesDate;
     });
-  }, [leaveRequests, search, statusFilter]);
+  }, [leaveRequests, search, statusFilter, categoryFilter, selectedDate]);
+
+  // Reset pagination on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, categoryFilter, selectedDate, rowsPerPage]);
 
   // Pagination logic
   const paginatedRequests = useMemo(() => {
@@ -485,20 +545,54 @@ const LeavePage = () => {
               </div>
             )}
 
-            <div className={styles.field}>
+            <div className={styles.field} ref={leaveTypeSelectRef} style={{ position: 'relative' }}>
               <label className={styles.label}>Leave Type *</label>
-              <select
-                name="leaveTypeId"
-                value={newLeave.leaveTypeId}
-                onChange={handleInputChange}
-                className={styles.input}
-                required
+              <div 
+                className={styles.searchSelectTrigger}
+                onClick={() => setIsLeaveTypeSelectOpen(!isLeaveTypeSelectOpen)}
               >
-                <option value="">-- Choose Leave Type --</option>
-                {leaveTypes.map(t => (
-                  <option key={t.id} value={t.id}>{t.name} ({t.code})</option>
-                ))}
-              </select>
+                <span>
+                  {newLeave.leaveTypeId 
+                    ? leaveTypes.find(t => t.id === newLeave.leaveTypeId)?.name 
+                    : '-- Choose Leave Type --'}
+                </span>
+                <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />
+              </div>
+
+              {isLeaveTypeSelectOpen && (
+                <div className={styles.searchSelectDropdown}>
+                  <div className={styles.searchSelectInputWrapper}>
+                    <Search size={14} className={styles.searchSelectIcon} />
+                    <input
+                      type="text"
+                      placeholder="Type to search..."
+                      value={leaveTypeSearchQuery}
+                      onChange={(e) => setLeaveTypeSearchQuery(e.target.value)}
+                      className={styles.searchSelectInput}
+                      autoFocus
+                    />
+                  </div>
+                  <div className={styles.searchSelectList}>
+                    {filteredLeaveTypeOptions.length > 0 ? (
+                      filteredLeaveTypeOptions.map(t => (
+                        <div
+                          key={t.id}
+                          className={`${styles.searchSelectItem} ${newLeave.leaveTypeId === t.id ? styles.searchSelectItemActive : ''}`}
+                          onClick={() => {
+                            setNewLeave(prev => ({ ...prev, leaveTypeId: t.id }));
+                            setIsLeaveTypeSelectOpen(false);
+                            setLeaveTypeSearchQuery('');
+                          }}
+                        >
+                          {t.name} ({t.code})
+                        </div>
+                      ))
+                    ) : (
+                      <div className={styles.searchSelectEmpty}>No leave types found</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className={styles.field}>
@@ -565,12 +659,32 @@ const LeavePage = () => {
 
             <div className={styles.field}>
               <label className={styles.label}>Supporting Document (Optional)</label>
-              <input
-                type="file"
-                onChange={handleFileChange}
-                className={styles.input}
-                accept="image/*,application/pdf"
-              />
+              <div className={styles.fileUploadWrapper}>
+                <button
+                  type="button"
+                  className={styles.fileUploadBtn}
+                  onClick={() => fileInputRef.current.click()}
+                >
+                  <Upload size={16} /> Choose File
+                </button>
+                <span className={styles.fileUploadName}>
+                  {fileName || 'No file chosen'}
+                </span>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={(e) => {
+                    handleFileChange(e);
+                    if (e.target.files[0]) {
+                      setFileName(e.target.files[0].name);
+                    } else {
+                      setFileName('');
+                    }
+                  }}
+                  accept="image/*,application/pdf"
+                  style={{ display: 'none' }}
+                />
+              </div>
             </div>
 
             <div className={styles.field}>
@@ -634,34 +748,71 @@ const LeavePage = () => {
 
           {/* Table Card Container */}
           <div className={styles.tableCard}>
-            {/* Table Controls (Search and Filters inside the Card) */}
-            <div className={styles.tableControls}>
-              <div className={styles.filterTabs}>
-                {['All', 'Pending', 'Approved', 'Rejected'].map((status) => (
+            {/* Table Controls (Search and Filters inside the Card matching Attendance list) */}
+            <div className={styles.toolbar}>
+              <div className={styles.leftControls}>
+                <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem', marginRight: '10px' }}>
+                  Total Records: {filteredRequests.length}
+                </div>
+
+                {/* Calendar Date Picker Filter */}
+                <div className={styles.dateFilter}>
+                  <DatePicker
+                    name="selectedDate"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className={styles.datePickerInput}
+                  />
                   <button
-                    key={status}
-                    onClick={() => {
-                      setStatusFilter(status);
-                      setCurrentPage(1);
-                    }}
-                    className={`${styles.tabBtn} ${statusFilter === status ? styles.activeTabBtn : ''}`}
+                    type="button"
+                    className={`${styles.quickBtn} ${!selectedDate ? styles.activeQuickBtn : ''}`}
+                    onClick={() => setSelectedDate('')}
+                    title="Show All Dates"
                   >
-                    {status} <span className={styles.tabBadge}>{status === 'All' ? stats.total : status === 'Pending' ? stats.pending : status === 'Approved' ? stats.approved : stats.rejected}</span>
+                    All
                   </button>
-                ))}
+                </div>
+
+                {/* Category Selector */}
+                <div className={styles.categorySelect}>
+                  <span className={styles.controlLabel}>Category</span>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                  >
+                    <option value="All">All Categories</option>
+                    {dbEmployeeTypes.map((type) => (
+                      <option key={type.id} value={type.name.toUpperCase().trim()}>
+                        {type.name.toUpperCase().trim()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status Selector */}
+                <div className={styles.categorySelect}>
+                  <span className={styles.controlLabel}>Status</span>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
               </div>
 
-              <div className={styles.rightControls}>
-                <div className={styles.searchWrapper}>
-                  <Search size={18} className={styles.searchIcon} />
-                  <input
-                    type="text"
-                    placeholder="Search by Employee name, UAN, Leave type..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className={styles.searchInput}
-                  />
-                </div>
+              {/* Search Input */}
+              <div className={styles.searchWrapper}>
+                <Search size={14} className={styles.searchIcon} />
+                <input
+                  type="text"
+                  placeholder="Search applications..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
               </div>
             </div>
 
@@ -676,6 +827,7 @@ const LeavePage = () => {
                     <th>Days Count</th>
                     <th>Reason</th>
                     <th>Status</th>
+                    <th>Action By</th>
                     <th style={{ width: '130px', textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
@@ -742,24 +894,35 @@ const LeavePage = () => {
                           </span>
                         </td>
                         <td>
+                          {row.actionByName ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.82rem' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{row.actionByName}</span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>({row.actionByRole})</span>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
+                          )}
+                        </td>
+                        <td>
                           <div className={styles.actionButtons}>
-                            {row.status === 'Submitted' && (
+                            {canApproveOrReject ? (
                               <>
-                                <button onClick={() => handleApprove(row.id, row.employeeName)} className={styles.actionApprove} title="Approve Request">
-                                  <Check size={14} /> Approve
-                                </button>
-                                <button onClick={() => handleReject(row.id, row.employeeName)} className={styles.actionReject} title="Reject Request">
-                                  <X size={14} />
-                                </button>
+                                {row.status === 'Submitted' && (
+                                  <>
+                                    <button onClick={() => handleApprove(row.id, row.employeeName)} className={styles.actionApprove} title="Approve Request">
+                                      <Check size={14} />
+                                    </button>
+                                    <button onClick={() => handleReject(row.id, row.employeeName)} className={styles.actionReject} title="Reject Request">
+                                      <X size={14} />
+                                    </button>
+                                  </>
+                                )}
+                                {row.status !== 'Submitted' && (
+                                  <span className={styles.actionCompletedText}>No actions</span>
+                                )}
                               </>
-                            )}
-                            {row.status === 'Approved' && (
-                              <button onClick={() => handleCancel(row.id, row.employeeName)} className={styles.actionCancel} title="Cancel and Restore Balance">
-                                <Ban size={14} /> Cancel Leave
-                              </button>
-                            )}
-                            {row.status !== 'Submitted' && row.status !== 'Approved' && (
-                              <span className={styles.actionCompletedText}>No actions</span>
+                            ) : (
+                              <span className={styles.actionCompletedText}>No permission</span>
                             )}
                           </div>
                         </td>
@@ -767,7 +930,7 @@ const LeavePage = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" className={styles.emptyTable}>No leave applications found.</td>
+                      <td colSpan="8" className={styles.emptyTable}>No leave applications found.</td>
                     </tr>
                   )}
                 </tbody>
@@ -775,38 +938,80 @@ const LeavePage = () => {
             </div>
 
             {/* Table Footer / Pagination */}
-            {totalPages > 1 && (
-              <div className={styles.tableFooter}>
-                <div className={styles.footerLeft}>
-                  <span className={styles.infoText}>Page {currentPage} of {totalPages}</span>
+            <div className={styles.tableFooter}>
+              <div className={styles.footerLeft}>
+                <div className={styles.limitControl}>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className={styles.limitSelect}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span>records per page</span>
                 </div>
-                <div className={styles.pagination}>
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className={styles.pageBtn}
-                  >
-                    Previous
-                  </button>
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentPage(i + 1)}
-                      className={`${styles.pageBtn} ${currentPage === i + 1 ? styles.activePageBtn : ''}`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className={styles.pageBtn}
-                  >
-                    Next
-                  </button>
+                <div className={styles.infoText}>
+                  Showing {filteredRequests.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} to {Math.min(currentPage * rowsPerPage, filteredRequests.length)} of {filteredRequests.length} entries
                 </div>
               </div>
-            )}
+              <div className={styles.pagination}>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={styles.pageBtn}
+                >
+                  Previous
+                </button>
+
+                {(() => {
+                  const pages = [];
+                  if (totalPages <= 7) {
+                    for (let i = 1; i <= totalPages; i++) pages.push(i);
+                  } else {
+                    if (currentPage <= 4) {
+                      for (let i = 1; i <= 5; i++) pages.push(i);
+                      pages.push('...');
+                      pages.push(totalPages);
+                    } else if (currentPage >= totalPages - 3) {
+                      pages.push(1);
+                      pages.push('...');
+                      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+                    } else {
+                      pages.push(1);
+                      pages.push('...');
+                      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+                      pages.push('...');
+                      pages.push(totalPages);
+                    }
+                  }
+                  return pages.map((p, i) => (
+                    <button
+                      key={i}
+                      onClick={() => p !== '...' && setCurrentPage(p)}
+                      disabled={p === '...'}
+                      className={`${styles.pageBtn} ${currentPage === p ? styles.activePageBtn : ''}`}
+                      style={p === '...' ? { border: 'none', background: 'transparent', cursor: 'default' } : {}}
+                    >
+                      {p}
+                    </button>
+                  ));
+                })()}
+
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className={styles.pageBtn}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -824,6 +1029,14 @@ const LeavePage = () => {
           confirmAction === 'approve' ? `Are you sure you want to approve the leave request for ${confirmTargetName}? This will deduct leaves and record attendance status.` : 
           confirmAction === 'reject' ? `Are you sure you want to reject the leave request for ${confirmTargetName}?` : 
           `Are you sure you want to cancel the approved leave for ${confirmTargetName}? This will restore the leave balance and revert attendance changes.`
+        }
+        confirmText={
+          confirmAction === 'approve' ? 'Approve' :
+          confirmAction === 'reject' ? 'Reject' : 'Cancel Leave'
+        }
+        theme={
+          confirmAction === 'approve' ? 'success' :
+          confirmAction === 'reject' ? 'danger' : 'warning'
         }
       />
     </div>

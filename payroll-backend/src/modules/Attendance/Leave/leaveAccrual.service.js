@@ -28,7 +28,7 @@ class LeaveAccrualService {
             let processedCount = 0;
 
             for (const emp of employees) {
-                if (!emp.employee_type_id) continue;
+                if (!emp.employee_type) continue;
 
                 // Process in employee-scoped transaction for database consistency
                 const transaction = await db.sequelize.transaction();
@@ -37,7 +37,7 @@ class LeaveAccrualService {
                     const policies = await db.LeavePolicy.findAll({
                         where: {
                             company_id: companyId,
-                            employee_type_id: emp.employee_type_id,
+                            employee_type: emp.employee_type,
                             monthly_accrual_enabled: true
                         },
                         include: [{ model: db.LeaveType, as: "leaveType", where: { is_active: true } }],
@@ -116,7 +116,7 @@ class LeaveAccrualService {
             let processedCount = 0;
 
             for (const emp of employees) {
-                if (!emp.employee_type_id) continue;
+                if (!emp.employee_type) continue;
 
                 // Process in employee-scoped transaction for database consistency
                 const transaction = await db.sequelize.transaction();
@@ -125,7 +125,7 @@ class LeaveAccrualService {
                     const policies = await db.LeavePolicy.findAll({
                         where: {
                             company_id: companyId,
-                            employee_type_id: emp.employee_type_id,
+                            employee_type: emp.employee_type,
                             carry_forward_allowed: true
                         },
                         include: [{ model: db.LeaveType, as: "leaveType", where: { is_active: true } }],

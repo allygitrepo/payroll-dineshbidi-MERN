@@ -58,6 +58,19 @@ const Attendance = sequelize.define("Attendance", {
         allowNull: false,
         defaultValue: "Present", // "Present", "Paid Leave", "Unpaid Leave", "Half Day", "Comp Off", "Holiday", "Weekly Off"
     },
+    approval_status: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+        defaultValue: "Approved", // Legacy and Manual records default to Approved
+    },
+    action_by_name: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+    },
+    action_by_role: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+    },
 }, {
     tableName: "attendance",
     timestamps: true,

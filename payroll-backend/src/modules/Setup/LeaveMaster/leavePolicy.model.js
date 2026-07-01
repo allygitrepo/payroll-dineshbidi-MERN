@@ -13,8 +13,8 @@ const LeavePolicy = sequelize.define(
             type: DataTypes.UUID,
             allowNull: false,
         },
-        employee_type_id: {
-            type: DataTypes.UUID,
+        employee_type: {
+            type: DataTypes.STRING(100),
             allowNull: false,
         },
         leave_type_id: {
@@ -49,7 +49,7 @@ const LeavePolicy = sequelize.define(
         indexes: [
             {
                 unique: true,
-                fields: ["company_id", "employee_type_id", "leave_type_id"],
+                fields: ["company_id", "employee_type", "leave_type_id"],
                 name: "uq_leave_policy_company_emp_type_leave_type",
             },
         ],

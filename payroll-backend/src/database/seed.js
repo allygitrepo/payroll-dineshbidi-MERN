@@ -8,33 +8,13 @@ const seedUsers = async () => {
         await db.sequelize.authenticate();
         console.log("Database Connected. Syncing models...");
         await db.sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+        await db.sequelize.query("DROP TABLE IF EXISTS employee_types");
+        await db.sequelize.query("DROP TABLE IF EXISTS leave_policies");
         await db.sequelize.sync({ alter: true });
         await db.sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
 
         console.log("Cleaning up deprecated tables...");
         await db.sequelize.query("DROP TABLE IF EXISTS leave_masters");
-
-        console.log("Seeding Employee Types...");
-        const typeNames = ["BIDI PACKER", "BIDI MAKER", "OFFICE STAFF"];
-        const empTypes = {};
-        for (const name of typeNames) {
-            let t = await db.EmployeeType.findOne({ where: { name } });
-            if (!t) {
-                t = await db.EmployeeType.create({ name, status: true });
-                console.log(`Created Employee Type: ${name}`);
-            }
-            empTypes[name] = t;
-        }
-
-        // Map existing employees type ID
-        console.log("Mapping employee type IDs...");
-        const employees = await db.Employee.findAll();
-        for (const emp of employees) {
-            const mappedType = emp.employee_type ? emp.employee_type.toUpperCase().trim() : null;
-            if (mappedType && empTypes[mappedType]) {
-                await emp.update({ employee_type_id: empTypes[mappedType].id });
-            }
-        }
 
         console.log("Seeding Roles...");
         let adminRole = await db.Role.findOne({ where: { name: "Admin" } });
@@ -218,62 +198,54 @@ const seedUsers = async () => {
             }
 
             console.log(`Seeding Leave Policies for ${company.company_name}...`);
-            const officeStaffType = await db.EmployeeType.findOne({ where: { name: "OFFICE STAFF" } });
-            const bidiMakerType = await db.EmployeeType.findOne({ where: { name: "BIDI MAKER" } });
-            const bidiPackerType = await db.EmployeeType.findOne({ where: { name: "BIDI PACKER" } });
-
-            if (officeStaffType) {
-                const policies = [
-                    { employee_type_id: officeStaffType.id, leave_type_id: seededTypes["CL"].id, yearly_allocation: 12.00, monthly_accrual_enabled: false },
-                    { employee_type_id: officeStaffType.id, leave_type_id: seededTypes["SL"].id, yearly_allocation: 10.00, monthly_accrual_enabled: false },
-                    { employee_type_id: officeStaffType.id, leave_type_id: seededTypes["EL"].id, yearly_allocation: 18.00, monthly_accrual_enabled: true, monthly_accrual_amount: 1.50, carry_forward_allowed: true, max_carry_forward: 5.00 },
-                    { employee_type_id: officeStaffType.id, leave_type_id: seededTypes["LWP"].id, yearly_allocation: 99.00, monthly_accrual_enabled: false },
-                    { employee_type_id: officeStaffType.id, leave_type_id: seededTypes["COMP_OFF"].id, yearly_allocation: 0.00, monthly_accrual_enabled: false },
-                    { employee_type_id: officeStaffType.id, leave_type_id: seededTypes["ML"].id, yearly_allocation: 180.00, monthly_accrual_enabled: false },
-                    { employee_type_id: officeStaffType.id, leave_type_id: seededTypes["PL"].id, yearly_allocation: 15.00, monthly_accrual_enabled: false }
-                ];
-                for (const p of policies) {
-                    await db.LeavePolicy.findOrCreate({
-                        where: { company_id: company.id, employee_type_id: p.employee_type_id, leave_type_id: p.leave_type_id },
-                        defaults: { ...p, company_id: company.id }
-                    });
-                }
+            console.log(`Seeding Leave Policies for ${company.company_name}...`);
+            
+            const officeStaffPolicies = [
+                { employee_type: "OFFICE STAFF", leave_type_id: seededTypes["CL"].id, yearly_allocation: 12.00, monthly_accrual_enabled: false },
+                { employee_type: "OFFICE STAFF", leave_type_id: seededTypes["SL"].id, yearly_allocation: 10.00, monthly_accrual_enabled: false },
+                { employee_type: "OFFICE STAFF", leave_type_id: seededTypes["EL"].id, yearly_allocation: 18.00, monthly_accrual_enabled: true, monthly_accrual_amount: 1.50, carry_forward_allowed: true, max_carry_forward: 5.00 },
+                { employee_type: "OFFICE STAFF", leave_type_id: seededTypes["LWP"].id, yearly_allocation: 99.00, monthly_accrual_enabled: false },
+                { employee_type: "OFFICE STAFF", leave_type_id: seededTypes["COMP_OFF"].id, yearly_allocation: 0.00, monthly_accrual_enabled: false },
+                { employee_type: "OFFICE STAFF", leave_type_id: seededTypes["ML"].id, yearly_allocation: 180.00, monthly_accrual_enabled: false },
+                { employee_type: "OFFICE STAFF", leave_type_id: seededTypes["PL"].id, yearly_allocation: 15.00, monthly_accrual_enabled: false }
+            ];
+            for (const p of officeStaffPolicies) {
+                await db.LeavePolicy.findOrCreate({
+                    where: { company_id: company.id, employee_type: p.employee_type, leave_type_id: p.leave_type_id },
+                    defaults: { ...p, company_id: company.id }
+                });
             }
 
-            if (bidiMakerType) {
-                const policies = [
-                    { employee_type_id: bidiMakerType.id, leave_type_id: seededTypes["CL"].id, yearly_allocation: 12.00, monthly_accrual_enabled: false },
-                    { employee_type_id: bidiMakerType.id, leave_type_id: seededTypes["SL"].id, yearly_allocation: 10.00, monthly_accrual_enabled: false },
-                    { employee_type_id: bidiMakerType.id, leave_type_id: seededTypes["EL"].id, yearly_allocation: 12.00, monthly_accrual_enabled: false },
-                    { employee_type_id: bidiMakerType.id, leave_type_id: seededTypes["LWP"].id, yearly_allocation: 99.00, monthly_accrual_enabled: false },
-                    { employee_type_id: bidiMakerType.id, leave_type_id: seededTypes["COMP_OFF"].id, yearly_allocation: 0.00, monthly_accrual_enabled: false },
-                    { employee_type_id: bidiMakerType.id, leave_type_id: seededTypes["ML"].id, yearly_allocation: 90.00, monthly_accrual_enabled: false },
-                    { employee_type_id: bidiMakerType.id, leave_type_id: seededTypes["PL"].id, yearly_allocation: 5.00, monthly_accrual_enabled: false }
-                ];
-                for (const p of policies) {
-                    await db.LeavePolicy.findOrCreate({
-                        where: { company_id: company.id, employee_type_id: p.employee_type_id, leave_type_id: p.leave_type_id },
-                        defaults: { ...p, company_id: company.id }
-                    });
-                }
+            const bidiMakerPolicies = [
+                { employee_type: "BIDI MAKER", leave_type_id: seededTypes["CL"].id, yearly_allocation: 12.00, monthly_accrual_enabled: false },
+                { employee_type: "BIDI MAKER", leave_type_id: seededTypes["SL"].id, yearly_allocation: 10.00, monthly_accrual_enabled: false },
+                { employee_type: "BIDI MAKER", leave_type_id: seededTypes["EL"].id, yearly_allocation: 12.00, monthly_accrual_enabled: false },
+                { employee_type: "BIDI MAKER", leave_type_id: seededTypes["LWP"].id, yearly_allocation: 99.00, monthly_accrual_enabled: false },
+                { employee_type: "BIDI MAKER", leave_type_id: seededTypes["COMP_OFF"].id, yearly_allocation: 0.00, monthly_accrual_enabled: false },
+                { employee_type: "BIDI MAKER", leave_type_id: seededTypes["ML"].id, yearly_allocation: 90.00, monthly_accrual_enabled: false },
+                { employee_type: "BIDI MAKER", leave_type_id: seededTypes["PL"].id, yearly_allocation: 5.00, monthly_accrual_enabled: false }
+            ];
+            for (const p of bidiMakerPolicies) {
+                await db.LeavePolicy.findOrCreate({
+                    where: { company_id: company.id, employee_type: p.employee_type, leave_type_id: p.leave_type_id },
+                    defaults: { ...p, company_id: company.id }
+                });
             }
 
-            if (bidiPackerType) {
-                const policies = [
-                    { employee_type_id: bidiPackerType.id, leave_type_id: seededTypes["CL"].id, yearly_allocation: 12.00, monthly_accrual_enabled: false },
-                    { employee_type_id: bidiPackerType.id, leave_type_id: seededTypes["SL"].id, yearly_allocation: 10.00, monthly_accrual_enabled: false },
-                    { employee_type_id: bidiPackerType.id, leave_type_id: seededTypes["EL"].id, yearly_allocation: 12.00, monthly_accrual_enabled: false },
-                    { employee_type_id: bidiPackerType.id, leave_type_id: seededTypes["LWP"].id, yearly_allocation: 99.00, monthly_accrual_enabled: false },
-                    { employee_type_id: bidiPackerType.id, leave_type_id: seededTypes["COMP_OFF"].id, yearly_allocation: 0.00, monthly_accrual_enabled: false },
-                    { employee_type_id: bidiPackerType.id, leave_type_id: seededTypes["ML"].id, yearly_allocation: 90.00, monthly_accrual_enabled: false },
-                    { employee_type_id: bidiPackerType.id, leave_type_id: seededTypes["PL"].id, yearly_allocation: 5.00, monthly_accrual_enabled: false }
-                ];
-                for (const p of policies) {
-                    await db.LeavePolicy.findOrCreate({
-                        where: { company_id: company.id, employee_type_id: p.employee_type_id, leave_type_id: p.leave_type_id },
-                        defaults: { ...p, company_id: company.id }
-                    });
-                }
+            const bidiPackerPolicies = [
+                { employee_type: "BIDI PACKER", leave_type_id: seededTypes["CL"].id, yearly_allocation: 12.00, monthly_accrual_enabled: false },
+                { employee_type: "BIDI PACKER", leave_type_id: seededTypes["SL"].id, yearly_allocation: 10.00, monthly_accrual_enabled: false },
+                { employee_type: "BIDI PACKER", leave_type_id: seededTypes["EL"].id, yearly_allocation: 12.00, monthly_accrual_enabled: false },
+                { employee_type: "BIDI PACKER", leave_type_id: seededTypes["LWP"].id, yearly_allocation: 99.00, monthly_accrual_enabled: false },
+                { employee_type: "BIDI PACKER", leave_type_id: seededTypes["COMP_OFF"].id, yearly_allocation: 0.00, monthly_accrual_enabled: false },
+                { employee_type: "BIDI PACKER", leave_type_id: seededTypes["ML"].id, yearly_allocation: 90.00, monthly_accrual_enabled: false },
+                { employee_type: "BIDI PACKER", leave_type_id: seededTypes["PL"].id, yearly_allocation: 5.00, monthly_accrual_enabled: false }
+            ];
+            for (const p of bidiPackerPolicies) {
+                await db.LeavePolicy.findOrCreate({
+                    where: { company_id: company.id, employee_type: p.employee_type, leave_type_id: p.leave_type_id },
+                    defaults: { ...p, company_id: company.id }
+                });
             }
         }
 

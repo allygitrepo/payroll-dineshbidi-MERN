@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, Settings, List, ShieldAlert, CheckSquare, Play } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Settings, List, ShieldAlert, CheckSquare, Play, ChevronDown } from 'lucide-react';
 import styles from './LeaveMasterPage.module.css';
 import { useToast, ConfirmModal } from '../../../../shared/components';
 import { getEmployees } from '../../../master/employee/services/employeeService';
@@ -16,6 +16,74 @@ import {
   adjustBalance
 } from '../services/leaveMasterService';
 
+const SearchableSelect = ({ value, onChange, options, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const containerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((opt) => opt.value === value);
+
+  const filteredOptions = options.filter((opt) =>
+    opt.label.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className={styles.searchableSelectContainer} ref={containerRef}>
+      <div
+        className={styles.searchableSelectTrigger}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          setSearch('');
+        }}
+      >
+        <span>{selectedOption ? selectedOption.label : placeholder}</span>
+        <ChevronDown size={16} className={styles.chevronIcon} />
+      </div>
+
+      {isOpen && (
+        <div className={styles.searchableSelectDropdown}>
+          <input
+            type="text"
+            className={styles.searchableSelectSearch}
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            autoFocus
+          />
+          <div className={styles.searchableSelectOptions}>
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((opt) => (
+                <div
+                  key={opt.value}
+                  className={`${styles.searchableSelectOption} ${opt.value === value ? styles.searchableSelectOptionActive : ''}`}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                >
+                  {opt.label}
+                </div>
+              ))
+            ) : (
+              <div className={styles.searchableSelectNoOptions}>No results found</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const LeaveMasterPage = () => {
   const addToast = useToast();
   const companyId = localStorage.getItem('selectedCompany');
@@ -31,6 +99,16 @@ const LeaveMasterPage = () => {
   // Tab 1: Leave Types States
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [editingType, setEditingType] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  
+  // Pagination for Leave Types
+  const [currentPageTypes, setCurrentPageTypes] = useState(1);
+  const [pageSizeTypes, setPageSizeTypes] = useState(5);
+
+  // Pagination for Policies
+  const [currentPagePolicies, setCurrentPagePolicies] = useState(1);
+  const [pageSizePolicies, setPageSizePolicies] = useState(5);
+
   const [typeForm, setTypeForm] = useState({
     name: '',
     code: '',
@@ -40,6 +118,12 @@ const LeaveMasterPage = () => {
     requires_approval: true,
     is_active: true
   });
+
+  // Reset paginations on tab change
+  useEffect(() => {
+    setCurrentPageTypes(1);
+    setCurrentPagePolicies(1);
+  }, [activeTab]);
 
   // Tab 2: Leave Policies States
   const [policyMatrix, setPolicyMatrix] = useState([]);
@@ -85,7 +169,8 @@ const LeaveMasterPage = () => {
       } else if (activeTab === 'policies') {
         const matrix = await getLeavePolicies(companyId);
         setPolicyMatrix(matrix);
-        if (matrix.length > 0 && !selectedEmpTypeId) {
+        const hasSelectedType = matrix.some((r) => r.employee_type_id === selectedEmpTypeId);
+        if (matrix.length > 0 && (!selectedEmpTypeId || !hasSelectedType)) {
           setSelectedEmpTypeId(matrix[0].employee_type_id);
         }
       } else if (activeTab === 'settings') {
@@ -224,6 +309,7 @@ const LeaveMasterPage = () => {
       
       // Reset form
       setEditingType(null);
+      setIsFormOpen(false);
       setTypeForm({
         name: '',
         code: '',
@@ -247,6 +333,21 @@ const LeaveMasterPage = () => {
     await saveLeaveType(companyId, payload);
   };
 
+  // Add Click Helper
+  const handleAddNewTypeClick = () => {
+    setEditingType(null);
+    setTypeForm({
+      name: '',
+      code: '',
+      is_paid: true,
+      half_day_allowed: true,
+      requires_supporting_document: false,
+      requires_approval: true,
+      is_active: true
+    });
+    setIsFormOpen(true);
+  };
+
   // Edit Click helper
   const handleEditClick = (type) => {
     setEditingType(type.id);
@@ -259,10 +360,12 @@ const LeaveMasterPage = () => {
       requires_approval: type.requires_approval,
       is_active: type.is_active
     });
+    setIsFormOpen(true);
   };
 
   const handleCancelEdit = () => {
     setEditingType(null);
+    setIsFormOpen(false);
     setTypeForm({
       name: '',
       code: '',
@@ -392,6 +495,11 @@ const LeaveMasterPage = () => {
           <h1 className={styles.title}>Leave Setup & Configuration</h1>
           <span className={styles.subTitle}>Configure custom leave types, employee policies, and sandwich validation settings</span>
         </div>
+        {activeTab === 'types' && !isFormOpen && (
+          <button onClick={handleAddNewTypeClick} className={styles.addBtn}>
+            <Plus size={18} /> Add Leave Type
+          </button>
+        )}
       </div>
 
       {/* Tab bar header */}
@@ -431,124 +539,131 @@ const LeaveMasterPage = () => {
           {/* TAB 1: Leave Types CRUD */}
           {activeTab === 'types' && (
             <div className={styles.tabPane}>
-              <div className={styles.twoColumnGrid}>
-                {/* Form to Create/Edit */}
-                <div className={styles.card}>
+              {/* Inline Add/Edit Form Card (just like EmployeeForm in Employee master) */}
+              {isFormOpen && (
+                <div className={styles.card} style={{ marginBottom: '24px' }}>
                   <h3 className={styles.cardTitle}>
                     {editingType ? 'Edit Leave Type' : 'Add Leave Type'}
                   </h3>
                   <form onSubmit={handleSaveType} className={styles.formContainer}>
-                    <div className={styles.field}>
-                      <label className={styles.label}>Leave Name *</label>
-                      <input
-                        type="text"
-                        value={typeForm.name}
-                        onChange={(e) => setTypeForm({ ...typeForm, name: e.target.value })}
-                        placeholder="e.g. Casual Leave"
-                        className={styles.input}
-                        required
-                      />
-                    </div>
-
-                    <div className={styles.field}>
-                      <label className={styles.label}>Leave Code *</label>
-                      <input
-                        type="text"
-                        value={typeForm.code}
-                        onChange={(e) => setTypeForm({ ...typeForm, code: e.target.value })}
-                        placeholder="e.g. CL"
-                        className={styles.input}
-                        disabled={!!editingType} // Do not edit code after creation for reference integrity
-                        required
-                      />
-                    </div>
-
-                    <div className={styles.checkboxGroup}>
-                      <label className={styles.checkboxLabel}>
+                    <div className={styles.formGrid}>
+                      <div className={styles.field}>
+                        <label className={styles.label}>Leave Name *</label>
                         <input
-                          type="checkbox"
-                          checked={typeForm.is_paid}
-                          onChange={(e) => setTypeForm({ ...typeForm, is_paid: e.target.checked })}
+                          type="text"
+                          value={typeForm.name}
+                          onChange={(e) => setTypeForm({ ...typeForm, name: e.target.value })}
+                          placeholder="e.g. Casual Leave"
+                          className={styles.input}
+                          required
                         />
-                        <span>Is Paid Leave (Deducted from balance quota)</span>
-                      </label>
-                    </div>
-
-                    <div className={styles.checkboxGroup}>
-                      <label className={styles.checkboxLabel}>
+                      </div>
+                      <div className={styles.field}>
+                        <label className={styles.label}>Leave Code *</label>
                         <input
-                          type="checkbox"
-                          checked={typeForm.half_day_allowed}
-                          onChange={(e) => setTypeForm({ ...typeForm, half_day_allowed: e.target.checked })}
+                          type="text"
+                          value={typeForm.code}
+                          onChange={(e) => setTypeForm({ ...typeForm, code: e.target.value })}
+                          placeholder="e.g. CL"
+                          className={styles.input}
+                          disabled={!!editingType}
+                          required
                         />
-                        <span>Half Day Allowed</span>
-                      </label>
+                      </div>
                     </div>
 
-                    <div className={styles.checkboxGroup}>
-                      <label className={styles.checkboxLabel}>
-                        <input
-                          type="checkbox"
-                          checked={typeForm.requires_supporting_document}
-                          onChange={(e) => setTypeForm({ ...typeForm, requires_supporting_document: e.target.checked })}
-                        />
-                        <span>Requires Supporting Documents (Mandatory Attachment)</span>
-                      </label>
+                    <div className={styles.checkboxGrid} style={{ marginTop: '12px' }}>
+                      <div className={styles.checkboxGroup}>
+                        <label className={styles.checkboxLabel}>
+                          <input
+                            type="checkbox"
+                            checked={typeForm.is_paid}
+                            onChange={(e) => setTypeForm({ ...typeForm, is_paid: e.target.checked })}
+                          />
+                          <span>Is Paid Leave (Deducted from balance quota)</span>
+                        </label>
+                      </div>
+                      <div className={styles.checkboxGroup}>
+                        <label className={styles.checkboxLabel}>
+                          <input
+                            type="checkbox"
+                            checked={typeForm.half_day_allowed}
+                            onChange={(e) => setTypeForm({ ...typeForm, half_day_allowed: e.target.checked })}
+                          />
+                          <span>Half Day Allowed</span>
+                        </label>
+                      </div>
+                      <div className={styles.checkboxGroup}>
+                        <label className={styles.checkboxLabel}>
+                          <input
+                            type="checkbox"
+                            checked={typeForm.requires_supporting_document}
+                            onChange={(e) => setTypeForm({ ...typeForm, requires_supporting_document: e.target.checked })}
+                          />
+                          <span>Requires Supporting Documents (Mandatory Attachment)</span>
+                        </label>
+                      </div>
+                      <div className={styles.checkboxGroup}>
+                        <label className={styles.checkboxLabel}>
+                          <input
+                            type="checkbox"
+                            checked={typeForm.requires_approval}
+                            onChange={(e) => setTypeForm({ ...typeForm, requires_approval: e.target.checked })}
+                          />
+                          <span>Requires Approval (Requires Admin action)</span>
+                        </label>
+                      </div>
+                      <div className={styles.checkboxGroup}>
+                        <label className={styles.checkboxLabel}>
+                          <input
+                            type="checkbox"
+                            checked={typeForm.is_active}
+                            onChange={(e) => setTypeForm({ ...typeForm, is_active: e.target.checked })}
+                          />
+                          <span>Active status</span>
+                        </label>
+                      </div>
                     </div>
 
-                    <div className={styles.checkboxGroup}>
-                      <label className={styles.checkboxLabel}>
-                        <input
-                          type="checkbox"
-                          checked={typeForm.requires_approval}
-                          onChange={(e) => setTypeForm({ ...typeForm, requires_approval: e.target.checked })}
-                        />
-                        <span>Requires Approval (Requires Admin action)</span>
-                      </label>
-                    </div>
-
-                    <div className={styles.checkboxGroup}>
-                      <label className={styles.checkboxLabel}>
-                        <input
-                          type="checkbox"
-                          checked={typeForm.is_active}
-                          onChange={(e) => setTypeForm({ ...typeForm, is_active: e.target.checked })}
-                        />
-                        <span>Active status</span>
-                      </label>
-                    </div>
-
-                    <div className={styles.buttonGroup}>
+                    <div className={styles.buttonGroup} style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
                       <button type="submit" className={`${styles.btn} ${styles.primaryBtn}`}>
                         <Save size={16} /> {editingType ? 'Update Type' : 'Create Type'}
                       </button>
-                      {editingType && (
-                        <button type="button" onClick={handleCancelEdit} className={`${styles.btn} ${styles.secondaryBtn}`}>
-                          Cancel
-                        </button>
-                      )}
+                      <button type="button" onClick={handleCancelEdit} className={`${styles.btn} ${styles.secondaryBtn}`}>
+                        Cancel
+                      </button>
                     </div>
                   </form>
                 </div>
+              )}
 
-                {/* List Table */}
-                <div className={styles.tableCard}>
-                  <h3 className={styles.cardTitle}>Configured Leave Types</h3>
-                  <div className={styles.tableContainer}>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>Code</th>
-                          <th>Name</th>
-                          <th>Type</th>
-                          <th>Requirements</th>
-                          <th>Status</th>
-                          <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {leaveTypes.length > 0 ? (
-                          leaveTypes.map((row) => (
+              {/* List Table Card */}
+              <div className={styles.tableCard}>
+                <h3 className={styles.cardTitle}>Configured Leave Types</h3>
+                <div className={styles.tableContainer}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Requirements</th>
+                        <th>Status</th>
+                        <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const totalEntries = leaveTypes.length;
+                        const totalPages = Math.ceil(totalEntries / pageSizeTypes);
+                        const validCurrentPage = Math.min(currentPageTypes, Math.max(1, totalPages));
+                        const startIndex = (validCurrentPage - 1) * pageSizeTypes;
+                        const endIndex = Math.min(validCurrentPage * pageSizeTypes, totalEntries);
+                        
+                        const paginatedTypes = leaveTypes.slice(startIndex, endIndex);
+
+                        if (paginatedTypes.length > 0) {
+                          return paginatedTypes.map((row) => (
                             <tr key={row.id}>
                               <td><span className={styles.codeBadge}>{row.code}</span></td>
                               <td><strong>{row.name}</strong></td>
@@ -577,14 +692,91 @@ const LeaveMasterPage = () => {
                                 </div>
                               </td>
                             </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan="6" className={styles.emptyState}>No leave types configured.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                          ));
+                        } else {
+                          return (
+                            <tr>
+                              <td colSpan="6" className={styles.emptyState}>No leave types configured.</td>
+                            </tr>
+                          );
+                        }
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Controls (matching Employee table exactly) */}
+                <div className={styles.tableFooter}>
+                  <div className={styles.footerLeft}>
+                    <div className={styles.limitControl}>
+                      <select
+                        value={pageSizeTypes}
+                        onChange={(e) => {
+                          setPageSizeTypes(Number(e.target.value));
+                          setCurrentPageTypes(1);
+                        }}
+                        className={styles.limitSelect}
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                      </select>
+                      <span>records per page</span>
+                    </div>
+                    <div className={styles.infoText}>
+                      Showing {leaveTypes.length > 0 ? (currentPageTypes - 1) * pageSizeTypes + 1 : 0} to {Math.min(currentPageTypes * pageSizeTypes, leaveTypes.length)} of {leaveTypes.length} entries
+                    </div>
+                  </div>
+                  <div className={styles.pagination}>
+                    <button
+                      onClick={() => setCurrentPageTypes((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPageTypes === 1}
+                      className={styles.pageBtn}
+                    >
+                      Previous
+                    </button>
+                    {(() => {
+                      const totalPages = Math.ceil(leaveTypes.length / pageSizeTypes);
+                      const pages = [];
+                      if (totalPages <= 7) {
+                        for (let i = 1; i <= totalPages; i++) pages.push(i);
+                      } else {
+                        if (currentPageTypes <= 4) {
+                          for (let i = 1; i <= 5; i++) pages.push(i);
+                          pages.push('...');
+                          pages.push(totalPages);
+                        } else if (currentPageTypes >= totalPages - 3) {
+                          pages.push(1);
+                          pages.push('...');
+                          for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+                        } else {
+                          pages.push(1);
+                          pages.push('...');
+                          for (let i = currentPageTypes - 1; i <= currentPageTypes + 1; i++) pages.push(i);
+                          pages.push('...');
+                          pages.push(totalPages);
+                        }
+                      }
+                      return pages.map((p, i) => (
+                        <button
+                          key={i}
+                          onClick={() => p !== '...' && setCurrentPageTypes(p)}
+                          disabled={p === '...'}
+                          className={`${styles.pageBtn} ${currentPageTypes === p ? styles.activePageBtn : ''}`}
+                          style={p === '...' ? { border: 'none', background: 'transparent', cursor: 'default' } : {}}
+                        >
+                          {p}
+                        </button>
+                      ));
+                    })()}
+                    <button
+                      onClick={() => setCurrentPageTypes((prev) => Math.min(prev + 1, Math.ceil(leaveTypes.length / pageSizeTypes)))}
+                      disabled={currentPageTypes === Math.ceil(leaveTypes.length / pageSizeTypes) || Math.ceil(leaveTypes.length / pageSizeTypes) === 0}
+                      className={styles.pageBtn}
+                    >
+                      Next
+                    </button>
                   </div>
                 </div>
               </div>
@@ -598,11 +790,10 @@ const LeaveMasterPage = () => {
                 {/* Policies Configuration Matrix Card */}
                 <div className={styles.matrixFormCard}>
                   {(() => {
-                    const activeRow = policyMatrix.find((r) => r.employee_type_id === selectedEmpTypeId);
-                    if (!activeRow) {
-                      return <div className={styles.emptyState}>Select an Employee Type to configure policies.</div>;
+                    if (policyMatrix.length === 0) {
+                      return <div className={styles.emptyState}>No employee types or leave types configured. Please make sure both are set up first.</div>;
                     }
-
+                    const activeRow = policyMatrix.find((r) => r.employee_type_id === selectedEmpTypeId) || policyMatrix[0];
                     return (
                       <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '16px', flexWrap: 'wrap' }}>
@@ -613,8 +804,11 @@ const LeaveMasterPage = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Employee Type:</span>
                               <select
-                                value={selectedEmpTypeId}
-                                onChange={(e) => setSelectedEmpTypeId(e.target.value)}
+                                value={selectedEmpTypeId || activeRow.employee_type_id}
+                                onChange={(e) => {
+                                  setSelectedEmpTypeId(e.target.value);
+                                  setCurrentPagePolicies(1);
+                                }}
                                 className={styles.matrixSelectFilter}
                               >
                                 {policyMatrix.map((row) => (
@@ -647,63 +841,148 @@ const LeaveMasterPage = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {activeRow.policies.map((p) => (
-                                <tr key={p.leave_type_id}>
-                                  <td>
-                                    <strong>{p.leave_name}</strong>
-                                    <br />
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Code: {p.leave_code}</span>
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="number"
-                                      step="0.5"
-                                      min="0"
-                                      value={p.policy.yearly_allocation}
-                                      onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'yearly_allocation', e.target.value)}
-                                      className={styles.matrixInput}
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="checkbox"
-                                      checked={p.policy.monthly_accrual_enabled}
-                                      onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'monthly_accrual_enabled', e.target.checked)}
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="number"
-                                      step="0.1"
-                                      min="0"
-                                      disabled={!p.policy.monthly_accrual_enabled}
-                                      value={p.policy.monthly_accrual_amount}
-                                      onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'monthly_accrual_amount', e.target.value)}
-                                      className={styles.matrixInput}
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="checkbox"
-                                      checked={p.policy.carry_forward_allowed}
-                                      onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'carry_forward_allowed', e.target.checked)}
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="number"
-                                      step="0.5"
-                                      min="0"
-                                      disabled={!p.policy.carry_forward_allowed}
-                                      value={p.policy.max_carry_forward}
-                                      onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'max_carry_forward', e.target.value)}
-                                      className={styles.matrixInput}
-                                    />
-                                  </td>
-                                </tr>
-                              ))}
+                              {(() => {
+                                const totalEntries = activeRow.policies.length;
+                                const totalPages = Math.ceil(totalEntries / pageSizePolicies);
+                                const validCurrentPage = Math.min(currentPagePolicies, Math.max(1, totalPages));
+                                const startIndex = (validCurrentPage - 1) * pageSizePolicies;
+                                const endIndex = Math.min(validCurrentPage * pageSizePolicies, totalEntries);
+                                
+                                const paginatedPolicies = activeRow.policies.slice(startIndex, endIndex);
+
+                                return paginatedPolicies.map((p) => (
+                                  <tr key={p.leave_type_id}>
+                                    <td>
+                                      <strong>{p.leave_name}</strong>
+                                      <br />
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Code: {p.leave_code}</span>
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="number"
+                                        step="0.5"
+                                        min="0"
+                                        value={p.policy.yearly_allocation}
+                                        onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'yearly_allocation', e.target.value)}
+                                        className={styles.matrixInput}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="checkbox"
+                                        checked={p.policy.monthly_accrual_enabled}
+                                        onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'monthly_accrual_enabled', e.target.checked)}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        disabled={!p.policy.monthly_accrual_enabled}
+                                        value={p.policy.monthly_accrual_amount}
+                                        onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'monthly_accrual_amount', e.target.value)}
+                                        className={styles.matrixInput}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="checkbox"
+                                        checked={p.policy.carry_forward_allowed}
+                                        onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'carry_forward_allowed', e.target.checked)}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="number"
+                                        step="0.5"
+                                        min="0"
+                                        disabled={!p.policy.carry_forward_allowed}
+                                        value={p.policy.max_carry_forward}
+                                        onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'max_carry_forward', e.target.value)}
+                                        className={styles.matrixInput}
+                                      />
+                                    </td>
+                                  </tr>
+                                ));
+                              })()}
                             </tbody>
                           </table>
+                        </div>
+
+                        {/* Policies Pagination Controls */}
+                        <div className={styles.tableFooter} style={{ marginTop: '16px' }}>
+                          <div className={styles.footerLeft}>
+                            <div className={styles.limitControl}>
+                              <select
+                                value={pageSizePolicies}
+                                onChange={(e) => {
+                                  setPageSizePolicies(Number(e.target.value));
+                                  setCurrentPagePolicies(1);
+                                }}
+                                className={styles.limitSelect}
+                              >
+                                <option value={5}>5</option>
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                              </select>
+                              <span>records per page</span>
+                            </div>
+                            <div className={styles.infoText}>
+                              Showing {activeRow.policies.length > 0 ? (currentPagePolicies - 1) * pageSizePolicies + 1 : 0} to {Math.min(currentPagePolicies * pageSizePolicies, activeRow.policies.length)} of {activeRow.policies.length} entries
+                            </div>
+                          </div>
+                          <div className={styles.pagination}>
+                            <button
+                              onClick={() => setCurrentPagePolicies((prev) => Math.max(prev - 1, 1))}
+                              disabled={currentPagePolicies === 1}
+                              className={styles.pageBtn}
+                            >
+                              Previous
+                            </button>
+                            {(() => {
+                              const totalPages = Math.ceil(activeRow.policies.length / pageSizePolicies);
+                              const pages = [];
+                              if (totalPages <= 7) {
+                                for (let i = 1; i <= totalPages; i++) pages.push(i);
+                              } else {
+                                if (currentPagePolicies <= 4) {
+                                  for (let i = 1; i <= 5; i++) pages.push(i);
+                                  pages.push('...');
+                                  pages.push(totalPages);
+                                } else if (currentPagePolicies >= totalPages - 3) {
+                                  pages.push(1);
+                                  pages.push('...');
+                                  for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+                                } else {
+                                  pages.push(1);
+                                  pages.push('...');
+                                  for (let i = currentPagePolicies - 1; i <= currentPagePolicies + 1; i++) pages.push(i);
+                                  pages.push('...');
+                                  pages.push(totalPages);
+                                }
+                              }
+                              return pages.map((p, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => p !== '...' && setCurrentPagePolicies(p)}
+                                  disabled={p === '...'}
+                                  className={`${styles.pageBtn} ${currentPagePolicies === p ? styles.activePageBtn : ''}`}
+                                  style={p === '...' ? { border: 'none', background: 'transparent', cursor: 'default' } : {}}
+                                >
+                                  {p}
+                                </button>
+                              ));
+                            })()}
+                            <button
+                              onClick={() => setCurrentPagePolicies((prev) => Math.min(prev + 1, Math.ceil(activeRow.policies.length / pageSizePolicies)))}
+                              disabled={currentPagePolicies === Math.ceil(activeRow.policies.length / pageSizePolicies) || Math.ceil(activeRow.policies.length / pageSizePolicies) === 0}
+                              className={styles.pageBtn}
+                            >
+                              Next
+                            </button>
+                          </div>
                         </div>
                       </>
                     );
@@ -800,32 +1079,28 @@ const LeaveMasterPage = () => {
                   <form onSubmit={handleSaveAdjustment} className={styles.formContainer}>
                     <div className={styles.field}>
                       <label className={styles.label}>Select Employee *</label>
-                      <select
+                      <SearchableSelect
                         value={selectedAdjustEmployeeId}
-                        onChange={(e) => setSelectedAdjustEmployeeId(e.target.value)}
-                        className={styles.input}
-                        required
-                      >
-                        <option value="">-- Choose Employee --</option>
-                        {employees.map(emp => (
-                          <option key={emp.id} value={emp.id}>{emp.memberName} ({emp.employeeType || 'N/A'})</option>
-                        ))}
-                      </select>
+                        onChange={setSelectedAdjustEmployeeId}
+                        options={employees.map((emp) => ({
+                          value: emp.id,
+                          label: `${emp.memberName} (${emp.employeeType || 'N/A'})`
+                        }))}
+                        placeholder="-- Choose Employee --"
+                      />
                     </div>
 
                     <div className={styles.field}>
                       <label className={styles.label}>Select Leave Type *</label>
-                      <select
+                      <SearchableSelect
                         value={selectedAdjustLeaveTypeId}
-                        onChange={(e) => setSelectedAdjustLeaveTypeId(e.target.value)}
-                        className={styles.input}
-                        required
-                      >
-                        <option value="">-- Choose Leave Type --</option>
-                        {leaveTypes.map(type => (
-                          <option key={type.id} value={type.id}>{type.name} ({type.code})</option>
-                        ))}
-                      </select>
+                        onChange={setSelectedAdjustLeaveTypeId}
+                        options={leaveTypes.map((type) => ({
+                          value: type.id,
+                          label: `${type.name} (${type.code})`
+                        }))}
+                        placeholder="-- Choose Leave Type --"
+                      />
                     </div>
 
                     <div className={styles.field}>

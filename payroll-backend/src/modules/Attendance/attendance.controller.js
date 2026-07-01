@@ -371,6 +371,44 @@ class AttendanceController {
             );
         }
     }
+
+    /**
+     * Admin/Contractor: Approves a pending attendance record.
+     */
+    static async approve(req, res) {
+        try {
+            const { id } = req.params;
+            const updated = await AttendanceService.approveRecord(id, req.user);
+            return res.status(200).json(
+                successResponse("ATTENDANCE_APPROVED", "Attendance record approved successfully.", "Attendance approved.", updated)
+            );
+        } catch (err) {
+            const statusCode = err.statusCode || 500;
+            const errorCode = err.errorCode || "INTERNAL_SERVER_ERROR";
+            return res.status(statusCode).json(
+                errorResponse(errorCode, err.message, err.messageToShow || "Failed to approve attendance.")
+            );
+        }
+    }
+
+    /**
+     * Admin/Contractor: Rejects a pending attendance record.
+     */
+    static async reject(req, res) {
+        try {
+            const { id } = req.params;
+            const updated = await AttendanceService.rejectRecord(id, req.user);
+            return res.status(200).json(
+                successResponse("ATTENDANCE_REJECTED", "Attendance record rejected successfully.", "Attendance rejected.", updated)
+            );
+        } catch (err) {
+            const statusCode = err.statusCode || 500;
+            const errorCode = err.errorCode || "INTERNAL_SERVER_ERROR";
+            return res.status(statusCode).json(
+                errorResponse(errorCode, err.message, err.messageToShow || "Failed to reject attendance.")
+            );
+        }
+    }
 }
 
 module.exports = AttendanceController;

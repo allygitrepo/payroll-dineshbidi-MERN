@@ -65,14 +65,21 @@ class LeaveRequestController {
                 );
             }
 
+            const employeeInclude = {
+                model: db.Employee,
+                as: "employee",
+                attributes: ["id", "name", "image_path", "uan", "mobile", "employee_type"],
+            };
+
+            if (req.user?.role_name === 'Contractor' && req.user?.contractor_id) {
+                employeeInclude.where = { contractor_id: req.user.contractor_id };
+                employeeInclude.required = true;
+            }
+
             const requests = await db.LeaveRequest.findAll({
                 where: { company_id: companyId },
                 include: [
-                    {
-                        model: db.Employee,
-                        as: "employee",
-                        attributes: ["id", "name", "image_path", "uan", "mobile", "employee_type"],
-                    },
+                    employeeInclude,
                     {
                         model: db.LeaveType,
                         as: "leaveType",
@@ -120,6 +127,24 @@ class LeaveRequestController {
                 return res.status(400).json(
                     errorResponse("VALIDATION_ERROR", "Required fields are missing.", "Required fields are missing.")
                 );
+            }
+
+            // Verify employee existence and contractor association
+            const employeeObj = await db.Employee.findByPk(employeeId, { transaction });
+            if (!employeeObj || employeeObj.company_id !== companyId) {
+                await transaction.rollback();
+                return res.status(404).json(
+                    errorResponse("NOT_FOUND", "Employee not found or does not belong to this company.", "Employee not found.")
+                );
+            }
+
+            if (req.user?.role_name === 'Contractor' && req.user?.contractor_id) {
+                if (employeeObj.contractor_id !== req.user.contractor_id) {
+                    await transaction.rollback();
+                    return res.status(403).json(
+                        errorResponse("ACCESS_DENIED", "Access denied. You can only submit leave requests for your own employees.", "Access denied.")
+                    );
+                }
             }
 
             const appliedStatus = status || LEAVE_STATUS.SUBMITTED; // Default to Submitted if not Draft
@@ -267,13 +292,37 @@ class LeaveRequestController {
             const { id } = req.params;
             const changedBy = req.user ? req.user.id : null;
 
+            // Role validation: Only Admin, Owner, or Contractor can approve
+            const userRole = req.user?.role_name || '';
+            const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
+            const isContractor = userRole === 'Contractor';
+            if (!isAdmin && !isContractor) {
+                await transaction.rollback();
+                return res.status(403).json(
+                    errorResponse("ACCESS_DENIED", "Access denied. You do not have permission to approve leaves.", "Access denied.")
+                );
+            }
+
             const request = await db.LeaveRequest.findByPk(id, {
-                include: [{ model: db.LeaveType, as: "leaveType" }]
+                include: [
+                    { model: db.LeaveType, as: "leaveType" },
+                    { model: db.Employee, as: "employee", attributes: ["id", "contractor_id"] }
+                ],
+                transaction
             });
 
             if (!request) {
                 await transaction.rollback();
                 return res.status(404).json(errorResponse("NOT_FOUND", "Leave request not found.", "Leave request not found."));
+            }
+
+            if (isContractor && req.user?.contractor_id) {
+                if (!request.employee || request.employee.contractor_id !== req.user.contractor_id) {
+                    await transaction.rollback();
+                    return res.status(403).json(
+                        errorResponse("ACCESS_DENIED", "Access denied. You can only approve leave requests for your own employees.", "Access denied.")
+                    );
+                }
             }
 
             if (request.status !== LEAVE_STATUS.SUBMITTED) {
@@ -298,8 +347,15 @@ class LeaveRequestController {
                 }
             }
 
+            const userObj = await db.User.findByPk(req.user.id, { transaction });
+            const actionByName = userObj ? userObj.user_name : (req.user.user_name || req.user.user_id);
+
             // 1. Update request status
-            await request.update({ status: LEAVE_STATUS.APPROVED }, { transaction });
+            await request.update({ 
+                status: LEAVE_STATUS.APPROVED,
+                action_by_name: actionByName,
+                action_by_role: req.user.role_name
+            }, { transaction });
 
             // 2. Adjust Leave Balance (Used is incremented)
             const balanceObj = await LeaveBalanceService.getOrCreateBalance(request.company_id, request.employee_id, request.leave_type_id, leaveYear, transaction);
@@ -407,15 +463,38 @@ class LeaveRequestController {
     /**
      * Reject a submitted leave request
      */
-    async reject(req, res) {
+     async reject(req, res) {
         const transaction = await db.sequelize.transaction();
         try {
             const { id } = req.params;
 
-            const request = await db.LeaveRequest.findByPk(id, { transaction });
+            // Role validation: Only Admin, Owner, or Contractor can reject
+            const userRole = req.user?.role_name || '';
+            const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
+            const isContractor = userRole === 'Contractor';
+            if (!isAdmin && !isContractor) {
+                await transaction.rollback();
+                return res.status(403).json(
+                    errorResponse("ACCESS_DENIED", "Access denied. You do not have permission to reject leaves.", "Access denied.")
+                );
+            }
+
+            const request = await db.LeaveRequest.findByPk(id, {
+                include: [{ model: db.Employee, as: "employee", attributes: ["id", "contractor_id"] }],
+                transaction
+            });
             if (!request) {
                 await transaction.rollback();
                 return res.status(404).json(errorResponse("NOT_FOUND", "Leave request not found.", "Leave request not found."));
+            }
+
+            if (isContractor && req.user?.contractor_id) {
+                if (!request.employee || request.employee.contractor_id !== req.user.contractor_id) {
+                    await transaction.rollback();
+                    return res.status(403).json(
+                        errorResponse("ACCESS_DENIED", "Access denied. You can only reject leave requests for your own employees.", "Access denied.")
+                    );
+                }
             }
 
             if (request.status !== LEAVE_STATUS.SUBMITTED) {
@@ -423,7 +502,14 @@ class LeaveRequestController {
                 return res.status(400).json(errorResponse("INVALID_STATE", `Cannot reject a leave request in status: ${request.status}.`, "Invalid request status."));
             }
 
-            await request.update({ status: LEAVE_STATUS.REJECTED }, { transaction });
+            const userObj = await db.User.findByPk(req.user.id, { transaction });
+            const actionByName = userObj ? userObj.user_name : (req.user.user_name || req.user.user_id);
+
+            await request.update({ 
+                status: LEAVE_STATUS.REJECTED,
+                action_by_name: actionByName,
+                action_by_role: req.user.role_name
+            }, { transaction });
 
             await transaction.commit();
 
@@ -448,13 +534,37 @@ class LeaveRequestController {
             const { id } = req.params;
             const changedBy = req.user ? req.user.id : null;
 
+            // Role validation: Only Admin, Owner, or Contractor can cancel
+            const userRole = req.user?.role_name || '';
+            const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
+            const isContractor = userRole === 'Contractor';
+            if (!isAdmin && !isContractor) {
+                await transaction.rollback();
+                return res.status(403).json(
+                    errorResponse("ACCESS_DENIED", "Access denied. You do not have permission to cancel leaves.", "Access denied.")
+                );
+            }
+
             const request = await db.LeaveRequest.findByPk(id, {
-                include: [{ model: db.LeaveType, as: "leaveType" }]
+                include: [
+                    { model: db.LeaveType, as: "leaveType" },
+                    { model: db.Employee, as: "employee", attributes: ["id", "contractor_id"] }
+                ],
+                transaction
             });
 
             if (!request) {
                 await transaction.rollback();
                 return res.status(404).json(errorResponse("NOT_FOUND", "Leave request not found.", "Leave request not found."));
+            }
+
+            if (isContractor && req.user?.contractor_id) {
+                if (!request.employee || request.employee.contractor_id !== req.user.contractor_id) {
+                    await transaction.rollback();
+                    return res.status(403).json(
+                        errorResponse("ACCESS_DENIED", "Access denied. You can only cancel leave requests for your own employees.", "Access denied.")
+                    );
+                }
             }
 
             if (request.status !== LEAVE_STATUS.APPROVED) {
@@ -465,8 +575,15 @@ class LeaveRequestController {
             const leaveYear = request.from_date.split("-")[0];
             const duration = parseFloat(request.number_of_days);
 
+            const userObj = await db.User.findByPk(req.user.id, { transaction });
+            const actionByName = userObj ? userObj.user_name : (req.user.user_name || req.user.user_id);
+
             // 1. Update request status to Cancelled
-            await request.update({ status: LEAVE_STATUS.CANCELLED }, { transaction });
+            await request.update({ 
+                status: LEAVE_STATUS.CANCELLED,
+                action_by_name: actionByName,
+                action_by_role: req.user.role_name
+            }, { transaction });
 
             // 2. Revert Leave Balance (Used is decremented)
             const balanceObj = await LeaveBalanceService.getOrCreateBalance(request.company_id, request.employee_id, request.leave_type_id, leaveYear, transaction);

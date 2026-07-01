@@ -53,3 +53,13 @@ export const getAttendanceSummary = async (companyId, monthYear) => {
     return {};
   }
 };
+
+export const approveAttendance = async (id) => {
+  const response = await apiClient.put(`attendance/${id}/approve`);
+  return response.data;
+};
+
+export const rejectAttendance = async (id) => {
+  const response = await apiClient.put(`attendance/${id}/reject`);
+  return response.data;
+};

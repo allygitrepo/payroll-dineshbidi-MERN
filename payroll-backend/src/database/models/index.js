@@ -23,17 +23,14 @@ const BidiRollerEntry = require("../../modules/Entry/BidiRollerEntry/bidiRollerE
 const ChallanDateEntry = require("../../modules/Entry/ChallanDateEntry/challanDateEntry.model");
 const Resignation = require("../../modules/Entry/Resignation/resignation.model");
 const Note = require("../../modules/Todo List/Note/note.model");
-// const LeaveMaster = require("../../modules/Setup/LeaveMaster/leaveMaster.model");
+const LeaveMaster = require("../../modules/Setup/LeaveMaster/leaveMaster.model");
 const Loan = require("../../modules/Loan/loan.model");
 const LoanTransaction = require("../../modules/Loan/loanTransaction.model");
-
 const LeaveType = require("../../modules/Setup/LeaveMaster/leaveType.model");
 const LeavePolicy = require("../../modules/Setup/LeaveMaster/leavePolicy.model");
 const LeaveBalance = require("../../modules/Attendance/Leave/leaveBalance.model");
 const LeaveTransaction = require("../../modules/Attendance/Leave/leaveTransaction.model");
 const EmployeeType = require("../../modules/Masters/EmployeeType/employeeType.model");
-const WhatsAppInstance = require("../../modules/Setup/WhatsApp/whatsAppInstance.model");
-const WhatsAppTemplate = require("../../modules/Setup/WhatsApp/whatsappTemplate.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -71,10 +68,7 @@ db.LeavePolicy = LeavePolicy;
 db.LeaveBalance = LeaveBalance;
 db.LeaveTransaction = LeaveTransaction;
 db.EmployeeType = EmployeeType;
-db.WhatsAppInstance = WhatsAppInstance;
-db.WhatsAppTemplate = WhatsAppTemplate;
-db.Loan = Loan;
-db.LoanTransaction = LoanTransaction;
+
 
 // Model associations
 
@@ -425,16 +419,6 @@ db.Note.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
 });
-// Employee <-> EmployeeType
-db.EmployeeType.hasMany(db.Employee, {
-    foreignKey: "employee_type_id",
-    as: "employees",
-});
-db.Employee.belongsTo(db.EmployeeType, {
-    foreignKey: "employee_type_id",
-    as: "employeeType",
-});
-
 // LeaveType <-> Company
 db.Company.hasMany(db.LeaveType, {
     foreignKey: "company_id",
@@ -497,21 +481,12 @@ db.LeavePolicy.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
 });
-db.LeavePolicy.belongsTo(db.EmployeeType, {
-    foreignKey: "employee_type_id",
-    as: "employeeType",
-});
 db.LeavePolicy.belongsTo(db.LeaveType, {
     foreignKey: "leave_type_id",
     as: "leaveType",
 });
 db.LeaveType.hasMany(db.LeavePolicy, {
     foreignKey: "leave_type_id",
-    as: "leavePolicies",
-    onDelete: "CASCADE",
-});
-db.EmployeeType.hasMany(db.LeavePolicy, {
-    foreignKey: "employee_type_id",
     as: "leavePolicies",
     onDelete: "CASCADE",
 });
@@ -585,23 +560,5 @@ db.LeaveType.hasMany(db.LeaveRequest, {
     onDelete: "CASCADE",
 });
 
-// WhatsApp relationships
-db.Company.hasOne(db.WhatsAppInstance, {
-    foreignKey: "company_id",
-    as: "whatsapp_instance",
-});
-db.WhatsAppInstance.belongsTo(db.Company, {
-    foreignKey: "company_id",
-    as: "company",
-});
-
-db.Company.hasMany(db.WhatsAppTemplate, {
-    foreignKey: "company_id",
-    as: "whatsapp_templates",
-});
-db.WhatsAppTemplate.belongsTo(db.Company, {
-    foreignKey: "company_id",
-    as: "company",
-});
 
 module.exports = db;

@@ -14,12 +14,14 @@ import {
   FileText,
   File,
   Printer,
-  Camera
+  Camera,
+  Check
 } from 'lucide-react';
-import { useToast, DatePicker } from '../../../../shared/components';
+import { useToast, DatePicker, ConfirmModal } from '../../../../shared/components';
 import styles from './AttendanceListPage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
-import { getCompanyAttendance } from '../../attendanceService';
+import { getCompanyAttendance, approveAttendance, rejectAttendance } from '../../attendanceService';
+import { getEmployeeTypes } from '../../../setup/leave-master/services/leaveMasterService';
 
 // Futuristic biometric avatar component for face visualization fallback
 const BiometricAvatar = ({ seed, className }) => {
@@ -234,11 +236,28 @@ const formatTime = (timeStr) => {
 };
 
 const AttendanceListPage = () => {
+  const userStr = localStorage.getItem('user');
+  const userObj = useMemo(() => {
+    if (!userStr) return null;
+    try {
+      return JSON.parse(userStr);
+    } catch (e) {
+      return null;
+    }
+  }, [userStr]);
+
+  const userRole = userObj?.role?.name || '';
+  const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
+  const isContractor = userRole === 'Contractor';
+  const canApproveOrReject = isAdmin || isContractor;
+
   const [employees, setEmployees] = useState([]);
   const [logs, setLogs] = useState([]);
   
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
+  const [dbEmployeeTypes, setDbEmployeeTypes] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('All');
   
   // Defaults to today's date
   const getTodayDateStr = () => {
@@ -263,6 +282,24 @@ const AttendanceListPage = () => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [activeLocationTab, setActiveLocationTab] = useState('in');
+
+  // Confirmation Modal States
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null); // 'approve' | 'reject'
+  const [confirmTargetId, setConfirmTargetId] = useState(null);
+  const [confirmTargetName, setConfirmTargetName] = useState(null);
+
+  useEffect(() => {
+    const fetchTypes = async () => {
+      try {
+        const data = await getEmployeeTypes();
+        setDbEmployeeTypes(data || []);
+      } catch (err) {
+        console.error('Error loading employee types for attendance list:', err);
+      }
+    };
+    fetchTypes();
+  }, []);
 
   // Fetch real data from DB
   useEffect(() => {
@@ -472,6 +509,13 @@ const AttendanceListPage = () => {
 
   // Generate Daily Attendance Sheet (combining check-ins with generated Absent logs)
   const generateDailySheet = () => {
+    const resolveStatus = (log) => {
+      if (!log) return 'Absent';
+      if (log.approval_status === 'Pending') return 'Pending';
+      if (log.approval_status === 'Rejected') return 'Absent';
+      return log.sign_in_time ? 'Present' : 'Absent';
+    };
+
     if (!selectedDate) {
       // Show All: Map every check-in log from DB to its employee details
       return logs.map((log) => {
@@ -485,7 +529,7 @@ const AttendanceListPage = () => {
           address: emp.address || '',
           avatarSeed: 1,
           date: log.date,
-          status: log.sign_in_time ? 'Present' : 'Absent',
+          status: resolveStatus(log),
           record: log
         };
       });
@@ -505,7 +549,7 @@ const AttendanceListPage = () => {
           address: emp.address || '',
           avatarSeed: 1,
           date: log.date,
-          status: log.sign_in_time ? 'Present' : 'Absent',
+          status: resolveStatus(log),
           record: log
         };
       } else {
@@ -528,11 +572,12 @@ const AttendanceListPage = () => {
 
   const dailySheet = generateDailySheet();
 
-  // Status priority for sorting (Absent first, then Late, then Present)
+  // Status priority for sorting (Pending first, then Absent, then Late, then Present)
   const statusPriority = {
-    'Absent': 1,
-    'Late': 2,
-    'Present': 3
+    'Pending': 1,
+    'Absent': 2,
+    'Late': 3,
+    'Present': 4
   };
 
   // Sort daily sheet records
@@ -554,11 +599,14 @@ const AttendanceListPage = () => {
         rec.category.toLowerCase().includes(search.toLowerCase()) ||
         rec.address.toLowerCase().includes(search.toLowerCase());
         
-      const matchesCategory = categoryFilter === 'All' || rec.category === categoryFilter;
+      const matchesCategory =
+        categoryFilter === 'All' ||
+        (rec.category && rec.category.toUpperCase().trim() === categoryFilter.toUpperCase().trim());
+      const matchesStatus = statusFilter === 'All' || rec.status === statusFilter;
 
-      return matchesSearch && matchesCategory;
+      return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [sortedRecords, search, categoryFilter]);
+  }, [sortedRecords, search, categoryFilter, statusFilter]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredRecords.length / rowsPerPage);
@@ -572,7 +620,7 @@ const AttendanceListPage = () => {
   // Reset pagination on filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, categoryFilter, selectedDate, rowsPerPage]);
+  }, [search, categoryFilter, statusFilter, selectedDate, rowsPerPage]);
 
   const openLocationModal = (rec) => {
     if (rec.status === 'Absent') return;
@@ -589,6 +637,75 @@ const AttendanceListPage = () => {
     if (rec.status === 'Absent') return;
     setSelectedRecord(rec);
     setIsImageModalOpen(true);
+  };
+
+  const handleApprove = async (id) => {
+    try {
+      await approveAttendance(id);
+      addToast({ type: 'success', message: 'Attendance approved successfully.' });
+      const companyId = localStorage.getItem('selectedCompany');
+      if (companyId) {
+        const logData = await getCompanyAttendance(companyId);
+        setLogs(logData);
+      }
+    } catch (err) {
+      console.error('Failed to approve attendance:', err);
+      addToast({ type: 'error', message: err.message || 'Failed to approve attendance.' });
+    }
+  };
+
+  const handleReject = async (id) => {
+    try {
+      await rejectAttendance(id);
+      addToast({ type: 'info', message: 'Attendance rejected.' });
+      const companyId = localStorage.getItem('selectedCompany');
+      if (companyId) {
+        const logData = await getCompanyAttendance(companyId);
+        setLogs(logData);
+      }
+    } catch (err) {
+      console.error('Failed to reject attendance:', err);
+      addToast({ type: 'error', message: err.message || 'Failed to reject attendance.' });
+    }
+  };
+
+  const triggerApproveConfirm = (id, name) => {
+    setConfirmTargetId(id);
+    setConfirmTargetName(name);
+    setConfirmAction('approve');
+    setIsConfirmOpen(true);
+  };
+
+  const triggerRejectConfirm = (id, name) => {
+    setConfirmTargetId(id);
+    setConfirmTargetName(name);
+    setConfirmAction('reject');
+    setIsConfirmOpen(true);
+  };
+
+  const handleCancelConfirm = () => {
+    setIsConfirmOpen(false);
+    setConfirmTargetId(null);
+    setConfirmTargetName(null);
+    setConfirmAction(null);
+  };
+
+  const handleExecuteConfirm = async () => {
+    const action = confirmAction;
+    const id = confirmTargetId;
+
+    setIsConfirmOpen(false);
+    setConfirmTargetId(null);
+    setConfirmTargetName(null);
+    setConfirmAction(null);
+
+    if (id && action) {
+      if (action === 'approve') {
+        await handleApprove(id);
+      } else if (action === 'reject') {
+        await handleReject(id);
+      }
+    }
   };
 
   const getPageNumbers = () => {
@@ -706,6 +823,20 @@ const AttendanceListPage = () => {
                 <option value="BIDI ROLLER">Bidi Roller</option>
               </select>
             </div>
+
+            {/* Status Selector */}
+            <div className={styles.categorySelect}>
+              <span className={styles.controlLabel}>Status</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="All">All Statuses</option>
+                <option value="Present">Present</option>
+                <option value="Absent">Absent</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
           </div>
 
           {/* Search Input */}
@@ -731,6 +862,7 @@ const AttendanceListPage = () => {
               <th>Category</th>
               <th>Date & Time</th>
               <th>Status</th>
+              <th>Action By</th>
               <th style={{ textAlign: 'center' }}>Actions</th>
             </tr>
           </thead>
@@ -787,23 +919,79 @@ const AttendanceListPage = () => {
                       </div>
                     </td>
                     <td>
-                      {isAbsent ? (
+                      {rec.status === 'Absent' && (
                         <span className={styles.badgeAbsent}>
                           <AlertCircle size={12} /> Absent
                         </span>
-                      ) : (
+                      )}
+                      {rec.status === 'Present' && (
                         <span className={styles.badgePresent}>
                           <CheckCircle2 size={12} /> Present
                         </span>
                       )}
+                      {rec.status === 'Pending' && (
+                        <span className={styles.badgePending} style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <Clock size={12} /> Pending Approval
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {rec.record?.action_by_name ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.82rem' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{rec.record.action_by_name}</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>({rec.record.action_by_role})</span>
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
+                      )}
                     </td>
                     <td>
                       <div className={styles.actions}>
+                        {canApproveOrReject && rec.status === 'Pending' && (
+                          <>
+                            <button
+                              className={styles.actionBtn}
+                              style={{
+                                backgroundColor: '#10B981',
+                                color: 'white',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '6px 8px',
+                                borderRadius: '4px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                marginRight: '6px'
+                              }}
+                              onClick={() => triggerApproveConfirm(rec.id, rec.name)}
+                              title="Approve Attendance"
+                            >
+                              <Check size={14} />
+                            </button>
+                            <button
+                              className={styles.actionBtn}
+                              style={{
+                                backgroundColor: '#EF4444',
+                                color: 'white',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '6px 8px',
+                                borderRadius: '4px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                marginRight: '6px'
+                              }}
+                              onClick={() => triggerRejectConfirm(rec.id, rec.name)}
+                              title="Reject Attendance"
+                            >
+                              <X size={14} />
+                            </button>
+                          </>
+                        )}
                         <button
                           className={`${styles.actionBtn} ${styles.locationBtn}`}
                           onClick={() => openLocationModal(rec)}
-                          disabled={isAbsent}
-                          title={isAbsent ? 'No location scan for Absent employee' : 'View Check-In Location'}
+                          disabled={rec.status === 'Absent'}
+                          title={rec.status === 'Absent' ? 'No location scan for Absent employee' : 'View Check-In Location'}
                         >
                           <MapPin size={14} />
                           <span>Location</span>
@@ -811,8 +999,8 @@ const AttendanceListPage = () => {
                         <button
                           className={`${styles.actionBtn} ${styles.imageBtn}`}
                           onClick={() => openImageModal(rec)}
-                          disabled={isAbsent}
-                          title={isAbsent ? 'No photo capture for Absent employee' : 'View Face Capture'}
+                          disabled={rec.status === 'Absent'}
+                          title={rec.status === 'Absent' ? 'No photo capture for Absent employee' : 'View Face Capture'}
                         >
                           <Image size={14} />
                           <span>Image</span>
@@ -824,7 +1012,7 @@ const AttendanceListPage = () => {
               })
             ) : (
               <tr>
-                <td colSpan="7" className={styles.emptyTable}>
+                <td colSpan="8" className={styles.emptyTable}>
                   No attendance records found for {selectedDate ? formatDateFriendly(selectedDate) : 'selected query'}
                 </td>
               </tr>
@@ -1066,6 +1254,20 @@ const AttendanceListPage = () => {
           </div>
         </div>
       )}
+      {/* Confirmation Dialog Modal */}
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={handleCancelConfirm}
+        onConfirm={handleExecuteConfirm}
+        title={confirmAction === 'approve' ? 'Approve Attendance' : 'Reject Attendance'}
+        message={
+          confirmAction === 'approve'
+            ? `Are you sure you want to approve the attendance check-in for ${confirmTargetName}? This will mark them as Present.`
+            : `Are you sure you want to reject the attendance check-in for ${confirmTargetName}? This will mark them as Absent.`
+        }
+        confirmText={confirmAction === 'approve' ? 'Approve' : 'Reject'}
+        theme={confirmAction === 'approve' ? 'success' : 'danger'}
+      />
       </div>
     </div>
   );
