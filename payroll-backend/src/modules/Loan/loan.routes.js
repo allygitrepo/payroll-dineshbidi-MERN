@@ -8,6 +8,7 @@ router.use(authenticateJWT);
 
 router.post("/create", LoanController.create);
 router.get("/employee/:employee_id", LoanController.getByEmployee);
+router.get("/company/:company_id", LoanController.getByCompany);
 router.put("/override/:id", LoanController.update);
 router.post("/repayment/:id", LoanController.recordRepayment);
 router.post("/repay-fifo", LoanController.repayFIFO);

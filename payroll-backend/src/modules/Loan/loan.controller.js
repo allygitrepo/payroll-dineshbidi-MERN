@@ -224,6 +224,31 @@ class LoanController {
             );
         }
     }
+
+    /**
+     * Gets all loans for a company.
+     */
+    static async getByCompany(req, res) {
+        const { company_id } = req.params;
+        if (!company_id) {
+            return res.status(400).json(
+                errorResponse("VALIDATION_ERROR", "Company ID is required.", "Company ID is required.")
+            );
+        }
+
+        try {
+            const loans = await LoanService.getLoansByCompany(company_id, req.user);
+            return res.status(200).json(
+                successResponse("LOANS_RETRIEVED", "Company loans retrieved successfully.", "Company loans retrieved successfully.", loans)
+            );
+        } catch (err) {
+            const statusCode = err.statusCode || 500;
+            const errorCode = err.errorCode || "LOANS_RETRIEVE_FAILED";
+            return res.status(statusCode).json(
+                errorResponse(errorCode, err.message, err.messageToShow || "Failed to retrieve company loans.")
+            );
+        }
+    }
 }
 
 module.exports = LoanController;

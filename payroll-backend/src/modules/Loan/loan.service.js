@@ -76,20 +76,34 @@ class LoanService {
             warnings.push(`Employee already has ${activeCount} active loan(s).`);
         }
 
+        const principal = parseFloat(loanData.total_amount);
+        const interestRate = parseFloat(loanData.interest_rate || 0);
+        const tenure = parseInt(loanData.tenure_months || 0);
+        const interestType = loanData.interest_type || "FLAT";
+
+        let totalInterest = 0;
+        if (interestRate > 0) {
+            if (interestType.toUpperCase() === "FLAT") {
+                totalInterest = principal * (interestRate / 100);
+            } else if (interestType.toUpperCase() === "REDUCING" && tenure > 0) {
+                const r = (interestRate / 12) / 100;
+                if (r > 0) {
+                    const emiCalc = principal * (r * Math.pow(1 + r, tenure)) / (Math.pow(1 + r, tenure) - 1);
+                    totalInterest = (emiCalc * tenure) - principal;
+                }
+            }
+        }
+
         // Auto-calculate EMI if blank but tenure is provided
         let emi = parseFloat(loanData.emi_amount);
-        if ((!emi || isNaN(emi)) && loanData.tenure_months) {
-            const principal = parseFloat(loanData.total_amount);
-            const rate = parseFloat(loanData.interest_rate || 0) / 100;
-            const tenure = parseInt(loanData.tenure_months);
-            const totalInterest = principal * rate;
+        if ((!emi || isNaN(emi)) && tenure > 0) {
             emi = (principal + totalInterest) / tenure;
         }
 
         const newLoan = await Loan.create({
             ...loanData,
             company_id: companyId,
-            remaining_amount: loanData.total_amount,
+            remaining_amount: principal + totalInterest,
             emi_amount: emi || 0.00,
             status: "Active"
         });
@@ -296,6 +310,17 @@ class LoanService {
             total_pending: parseFloat(totalPending),
             active_count: activeCount
         };
+    }
+
+    /**
+     * Gets all loans for a company.
+     */
+    static async getLoansByCompany(companyId, user) {
+        await verifyCompanyAccess(companyId, user);
+        return await Loan.findAll({
+            where: { company_id: companyId },
+            order: [["createdAt", "DESC"]]
+        });
     }
 }
 
