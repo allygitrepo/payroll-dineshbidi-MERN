@@ -23,14 +23,13 @@ const BidiRollerEntry = require("../../modules/Entry/BidiRollerEntry/bidiRollerE
 const ChallanDateEntry = require("../../modules/Entry/ChallanDateEntry/challanDateEntry.model");
 const Resignation = require("../../modules/Entry/Resignation/resignation.model");
 const Note = require("../../modules/Todo List/Note/note.model");
-const LeaveMaster = require("../../modules/Setup/LeaveMaster/leaveMaster.model");
+// const LeaveMaster = require("../../modules/Setup/LeaveMaster/leaveMaster.model");
 const Loan = require("../../modules/Loan/loan.model");
 const LoanTransaction = require("../../modules/Loan/loanTransaction.model");
 const LeaveType = require("../../modules/Setup/LeaveMaster/leaveType.model");
 const LeavePolicy = require("../../modules/Setup/LeaveMaster/leavePolicy.model");
 const LeaveBalance = require("../../modules/Attendance/Leave/leaveBalance.model");
 const LeaveTransaction = require("../../modules/Attendance/Leave/leaveTransaction.model");
-const EmployeeType = require("../../modules/Masters/EmployeeType/employeeType.model");
 const WhatsAppInstance = require("../../modules/Setup/WhatsApp/whatsAppInstance.model");
 const WhatsAppTemplate = require("../../modules/Setup/WhatsApp/whatsappTemplate.model");
 
@@ -69,7 +68,8 @@ db.LeaveType = LeaveType;
 db.LeavePolicy = LeavePolicy;
 db.LeaveBalance = LeaveBalance;
 db.LeaveTransaction = LeaveTransaction;
-db.EmployeeType = EmployeeType;
+db.Loan = Loan;
+db.LoanTransaction = LoanTransaction;
 db.WhatsAppInstance = WhatsAppInstance;
 db.WhatsAppTemplate = WhatsAppTemplate;
 
