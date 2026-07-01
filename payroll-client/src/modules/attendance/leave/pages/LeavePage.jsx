@@ -26,6 +26,21 @@ const LeavePage = () => {
   const addToast = useToast();
   const companyId = localStorage.getItem('selectedCompany');
 
+  const userStr = localStorage.getItem('user');
+  const userObj = useMemo(() => {
+    if (!userStr) return null;
+    try {
+      return JSON.parse(userStr);
+    } catch (e) {
+      return null;
+    }
+  }, [userStr]);
+
+  const userRole = userObj?.role?.name || '';
+  const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
+  const isContractor = userRole === 'Contractor';
+  const canApproveOrReject = isAdmin || isContractor;
+
   const [employees, setEmployees] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
@@ -746,23 +761,29 @@ const LeavePage = () => {
                         </td>
                         <td>
                           <div className={styles.actionButtons}>
-                            {row.status === 'Submitted' && (
+                            {canApproveOrReject ? (
                               <>
-                                <button onClick={() => handleApprove(row.id, row.employeeName)} className={styles.actionApprove} title="Approve Request">
-                                  <Check size={14} /> Approve
-                                </button>
-                                <button onClick={() => handleReject(row.id, row.employeeName)} className={styles.actionReject} title="Reject Request">
-                                  <X size={14} />
-                                </button>
+                                {row.status === 'Submitted' && (
+                                  <>
+                                    <button onClick={() => handleApprove(row.id, row.employeeName)} className={styles.actionApprove} title="Approve Request">
+                                      <Check size={14} /> Approve
+                                    </button>
+                                    <button onClick={() => handleReject(row.id, row.employeeName)} className={styles.actionReject} title="Reject Request">
+                                      <X size={14} />
+                                    </button>
+                                  </>
+                                )}
+                                {row.status === 'Approved' && (
+                                  <button onClick={() => handleCancel(row.id, row.employeeName)} className={styles.actionCancel} title="Cancel and Restore Balance">
+                                    <Ban size={14} /> Cancel Leave
+                                  </button>
+                                )}
+                                {row.status !== 'Submitted' && row.status !== 'Approved' && (
+                                  <span className={styles.actionCompletedText}>No actions</span>
+                                )}
                               </>
-                            )}
-                            {row.status === 'Approved' && (
-                              <button onClick={() => handleCancel(row.id, row.employeeName)} className={styles.actionCancel} title="Cancel and Restore Balance">
-                                <Ban size={14} /> Cancel Leave
-                              </button>
-                            )}
-                            {row.status !== 'Submitted' && row.status !== 'Approved' && (
-                              <span className={styles.actionCompletedText}>No actions</span>
+                            ) : (
+                              <span className={styles.actionCompletedText}>No permission</span>
                             )}
                           </div>
                         </td>

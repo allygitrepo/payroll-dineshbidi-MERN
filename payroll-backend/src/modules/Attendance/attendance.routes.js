@@ -15,5 +15,7 @@ router.post("/", authenticateJWT, AttendanceController.createManual);
 router.get("/company/:companyId", authenticateJWT, AttendanceController.getAll);
 router.get("/summary/company/:companyId", authenticateJWT, AttendanceController.getSummary);
 router.delete("/:id", authenticateJWT, AttendanceController.delete);
+router.put("/:id/approve", authenticateJWT, AttendanceController.approve);
+router.put("/:id/reject", authenticateJWT, AttendanceController.reject);
 
 module.exports = router;

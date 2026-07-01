@@ -14,12 +14,13 @@ import {
   FileText,
   File,
   Printer,
-  Camera
+  Camera,
+  Check
 } from 'lucide-react';
 import { useToast, DatePicker } from '../../../../shared/components';
 import styles from './AttendanceListPage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
-import { getCompanyAttendance } from '../../attendanceService';
+import { getCompanyAttendance, approveAttendance, rejectAttendance } from '../../attendanceService';
 
 // Futuristic biometric avatar component for face visualization fallback
 const BiometricAvatar = ({ seed, className }) => {
@@ -234,11 +235,27 @@ const formatTime = (timeStr) => {
 };
 
 const AttendanceListPage = () => {
+  const userStr = localStorage.getItem('user');
+  const userObj = useMemo(() => {
+    if (!userStr) return null;
+    try {
+      return JSON.parse(userStr);
+    } catch (e) {
+      return null;
+    }
+  }, [userStr]);
+
+  const userRole = userObj?.role?.name || '';
+  const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
+  const isContractor = userRole === 'Contractor';
+  const canApproveOrReject = isAdmin || isContractor;
+
   const [employees, setEmployees] = useState([]);
   const [logs, setLogs] = useState([]);
   
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
   
   // Defaults to today's date
   const getTodayDateStr = () => {
@@ -472,6 +489,13 @@ const AttendanceListPage = () => {
 
   // Generate Daily Attendance Sheet (combining check-ins with generated Absent logs)
   const generateDailySheet = () => {
+    const resolveStatus = (log) => {
+      if (!log) return 'Absent';
+      if (log.approval_status === 'Pending') return 'Pending';
+      if (log.approval_status === 'Rejected') return 'Absent';
+      return log.sign_in_time ? 'Present' : 'Absent';
+    };
+
     if (!selectedDate) {
       // Show All: Map every check-in log from DB to its employee details
       return logs.map((log) => {
@@ -485,7 +509,7 @@ const AttendanceListPage = () => {
           address: emp.address || '',
           avatarSeed: 1,
           date: log.date,
-          status: log.sign_in_time ? 'Present' : 'Absent',
+          status: resolveStatus(log),
           record: log
         };
       });
@@ -505,7 +529,7 @@ const AttendanceListPage = () => {
           address: emp.address || '',
           avatarSeed: 1,
           date: log.date,
-          status: log.sign_in_time ? 'Present' : 'Absent',
+          status: resolveStatus(log),
           record: log
         };
       } else {
@@ -528,11 +552,12 @@ const AttendanceListPage = () => {
 
   const dailySheet = generateDailySheet();
 
-  // Status priority for sorting (Absent first, then Late, then Present)
+  // Status priority for sorting (Pending first, then Absent, then Late, then Present)
   const statusPriority = {
-    'Absent': 1,
-    'Late': 2,
-    'Present': 3
+    'Pending': 1,
+    'Absent': 2,
+    'Late': 3,
+    'Present': 4
   };
 
   // Sort daily sheet records
@@ -555,10 +580,11 @@ const AttendanceListPage = () => {
         rec.address.toLowerCase().includes(search.toLowerCase());
         
       const matchesCategory = categoryFilter === 'All' || rec.category === categoryFilter;
+      const matchesStatus = statusFilter === 'All' || rec.status === statusFilter;
 
-      return matchesSearch && matchesCategory;
+      return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [sortedRecords, search, categoryFilter]);
+  }, [sortedRecords, search, categoryFilter, statusFilter]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredRecords.length / rowsPerPage);
@@ -572,7 +598,7 @@ const AttendanceListPage = () => {
   // Reset pagination on filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, categoryFilter, selectedDate, rowsPerPage]);
+  }, [search, categoryFilter, statusFilter, selectedDate, rowsPerPage]);
 
   const openLocationModal = (rec) => {
     if (rec.status === 'Absent') return;
@@ -589,6 +615,36 @@ const AttendanceListPage = () => {
     if (rec.status === 'Absent') return;
     setSelectedRecord(rec);
     setIsImageModalOpen(true);
+  };
+
+  const handleApprove = async (id) => {
+    try {
+      await approveAttendance(id);
+      addToast({ type: 'success', message: 'Attendance approved successfully.' });
+      const companyId = localStorage.getItem('selectedCompany');
+      if (companyId) {
+        const logData = await getCompanyAttendance(companyId);
+        setLogs(logData);
+      }
+    } catch (err) {
+      console.error('Failed to approve attendance:', err);
+      addToast({ type: 'error', message: err.message || 'Failed to approve attendance.' });
+    }
+  };
+
+  const handleReject = async (id) => {
+    try {
+      await rejectAttendance(id);
+      addToast({ type: 'info', message: 'Attendance rejected.' });
+      const companyId = localStorage.getItem('selectedCompany');
+      if (companyId) {
+        const logData = await getCompanyAttendance(companyId);
+        setLogs(logData);
+      }
+    } catch (err) {
+      console.error('Failed to reject attendance:', err);
+      addToast({ type: 'error', message: err.message || 'Failed to reject attendance.' });
+    }
   };
 
   const getPageNumbers = () => {
@@ -706,6 +762,20 @@ const AttendanceListPage = () => {
                 <option value="BIDI ROLLER">Bidi Roller</option>
               </select>
             </div>
+
+            {/* Status Selector */}
+            <div className={styles.categorySelect}>
+              <span className={styles.controlLabel}>Status</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="All">All Statuses</option>
+                <option value="Present">Present</option>
+                <option value="Absent">Absent</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
           </div>
 
           {/* Search Input */}
@@ -787,23 +857,75 @@ const AttendanceListPage = () => {
                       </div>
                     </td>
                     <td>
-                      {isAbsent ? (
+                      {rec.status === 'Absent' && (
                         <span className={styles.badgeAbsent}>
                           <AlertCircle size={12} /> Absent
                         </span>
-                      ) : (
+                      )}
+                      {rec.status === 'Present' && (
                         <span className={styles.badgePresent}>
                           <CheckCircle2 size={12} /> Present
+                        </span>
+                      )}
+                      {rec.status === 'Pending' && (
+                        <span className={styles.badgePending} style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <Clock size={12} /> Pending Approval
                         </span>
                       )}
                     </td>
                     <td>
                       <div className={styles.actions}>
+                        {canApproveOrReject && rec.status === 'Pending' && (
+                          <>
+                            <button
+                              className={styles.actionBtn}
+                              style={{
+                                backgroundColor: '#10B981',
+                                color: 'white',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '6px 10px',
+                                borderRadius: '4px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem',
+                                fontWeight: '600',
+                                marginRight: '6px'
+                              }}
+                              onClick={() => handleApprove(rec.id)}
+                              title="Approve Attendance"
+                            >
+                              <Check size={14} /> Approve
+                            </button>
+                            <button
+                              className={styles.actionBtn}
+                              style={{
+                                backgroundColor: '#EF4444',
+                                color: 'white',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '6px 10px',
+                                borderRadius: '4px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem',
+                                fontWeight: '600',
+                                marginRight: '6px'
+                              }}
+                              onClick={() => handleReject(rec.id)}
+                              title="Reject Attendance"
+                            >
+                              <X size={14} /> Reject
+                            </button>
+                          </>
+                        )}
                         <button
                           className={`${styles.actionBtn} ${styles.locationBtn}`}
                           onClick={() => openLocationModal(rec)}
-                          disabled={isAbsent}
-                          title={isAbsent ? 'No location scan for Absent employee' : 'View Check-In Location'}
+                          disabled={rec.status === 'Absent'}
+                          title={rec.status === 'Absent' ? 'No location scan for Absent employee' : 'View Check-In Location'}
                         >
                           <MapPin size={14} />
                           <span>Location</span>
@@ -811,8 +933,8 @@ const AttendanceListPage = () => {
                         <button
                           className={`${styles.actionBtn} ${styles.imageBtn}`}
                           onClick={() => openImageModal(rec)}
-                          disabled={isAbsent}
-                          title={isAbsent ? 'No photo capture for Absent employee' : 'View Face Capture'}
+                          disabled={rec.status === 'Absent'}
+                          title={rec.status === 'Absent' ? 'No photo capture for Absent employee' : 'View Face Capture'}
                         >
                           <Image size={14} />
                           <span>Image</span>

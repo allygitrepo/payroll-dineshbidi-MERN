@@ -109,7 +109,8 @@ class AttendanceService {
                 employee_id: employeeId,
                 date: todayStr,
                 sign_in_time: now,
-                status: true,
+                status: false, // Explicitly false for new biometric scan check-ins until approved
+                approval_status: "Pending", // Explicitly Pending
                 sign_in_location: loc,
                 sign_in_photo: photoPath,
             };
@@ -122,7 +123,7 @@ class AttendanceService {
             return await Attendance.findByPk(record.id);
         }
 
-        const updatePayload = { sign_in_time: now, status: true };
+        const updatePayload = { sign_in_time: now, status: false, approval_status: "Pending" };
         if (loc) updatePayload.sign_in_location = loc;
         if (photo) {
             const photoPath = saveBase64Image(photo, "sign_in", `${employeeId}_${todayStr}.jpg`);
@@ -365,7 +366,8 @@ class AttendanceService {
                 sign_in_time: now,
                 sign_in_location: location || null,
                 sign_in_photo: photoPath,
-                status: true,
+                status: false, // Explicitly false for new biometric scan check-ins until approved
+                approval_status: "Pending" // Explicitly Pending
             });
             return record;
         }
@@ -443,6 +445,106 @@ class AttendanceService {
         });
 
         return summaryMap;
+    }
+
+    /**
+     * Approves an attendance record.
+     */
+    static async approveRecord(recordId, user) {
+        const userRole = user?.role_name || '';
+        const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
+        const isContractor = userRole === 'Contractor';
+        
+        if (!isAdmin && !isContractor) {
+            const error = new Error("Access denied.");
+            error.statusCode = 403;
+            error.errorCode = "ACCESS_DENIED";
+            error.messageToShow = "Access denied. Only Admins or Contractors can approve attendance.";
+            throw error;
+        }
+
+        const record = await Attendance.findByPk(recordId, {
+            include: [{ model: Employee, as: "employee" }]
+        });
+
+        if (!record) {
+            const error = new Error("Attendance record not found.");
+            error.statusCode = 404;
+            error.errorCode = "RECORD_NOT_FOUND";
+            error.messageToShow = "Attendance record not found.";
+            throw error;
+        }
+
+        // Verify company access
+        await verifyCompanyAccess(record.employee?.company_id, user);
+
+        // Contractor specific restriction
+        if (isContractor && record.employee?.contractor_id !== user.contractor_id) {
+            const error = new Error("Access denied.");
+            error.statusCode = 403;
+            error.errorCode = "ACCESS_DENIED";
+            error.messageToShow = "Access denied. You can only approve attendance for your own employees.";
+            throw error;
+        }
+
+        await record.update({
+            approval_status: "Approved",
+            status: true // Marks them as present
+        });
+
+        return await Attendance.findByPk(recordId, {
+            include: [{ model: Employee, as: "employee", attributes: ["id", "name", "email", "employee_type"] }]
+        });
+    }
+
+    /**
+     * Rejects an attendance record.
+     */
+    static async rejectRecord(recordId, user) {
+        const userRole = user?.role_name || '';
+        const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
+        const isContractor = userRole === 'Contractor';
+
+        if (!isAdmin && !isContractor) {
+            const error = new Error("Access denied.");
+            error.statusCode = 403;
+            error.errorCode = "ACCESS_DENIED";
+            error.messageToShow = "Access denied. Only Admins or Contractors can reject attendance.";
+            throw error;
+        }
+
+        const record = await Attendance.findByPk(recordId, {
+            include: [{ model: Employee, as: "employee" }]
+        });
+
+        if (!record) {
+            const error = new Error("Attendance record not found.");
+            error.statusCode = 404;
+            error.errorCode = "RECORD_NOT_FOUND";
+            error.messageToShow = "Attendance record not found.";
+            throw error;
+        }
+
+        // Verify company access
+        await verifyCompanyAccess(record.employee?.company_id, user);
+
+        // Contractor specific restriction
+        if (isContractor && record.employee?.contractor_id !== user.contractor_id) {
+            const error = new Error("Access denied.");
+            error.statusCode = 403;
+            error.errorCode = "ACCESS_DENIED";
+            error.messageToShow = "Access denied. You can only reject attendance for your own employees.";
+            throw error;
+        }
+
+        await record.update({
+            approval_status: "Rejected",
+            status: false // Marks them as absent/not present
+        });
+
+        return await Attendance.findByPk(recordId, {
+            include: [{ model: Employee, as: "employee", attributes: ["id", "name", "email", "employee_type"] }]
+        });
     }
 }
 
