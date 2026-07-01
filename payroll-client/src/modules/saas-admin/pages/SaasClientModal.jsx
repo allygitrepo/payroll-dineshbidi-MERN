@@ -87,22 +87,24 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
     password: '',
     
     // Company Fields
-    establishment_id: '',
+    establishment_id: editingClient && editingClient.company ? editingClient.company.establishment_id || '' : '',
     company_name: editingClient ? editingClient.company_name : '',
-    company_type: 'Proprietorship',
-    epfo_office: '',
-    lin_number: '',
-    esic_id: '',
-    address_line: '',
-    post_office: '',
-    district: '',
-    pincode: '',
-    pan: '',
-    tan: '',
-    professional_tax_reg_no: '',
-    email_id: '',
-    phone: '',
-    website: '',
+    company_type: editingClient && editingClient.company ? editingClient.company.company_type || 'Proprietorship' : 'Proprietorship',
+    epfo_office: editingClient && editingClient.company ? editingClient.company.epfo_office || '' : '',
+    lin_number: editingClient && editingClient.company ? editingClient.company.lin_number || '' : '',
+    esic_id: editingClient && editingClient.company ? editingClient.company.esic_id || '' : '',
+    
+    address_line: editingClient && editingClient.company ? editingClient.company.address_line || '' : '',
+    post_office: editingClient && editingClient.company ? editingClient.company.post_office || '' : '',
+    district: editingClient && editingClient.company ? editingClient.company.district || '' : '',
+    pincode: editingClient && editingClient.company ? editingClient.company.pincode || '' : '',
+    
+    pan: editingClient && editingClient.company ? editingClient.company.pan || '' : '',
+    tan: editingClient && editingClient.company ? editingClient.company.tan || '' : '',
+    professional_tax_reg_no: editingClient && editingClient.company ? editingClient.company.professional_tax_reg_no || '' : '',
+    email_id: editingClient && editingClient.company ? editingClient.company.email_id || '' : '',
+    phone: editingClient && editingClient.company ? editingClient.company.phone || '' : '',
+    website: editingClient && editingClient.company ? editingClient.company.website || '' : '',
 
     permissions: {}
   });

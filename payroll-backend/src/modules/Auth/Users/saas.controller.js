@@ -24,24 +24,27 @@ class SaasController {
             // 2. Hash password
             const hashedPassword = await bcrypt.hash(password, 10);
 
-            // 3. Create a Custom Root Role for this specific Tenant
-            const tenantRole = await Role.create({
-                name: 'OWNER',
-                permissions: permissions || {},
-                created_by: req.user.id // Owned by SaaS Admin so the Tenant can't escalate their own root privileges
-            });
+            // Start Transaction
+            const transaction = await User.sequelize.transaction();
+            try {
+                // 3. Create a Custom Root Role for this specific Tenant
+                const tenantRole = await Role.create({
+                    name: `OWNER_${user_id}`,
+                    permissions: permissions || {},
+                    created_by: req.user.id // Owned by SaaS Admin so the Tenant can't escalate their own root privileges
+                }, { transaction });
 
-            // 4. Create User
-            const newUser = await User.create({
+                // 4. Create User
+                const newUser = await User.create({
                 user_name,
                 user_id,
-                password: hashedPassword,
-                role_id: tenantRole.id,
-                parent_id: req.user.id // SaaS Admin is the parent
-            });
+                    password: hashedPassword,
+                    role_id: tenantRole.id,
+                    parent_id: req.user.id // SaaS Admin is the parent
+                }, { transaction });
 
-            // 5. Create Company for this new User with full details
-            const newCompany = await Company.create({
+                // 5. Create Company for this new User with full details
+                const newCompany = await Company.create({
                 user_id: newUser.id,
                 establishment_id: establishment_id,
                 company_name: company_name,
@@ -58,19 +61,25 @@ class SaasController {
                 professional_tax_reg_no: professional_tax_reg_no || null,
                 email_id: email_id,
                 phone: phone,
-                website: website || null,
-                cstatus: true
-            });
+                    website: website || null,
+                    cstatus: true
+                }, { transaction });
 
-            const userJson = newUser.toJSON();
-            delete userJson.password;
+                await transaction.commit();
 
-            return res.status(201).json(successResponse(
-                "CLIENT_CREATED",
-                "Client & Company created successfully",
-                "Client & Company created successfully",
-                { user: userJson, company: newCompany }
-            ));
+                const userJson = newUser.toJSON();
+                delete userJson.password;
+
+                return res.status(201).json(successResponse(
+                    "CLIENT_CREATED",
+                    "Client & Company created successfully",
+                    "Client & Company created successfully",
+                    { user: userJson, company: newCompany }
+                ));
+            } catch (err) {
+                await transaction.rollback();
+                throw err; // Caught by outer catch block
+            }
         } catch (error) {
             console.error("Saas Client Creation Error:", error);
             return res.status(500).json(errorResponse("SERVER_ERROR", error.message, "Failed to create SaaS Client."));
@@ -108,6 +117,7 @@ class SaasController {
                 // Find first associated company
                 const clientCompany = companies.find(c => c.user_id === client.id);
                 userJson.company_name = clientCompany ? clientCompany.company_name : 'No Company';
+                userJson.company = clientCompany || {};
                 
                 return userJson;
             });

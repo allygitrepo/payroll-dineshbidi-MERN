@@ -31,7 +31,7 @@ const Company = sequelize.define(
             allowNull: false,
         },
         lin_number: {
-            type: DataTypes.STRING(10),
+            type: DataTypes.STRING(30),
             allowNull: true,
         },
         esic_id: {
