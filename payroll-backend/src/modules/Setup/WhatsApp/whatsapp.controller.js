@@ -8,7 +8,7 @@ class WhatsAppController {
     static async initiate(req, res) {
         try {
             // We assume authenticateJWT middleware sets req.user.company_id
-            const companyId = req.user.company_id;
+            const companyId = req.user.company_id || req.user.id;
             if (!companyId) {
                 return res.status(400).json(errorResponse("MISSING_COMPANY_ID", "User is not associated with any company.", "User is not associated with any company."));
             }
@@ -25,7 +25,7 @@ class WhatsAppController {
      */
     static async getStatus(req, res) {
         try {
-            const companyId = req.user.company_id;
+            const companyId = req.user.company_id || req.user.id;
             if (!companyId) {
                 return res.status(400).json(errorResponse("MISSING_COMPANY_ID", "User is not associated with any company.", "User is not associated with any company."));
             }
@@ -42,7 +42,7 @@ class WhatsAppController {
      */
     static async disconnect(req, res) {
         try {
-            const companyId = req.user.company_id;
+            const companyId = req.user.company_id || req.user.id;
             if (!companyId) {
                 return res.status(400).json(errorResponse("MISSING_COMPANY_ID", "User is not associated with any company.", "User is not associated with any company."));
             }

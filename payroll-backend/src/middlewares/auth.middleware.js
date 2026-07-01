@@ -25,13 +25,17 @@ const authenticateJWT = (req, res, next) => {
         // Attach the decoded token payload (which includes id, user_id, role) to the request object
         req.user = decoded;
 
-        if (decoded.company_id) {
-            req.companyId = decoded.company_id;
-            req.params.companyId = decoded.company_id;
+        const xCompanyId = req.headers['x-company-id'];
+        const activeCompanyId = decoded.company_id || xCompanyId;
+
+        if (activeCompanyId) {
+            req.companyId = activeCompanyId;
+            req.user.company_id = activeCompanyId; // Assign it so controllers can use it
+            req.params.companyId = activeCompanyId;
 
             if (req.body) {
                 if (req.method === "POST") {
-                    req.body.company_id = decoded.company_id;
+                    req.body.company_id = activeCompanyId;
                 } else if (req.method === "PUT" || req.method === "PATCH") {
                     delete req.body.company_id;
                 }

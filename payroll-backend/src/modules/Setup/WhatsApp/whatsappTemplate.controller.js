@@ -10,7 +10,7 @@ class WhatsAppTemplateController {
      */
     static async createTemplate(req, res) {
         try {
-            const companyId = req.user.company_id;
+            const companyId = req.user.company_id || req.user.id;
             const { name, content } = req.body;
 
             if (!name || !content) {
@@ -34,7 +34,7 @@ class WhatsAppTemplateController {
      */
     static async getTemplates(req, res) {
         try {
-            const companyId = req.user.company_id;
+            const companyId = req.user.company_id || req.user.id;
             const templates = await WhatsAppTemplate.findAll({
                 where: { company_id: companyId },
                 order: [['createdAt', 'DESC']]
@@ -51,7 +51,7 @@ class WhatsAppTemplateController {
      */
     static async updateTemplate(req, res) {
         try {
-            const companyId = req.user.company_id;
+            const companyId = req.user.company_id || req.user.id;
             const templateId = req.params.id;
             const { name, content } = req.body;
 
@@ -76,7 +76,7 @@ class WhatsAppTemplateController {
      */
     static async deleteTemplate(req, res) {
         try {
-            const companyId = req.user.company_id;
+            const companyId = req.user.company_id || req.user.id;
             const templateId = req.params.id;
 
             const template = await WhatsAppTemplate.findOne({
@@ -100,7 +100,7 @@ class WhatsAppTemplateController {
      */
     static async sendBulkMessage(req, res) {
         try {
-            const companyId = req.user.company_id;
+            const companyId = req.user.company_id || req.user.id;
             const { templateId, employeeIds } = req.body;
 
             if (!templateId || !employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
