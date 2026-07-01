@@ -27,7 +27,6 @@ const LeaveType = require("../../modules/Setup/LeaveMaster/leaveType.model");
 const LeavePolicy = require("../../modules/Setup/LeaveMaster/leavePolicy.model");
 const LeaveBalance = require("../../modules/Attendance/Leave/leaveBalance.model");
 const LeaveTransaction = require("../../modules/Attendance/Leave/leaveTransaction.model");
-const EmployeeType = require("../../modules/Masters/EmployeeType/employeeType.model");
 const Loan = require("../../modules/Loan/loan.model");
 const LoanTransaction = require("../../modules/Loan/loanTransaction.model");
 
@@ -67,8 +66,6 @@ db.LeaveType = LeaveType;
 db.LeavePolicy = LeavePolicy;
 db.LeaveBalance = LeaveBalance;
 db.LeaveTransaction = LeaveTransaction;
-db.EmployeeType = EmployeeType;
-// db.LeaveMaster = LeaveMaster;
 db.Loan = Loan;
 db.LoanTransaction = LoanTransaction;
 
@@ -422,16 +419,6 @@ db.Note.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
 });
-// Employee <-> EmployeeType
-db.EmployeeType.hasMany(db.Employee, {
-    foreignKey: "employee_type_id",
-    as: "employees",
-});
-db.Employee.belongsTo(db.EmployeeType, {
-    foreignKey: "employee_type_id",
-    as: "employeeType",
-});
-
 // LeaveType <-> Company
 db.Company.hasMany(db.LeaveType, {
     foreignKey: "company_id",
@@ -453,21 +440,12 @@ db.LeavePolicy.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
 });
-db.LeavePolicy.belongsTo(db.EmployeeType, {
-    foreignKey: "employee_type_id",
-    as: "employeeType",
-});
 db.LeavePolicy.belongsTo(db.LeaveType, {
     foreignKey: "leave_type_id",
     as: "leaveType",
 });
 db.LeaveType.hasMany(db.LeavePolicy, {
     foreignKey: "leave_type_id",
-    as: "leavePolicies",
-    onDelete: "CASCADE",
-});
-db.EmployeeType.hasMany(db.LeavePolicy, {
-    foreignKey: "employee_type_id",
     as: "leavePolicies",
     onDelete: "CASCADE",
 });

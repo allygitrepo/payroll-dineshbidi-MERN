@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Check, X, FileCheck, Calendar, Users, AlertCircle, FileClock, Download, Copy, File, Printer, ArrowLeft, Ban, Plus, ChevronDown } from 'lucide-react';
+import { Search, Check, X, FileCheck, Calendar, Users, AlertCircle, FileClock, Download, Copy, File, Printer, ArrowLeft, Ban, Plus, ChevronDown, Upload } from 'lucide-react';
 import styles from './LeavePage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { useToast, ConfirmModal, DatePicker } from '../../../../shared/components';
@@ -11,7 +11,7 @@ import {
   cancelLeaveRequest,
   calculateLeaveDays
 } from '../services/leaveService';
-import { getLeaveTypes, getEmployeeBalances } from '../../../setup/leave-master/services/leaveMasterService';
+import { getLeaveTypes, getEmployeeBalances, getEmployeeTypes } from '../../../setup/leave-master/services/leaveMasterService';
 
 const formatDateToDMY = (dateStr) => {
   if (!dateStr) return '-';
@@ -46,6 +46,9 @@ const LeavePage = () => {
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [dbEmployeeTypes, setDbEmployeeTypes] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -55,6 +58,15 @@ const LeavePage = () => {
   const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
   const [isEmployeeSelectOpen, setIsEmployeeSelectOpen] = useState(false);
   const employeeSelectRef = useRef(null);
+
+  // Search Select States & Refs for Leave Type dropdown
+  const [leaveTypeSearchQuery, setLeaveTypeSearchQuery] = useState('');
+  const [isLeaveTypeSelectOpen, setIsLeaveTypeSelectOpen] = useState(false);
+  const leaveTypeSelectRef = useRef(null);
+
+  // File Upload State & Ref
+  const [fileName, setFileName] = useState('');
+  const fileInputRef = useRef(null);
 
   // Live employee balances preview state
   const [employeeBalances, setEmployeeBalances] = useState([]);
@@ -116,6 +128,9 @@ const LeavePage = () => {
 
       const typesData = await getLeaveTypes(companyId);
       setLeaveTypes(typesData.filter(t => t.is_active));
+
+      const empTypesData = await getEmployeeTypes();
+      setDbEmployeeTypes(empTypesData || []);
     } catch (err) {
       console.error('Failed to load leave requests info:', err);
       addToast({ type: 'error', message: 'Failed to load leave records.' });
@@ -126,11 +141,14 @@ const LeavePage = () => {
     loadInitialData();
   }, [companyId]);
 
-  // Handle click outside for searchable employee dropdown
+  // Handle click outside for searchable dropdowns
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (employeeSelectRef.current && !employeeSelectRef.current.contains(event.target)) {
         setIsEmployeeSelectOpen(false);
+      }
+      if (leaveTypeSelectRef.current && !leaveTypeSelectRef.current.contains(event.target)) {
+        setIsLeaveTypeSelectOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -145,6 +163,15 @@ const LeavePage = () => {
              type.toLowerCase().includes(employeeSearchQuery.toLowerCase());
     });
   }, [employees, employeeSearchQuery]);
+
+  const filteredLeaveTypeOptions = useMemo(() => {
+    return leaveTypes.filter(t => {
+      const name = t.name || '';
+      const code = t.code || '';
+      return name.toLowerCase().includes(leaveTypeSearchQuery.toLowerCase()) ||
+             code.toLowerCase().includes(leaveTypeSearchQuery.toLowerCase());
+    });
+  }, [leaveTypes, leaveTypeSearchQuery]);
 
   // Fetch balances when employee is selected
   useEffect(() => {
@@ -225,6 +252,11 @@ const LeavePage = () => {
   const handleCloseForm = () => {
     setIsFormOpen(false);
     setCalculatedDays(null);
+    setIsEmployeeSelectOpen(false);
+    setIsLeaveTypeSelectOpen(false);
+    setEmployeeSearchQuery('');
+    setLeaveTypeSearchQuery('');
+    setFileName('');
     setNewLeave({
       employeeId: '',
       leaveTypeId: '',
@@ -380,7 +412,7 @@ const LeavePage = () => {
     return { total, pending, approved, rejected };
   }, [leaveRequests]);
 
-  // Filter requests based on search query and status tab
+  // Filter requests based on search query, category, status, and selected date
   const filteredRequests = useMemo(() => {
     return leaveRequests.filter((req) => {
       const matchesSearch =
@@ -391,15 +423,28 @@ const LeavePage = () => {
         req.uan.includes(search) ||
         req.mobile.includes(search);
 
+      const matchesCategory =
+        categoryFilter === 'All' ||
+        (req.category && req.category.toUpperCase().trim() === categoryFilter.toUpperCase().trim());
+
       const matchesStatus =
         statusFilter === 'All' ||
         (statusFilter === 'Pending' && req.status === 'Submitted') ||
         (statusFilter === 'Approved' && req.status === 'Approved') ||
         (statusFilter === 'Rejected' && (req.status === 'Rejected' || req.status === 'Cancelled'));
 
-      return matchesSearch && matchesStatus;
+      const matchesDate = !selectedDate || (
+        selectedDate >= req.fromDate && selectedDate <= req.toDate
+      );
+
+      return matchesSearch && matchesCategory && matchesStatus && matchesDate;
     });
-  }, [leaveRequests, search, statusFilter]);
+  }, [leaveRequests, search, statusFilter, categoryFilter, selectedDate]);
+
+  // Reset pagination on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, categoryFilter, selectedDate, rowsPerPage]);
 
   // Pagination logic
   const paginatedRequests = useMemo(() => {
@@ -500,20 +545,54 @@ const LeavePage = () => {
               </div>
             )}
 
-            <div className={styles.field}>
+            <div className={styles.field} ref={leaveTypeSelectRef} style={{ position: 'relative' }}>
               <label className={styles.label}>Leave Type *</label>
-              <select
-                name="leaveTypeId"
-                value={newLeave.leaveTypeId}
-                onChange={handleInputChange}
-                className={styles.input}
-                required
+              <div 
+                className={styles.searchSelectTrigger}
+                onClick={() => setIsLeaveTypeSelectOpen(!isLeaveTypeSelectOpen)}
               >
-                <option value="">-- Choose Leave Type --</option>
-                {leaveTypes.map(t => (
-                  <option key={t.id} value={t.id}>{t.name} ({t.code})</option>
-                ))}
-              </select>
+                <span>
+                  {newLeave.leaveTypeId 
+                    ? leaveTypes.find(t => t.id === newLeave.leaveTypeId)?.name 
+                    : '-- Choose Leave Type --'}
+                </span>
+                <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />
+              </div>
+
+              {isLeaveTypeSelectOpen && (
+                <div className={styles.searchSelectDropdown}>
+                  <div className={styles.searchSelectInputWrapper}>
+                    <Search size={14} className={styles.searchSelectIcon} />
+                    <input
+                      type="text"
+                      placeholder="Type to search..."
+                      value={leaveTypeSearchQuery}
+                      onChange={(e) => setLeaveTypeSearchQuery(e.target.value)}
+                      className={styles.searchSelectInput}
+                      autoFocus
+                    />
+                  </div>
+                  <div className={styles.searchSelectList}>
+                    {filteredLeaveTypeOptions.length > 0 ? (
+                      filteredLeaveTypeOptions.map(t => (
+                        <div
+                          key={t.id}
+                          className={`${styles.searchSelectItem} ${newLeave.leaveTypeId === t.id ? styles.searchSelectItemActive : ''}`}
+                          onClick={() => {
+                            setNewLeave(prev => ({ ...prev, leaveTypeId: t.id }));
+                            setIsLeaveTypeSelectOpen(false);
+                            setLeaveTypeSearchQuery('');
+                          }}
+                        >
+                          {t.name} ({t.code})
+                        </div>
+                      ))
+                    ) : (
+                      <div className={styles.searchSelectEmpty}>No leave types found</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className={styles.field}>
@@ -580,12 +659,32 @@ const LeavePage = () => {
 
             <div className={styles.field}>
               <label className={styles.label}>Supporting Document (Optional)</label>
-              <input
-                type="file"
-                onChange={handleFileChange}
-                className={styles.input}
-                accept="image/*,application/pdf"
-              />
+              <div className={styles.fileUploadWrapper}>
+                <button
+                  type="button"
+                  className={styles.fileUploadBtn}
+                  onClick={() => fileInputRef.current.click()}
+                >
+                  <Upload size={16} /> Choose File
+                </button>
+                <span className={styles.fileUploadName}>
+                  {fileName || 'No file chosen'}
+                </span>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={(e) => {
+                    handleFileChange(e);
+                    if (e.target.files[0]) {
+                      setFileName(e.target.files[0].name);
+                    } else {
+                      setFileName('');
+                    }
+                  }}
+                  accept="image/*,application/pdf"
+                  style={{ display: 'none' }}
+                />
+              </div>
             </div>
 
             <div className={styles.field}>
@@ -649,37 +748,71 @@ const LeavePage = () => {
 
           {/* Table Card Container */}
           <div className={styles.tableCard}>
-            {/* Table Controls (Search and Filters inside the Card) */}
-            <div className={styles.tableControls}>
-              <div className={styles.filterTabs}>
-                {['All', 'Pending', 'Approved', 'Rejected'].map((status) => (
+            {/* Table Controls (Search and Filters inside the Card matching Attendance list) */}
+            <div className={styles.toolbar}>
+              <div className={styles.leftControls}>
+                <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem', marginRight: '10px' }}>
+                  Total Records: {filteredRequests.length}
+                </div>
+
+                {/* Calendar Date Picker Filter */}
+                <div className={styles.dateFilter}>
+                  <DatePicker
+                    name="selectedDate"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className={styles.datePickerInput}
+                  />
                   <button
-                    key={status}
-                    onClick={() => {
-                      setStatusFilter(status);
-                      setCurrentPage(1);
-                    }}
-                    className={`${styles.tabBtn} ${statusFilter === status ? styles.activeTabBtn : ''}`}
+                    type="button"
+                    className={`${styles.quickBtn} ${!selectedDate ? styles.activeQuickBtn : ''}`}
+                    onClick={() => setSelectedDate('')}
+                    title="Show All Dates"
                   >
-                    {status} <span className={styles.tabBadge}>{status === 'All' ? stats.total : status === 'Pending' ? stats.pending : status === 'Approved' ? stats.approved : stats.rejected}</span>
+                    All
                   </button>
-                ))}
+                </div>
+
+                {/* Category Selector */}
+                <div className={styles.categorySelect}>
+                  <span className={styles.controlLabel}>Category</span>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                  >
+                    <option value="All">All Categories</option>
+                    {dbEmployeeTypes.map((type) => (
+                      <option key={type.id} value={type.name.toUpperCase().trim()}>
+                        {type.name.toUpperCase().trim()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status Selector */}
+                <div className={styles.categorySelect}>
+                  <span className={styles.controlLabel}>Status</span>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
               </div>
 
-              <div className={styles.rightControls}>
-                <div className={styles.searchWrapper}>
-                  <Search size={18} className={styles.searchIcon} />
-                  <input
-                    type="text"
-                    placeholder="Search by Employee name, UAN, Leave type..."
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    className={styles.searchInput}
-                  />
-                </div>
+              {/* Search Input */}
+              <div className={styles.searchWrapper}>
+                <Search size={14} className={styles.searchIcon} />
+                <input
+                  type="text"
+                  placeholder="Search applications..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
               </div>
             </div>
 

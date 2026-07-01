@@ -32,14 +32,13 @@ async function runTests() {
         const companyId = company.id;
 
         // Fetch seeded masters
-        const employeeType = await db.EmployeeType.findOne({ where: { name: "OFFICE STAFF" } });
-        const employeeTypeId = employeeType ? employeeType.id : null;
+        const employeeTypeId = "OFFICE STAFF";
 
         const clType = await db.LeaveType.findOne({ where: { company_id: companyId, code: "CL" } });
         const compOffType = await db.LeaveType.findOne({ where: { company_id: companyId, code: "COMP_OFF" } });
 
-        if (!employeeTypeId || !clType || !compOffType) {
-            console.error("Required test masters (OFFICE STAFF, CL, COMP_OFF) not found. Run seed script.");
+        if (!clType || !compOffType) {
+            console.error("Required test masters (CL, COMP_OFF) not found. Run seed script.");
             return;
         }
 
@@ -68,7 +67,6 @@ async function runTests() {
         // Create a test employee
         const mockEmployee = await db.Employee.create({
             company_id: companyId,
-            employee_type_id: employeeTypeId,
             employee_type: "OFFICE STAFF",
             name: "TEST HARNESS EMPLOYEE",
             uan: "999999999999",
@@ -89,7 +87,7 @@ async function runTests() {
         // Prorated CL should be: 12 * (13 - 7) / 12 = 6.0 days.
         await db.LeavePolicy.update(
             { yearly_allocation: 12.0, monthly_accrual_enabled: false },
-            { where: { company_id: companyId, employee_type_id: employeeTypeId, leave_type_id: clType.id } }
+            { where: { company_id: companyId, employee_type: employeeTypeId, leave_type_id: clType.id } }
         );
         await company.update({ leave_year_type: "Calendar Year" });
 
@@ -342,7 +340,7 @@ async function runTests() {
         // Allocation should increase to 12.0 days (capped at yearly_allocation), not 13.0 days.
         await db.LeavePolicy.update(
             { yearly_allocation: 12.0, monthly_accrual_enabled: true, monthly_accrual_amount: 2.0 },
-            { where: { company_id: companyId, employee_type_id: employeeTypeId, leave_type_id: clType.id } }
+            { where: { company_id: companyId, employee_type: employeeTypeId, leave_type_id: clType.id } }
         );
         const balObj = await db.LeaveBalance.findOne({
             where: { company_id: companyId, employee_id: employeeId, leave_type_id: clType.id }
@@ -463,7 +461,7 @@ async function runTests() {
 
         await db.LeavePolicy.update(
             { carry_forward_allowed: true, max_carry_forward: 3.0 },
-            { where: { company_id: companyId, employee_type_id: employeeTypeId, leave_type_id: clType.id } }
+            { where: { company_id: companyId, employee_type: employeeTypeId, leave_type_id: clType.id } }
         );
 
         // Reset 2026 CL carry forward
@@ -496,7 +494,7 @@ async function runTests() {
         // Change policy yearly_allocation
         await db.LeavePolicy.update(
             { yearly_allocation: 25.0 },
-            { where: { company_id: companyId, employee_type_id: employeeTypeId, leave_type_id: clType.id } }
+            { where: { company_id: companyId, employee_type: employeeTypeId, leave_type_id: clType.id } }
         );
 
         const afterPolicyChangeBalance = await db.LeaveBalance.findOne({
@@ -596,7 +594,7 @@ async function runTests() {
         // Setup CL Policy: Carry forward allowed, limit = 5. Yearly allocation = 10.
         await db.LeavePolicy.update(
             { carry_forward_allowed: true, max_carry_forward: 5.0, yearly_allocation: 10.0 },
-            { where: { company_id: companyId, employee_type_id: employeeTypeId, leave_type_id: clType.id } }
+            { where: { company_id: companyId, employee_type: employeeTypeId, leave_type_id: clType.id } }
         );
 
         // Year 2025: Allocated: 10, Used: 2, CF: 0. Remaining = 8.

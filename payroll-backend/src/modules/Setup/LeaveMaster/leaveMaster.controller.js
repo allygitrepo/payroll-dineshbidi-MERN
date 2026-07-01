@@ -78,6 +78,7 @@ class LeaveMasterController {
             );
         } catch (err) {
             logger.error("Error saving leave policy", err, { companyId: req.params.companyId, body: req.body });
+
             if (err.name === "SequelizeUniqueConstraintError") {
                 return res.status(409).json(
                     errorResponse("DUPLICATE_POLICY", "A policy configuration already exists for this employee type and leave type.", "A policy configuration already exists for this employee type and leave type.")
@@ -121,7 +122,11 @@ class LeaveMasterController {
      */
     static async getEmployeeTypes(req, res) {
         try {
-            const data = await db.EmployeeType.findAll({ where: { status: true } });
+            const data = [
+                { id: "BIDI PACKER", name: "BIDI PACKER", status: true },
+                { id: "BIDI MAKER", name: "BIDI MAKER", status: true },
+                { id: "OFFICE STAFF", name: "OFFICE STAFF", status: true }
+            ];
             return res.status(200).json(
                 successResponse("EMPLOYEE_TYPES_RETRIEVED", "Employee types retrieved successfully.", "Employee types retrieved successfully.", data)
             );

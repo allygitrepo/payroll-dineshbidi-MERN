@@ -36,8 +36,8 @@ class LeaveBalanceService {
      */
     static async autoAllocateForEmployee(employee, targetYear = null) {
         try {
-            const { id: employeeId, company_id: companyId, employee_type_id: employeeTypeId, date_of_joining: dojStr } = employee;
-            if (!employeeTypeId) return;
+            const { id: employeeId, company_id: companyId, employee_type: employeeType, date_of_joining: dojStr } = employee;
+            if (!employeeType) return;
 
             // Fetch global leave configuration to determine year type
             const company = await db.Company.findByPk(companyId);
@@ -56,7 +56,7 @@ class LeaveBalanceService {
             const policies = await db.LeavePolicy.findAll({
                 where: {
                     company_id: companyId,
-                    employee_type_id: employeeTypeId
+                    employee_type: employeeType
                 },
                 include: [{ model: db.LeaveType, as: "leaveType", where: { is_active: true } }]
             });

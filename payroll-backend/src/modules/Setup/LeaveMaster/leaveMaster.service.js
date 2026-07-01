@@ -61,7 +61,7 @@ class LeaveMasterService {
      * Tab 2: Leave Policies Matrix
      */
     static async getLeavePoliciesMatrix(companyId) {
-        const employeeTypes = await db.EmployeeType.findAll({ where: { status: true } });
+        const employeeTypes = ["BIDI PACKER", "BIDI MAKER", "OFFICE STAFF"];
         const leaveTypes = await db.LeaveType.findAll({ where: { company_id: companyId, is_active: true } });
         const existingPolicies = await db.LeavePolicy.findAll({ where: { company_id: companyId } });
 
@@ -69,15 +69,16 @@ class LeaveMasterService {
         const matrix = [];
         for (const empType of employeeTypes) {
             const row = {
-                employee_type_id: empType.id,
-                employee_type_name: empType.name,
+                employee_type_id: empType,
+                employee_type: empType,
+                employee_type_name: empType,
                 policies: []
             };
 
             for (const lt of leaveTypes) {
                 // Find existing policy config
                 let policy = existingPolicies.find(
-                    p => p.employee_type_id === empType.id && p.leave_type_id === lt.id
+                    p => p.employee_type === empType && p.leave_type_id === lt.id
                 );
 
                 if (!policy) {
@@ -85,7 +86,8 @@ class LeaveMasterService {
                     policy = {
                         id: null,
                         company_id: companyId,
-                        employee_type_id: empType.id,
+                        employee_type_id: empType,
+                        employee_type: empType,
                         leave_type_id: lt.id,
                         yearly_allocation: 0.00,
                         monthly_accrual_enabled: false,
@@ -93,6 +95,9 @@ class LeaveMasterService {
                         carry_forward_allowed: false,
                         max_carry_forward: 0.00
                     };
+                } else {
+                    policy = policy.toJSON ? policy.toJSON() : policy;
+                    policy.employee_type_id = empType;
                 }
 
                 row.policies.push({
@@ -109,17 +114,22 @@ class LeaveMasterService {
     }
 
     static async saveLeavePolicy(companyId, data) {
-        const { employee_type_id, leave_type_id, yearly_allocation, monthly_accrual_enabled, monthly_accrual_amount, carry_forward_allowed, max_carry_forward } = data;
+        const { employee_type, employee_type_id, leave_type_id, yearly_allocation, monthly_accrual_enabled, monthly_accrual_amount, carry_forward_allowed, max_carry_forward } = data;
+        const resolvedEmpType = employee_type || employee_type_id;
+
+        if (!resolvedEmpType) {
+            throw new Error("Employee type is required.");
+        }
 
         const [policy, created] = await db.LeavePolicy.findOrCreate({
             where: {
                 company_id: companyId,
-                employee_type_id,
+                employee_type: resolvedEmpType,
                 leave_type_id
             },
             defaults: {
                 company_id: companyId,
-                employee_type_id,
+                employee_type: resolvedEmpType,
                 leave_type_id,
                 yearly_allocation,
                 monthly_accrual_enabled,

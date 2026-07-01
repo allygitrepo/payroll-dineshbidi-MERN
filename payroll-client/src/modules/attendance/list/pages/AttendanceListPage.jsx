@@ -21,6 +21,7 @@ import { useToast, DatePicker, ConfirmModal } from '../../../../shared/component
 import styles from './AttendanceListPage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { getCompanyAttendance, approveAttendance, rejectAttendance } from '../../attendanceService';
+import { getEmployeeTypes } from '../../../setup/leave-master/services/leaveMasterService';
 
 // Futuristic biometric avatar component for face visualization fallback
 const BiometricAvatar = ({ seed, className }) => {
@@ -255,6 +256,7 @@ const AttendanceListPage = () => {
   
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
+  const [dbEmployeeTypes, setDbEmployeeTypes] = useState([]);
   const [statusFilter, setStatusFilter] = useState('All');
   
   // Defaults to today's date
@@ -286,6 +288,18 @@ const AttendanceListPage = () => {
   const [confirmAction, setConfirmAction] = useState(null); // 'approve' | 'reject'
   const [confirmTargetId, setConfirmTargetId] = useState(null);
   const [confirmTargetName, setConfirmTargetName] = useState(null);
+
+  useEffect(() => {
+    const fetchTypes = async () => {
+      try {
+        const data = await getEmployeeTypes();
+        setDbEmployeeTypes(data || []);
+      } catch (err) {
+        console.error('Error loading employee types for attendance list:', err);
+      }
+    };
+    fetchTypes();
+  }, []);
 
   // Fetch real data from DB
   useEffect(() => {
@@ -585,7 +599,9 @@ const AttendanceListPage = () => {
         rec.category.toLowerCase().includes(search.toLowerCase()) ||
         rec.address.toLowerCase().includes(search.toLowerCase());
         
-      const matchesCategory = categoryFilter === 'All' || rec.category === categoryFilter;
+      const matchesCategory =
+        categoryFilter === 'All' ||
+        (rec.category && rec.category.toUpperCase().trim() === categoryFilter.toUpperCase().trim());
       const matchesStatus = statusFilter === 'All' || rec.status === statusFilter;
 
       return matchesSearch && matchesCategory && matchesStatus;
