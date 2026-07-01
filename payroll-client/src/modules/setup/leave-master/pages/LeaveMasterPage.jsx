@@ -103,11 +103,11 @@ const LeaveMasterPage = () => {
   
   // Pagination for Leave Types
   const [currentPageTypes, setCurrentPageTypes] = useState(1);
-  const [pageSizeTypes, setPageSizeTypes] = useState(5);
+  const [pageSizeTypes, setPageSizeTypes] = useState(10);
 
   // Pagination for Policies
   const [currentPagePolicies, setCurrentPagePolicies] = useState(1);
-  const [pageSizePolicies, setPageSizePolicies] = useState(5);
+  const [pageSizePolicies, setPageSizePolicies] = useState(10);
 
   const [typeForm, setTypeForm] = useState({
     name: '',
@@ -625,12 +625,12 @@ const LeaveMasterPage = () => {
                       </div>
                     </div>
 
-                    <div className={styles.buttonGroup} style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
-                      <button type="submit" className={`${styles.btn} ${styles.primaryBtn}`}>
-                        <Save size={16} /> {editingType ? 'Update Type' : 'Create Type'}
-                      </button>
+                    <div className={styles.buttonGroup} style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                       <button type="button" onClick={handleCancelEdit} className={`${styles.btn} ${styles.secondaryBtn}`}>
                         Cancel
+                      </button>
+                      <button type="submit" className={`${styles.btn} ${styles.primaryBtn}`}>
+                        <Save size={16} /> Save
                       </button>
                     </div>
                   </form>
