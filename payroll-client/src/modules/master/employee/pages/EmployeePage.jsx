@@ -7,8 +7,10 @@ import EmployeeTable from '../components/EmployeeTable';
 import { getEmployees, saveEmployee, deleteEmployee, toggleAbryStatus } from '../services/employeeService';
 import { getAddresses } from '../../address/services/addressService';
 import { getContractors } from '../../contractor/services/contractorService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Pagination } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
+import { MessageCircle } from 'lucide-react';
+import WhatsAppBulkSendModal from '../../../utility/whatsapp/components/WhatsAppBulkSendModal';
 
 const EmployeePage = () => {
   const addToast = useToast();
@@ -19,11 +21,20 @@ const EmployeePage = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
 
-  // Search filter and download dropdown states
   const [searchTerm, setSearchTerm] = useState('');
   const [employeeTypeFilter, setEmployeeTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ACTIVE'); // Active by default
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [whatsAppEmployees, setWhatsAppEmployees] = useState([]);
+  const [isFetchingWhatsApp, setIsFetchingWhatsApp] = useState(false);
+  
+  // Pagination & Loading States
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalEntries, setTotalEntries] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Confirm delete states
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -32,30 +43,82 @@ const EmployeePage = () => {
   const dropdownRef = useRef(null);
   const pageTopRef = useRef(null);
 
-  // Load initial employees, addresses and contractors
+  // Load initial static data (Addresses & Contractors)
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchStaticData = async () => {
       const companyId = localStorage.getItem('selectedCompany');
-      if (!companyId) {
-        addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
-        return;
-      }
+      if (!companyId) return;
       try {
-        const [loadedEmployees, loadedAddresses, loadedContractors] = await Promise.all([
-          getEmployees(companyId),
+        const [loadedAddresses, loadedContractors] = await Promise.all([
           getAddresses(companyId),
           getContractors(companyId)
         ]);
-        setEmployees(loadedEmployees);
         setAddresses(loadedAddresses);
         setContractors(loadedContractors);
       } catch (err) {
-        console.error('Error fetching employee initial data:', err);
-        addToast({ type: 'error', message: 'Failed to load employee data.' });
+        console.error('Error fetching static data:', err);
       }
     };
-    fetchInitialData();
-  }, [addToast]);
+    fetchStaticData();
+  }, []);
+
+  // Fetch employees dynamically with pagination and filtering
+  const fetchEmployees = async () => {
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) {
+      addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const params = {
+          page: currentPage,
+          limit: pageSize,
+          search: searchTerm,
+          status: statusFilter === 'ACTIVE' ? '1' : statusFilter === 'INACTIVE' ? '0' : '',
+          employeeType: employeeTypeFilter
+      };
+      
+      const response = await getEmployees(companyId, params);
+      setEmployees(response.data || []);
+      setTotalEntries(response.total || 0);
+      setTotalPages(response.totalPages || 1);
+    } catch (err) {
+      console.error('Error fetching employees:', err);
+      addToast({ type: 'error', message: 'Failed to load employee data.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOpenWhatsAppModal = async () => {
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) return;
+
+    setIsFetchingWhatsApp(true);
+    try {
+      const params = {
+        search: searchTerm,
+        status: statusFilter === 'ACTIVE' ? '1' : statusFilter === 'INACTIVE' ? '0' : '',
+        employeeType: employeeTypeFilter
+        // Intentionally omitting page and limit to fetch all matching records
+      };
+      
+      const response = await getEmployees(companyId, params);
+      setWhatsAppEmployees(response.data || []);
+      setIsWhatsAppModalOpen(true);
+    } catch (err) {
+      console.error('Error fetching employees for WhatsApp:', err);
+      addToast({ type: 'error', message: 'Failed to load employees for WhatsApp.' });
+    } finally {
+      setIsFetchingWhatsApp(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [currentPage, pageSize, searchTerm, statusFilter, employeeTypeFilter, addToast]);
 
   // Close download dropdown if clicked outside
   useEffect(() => {
@@ -162,30 +225,8 @@ const EmployeePage = () => {
     setEditingEmployee(null);
   };
 
-  // Filtered employees listing
-  const filteredEmployees = useMemo(() => {
-    return employees.filter((employee) => {
-      if (employeeTypeFilter && employee.employeeType !== employeeTypeFilter) {
-        return false;
-      }
-      if (statusFilter === 'ACTIVE' && employee.status === false) return false;
-      if (statusFilter === 'INACTIVE' && employee.status === true) return false;
-      
-      const search = searchTerm.toLowerCase();
-      return (
-        (employee.uan && employee.uan.toLowerCase().includes(search)) ||
-        (employee.ipNumber && employee.ipNumber.toLowerCase().includes(search)) ||
-        (employee.memberId && employee.memberId.toLowerCase().includes(search)) ||
-        (employee.memberName && employee.memberName.toLowerCase().includes(search)) ||
-        (employee.gender && employee.gender.toLowerCase().includes(search)) ||
-        (employee.fatherHusbandName && employee.fatherHusbandName.toLowerCase().includes(search)) ||
-        (employee.address && employee.address.toLowerCase().includes(search)) ||
-        (employee.postOffice && employee.postOffice.toLowerCase().includes(search)) ||
-        (employee.district && employee.district.toLowerCase().includes(search)) ||
-        (employee.pincode && employee.pincode.toLowerCase().includes(search))
-      );
-    });
-  }, [employees, searchTerm, employeeTypeFilter, statusFilter]);
+  // Filtered employees listing (Since search is backend now, we just pass the backend data directly)
+  const filteredEmployees = employees;
 
   // Export handlers
   const handleExportClick = async (type) => {
@@ -231,6 +272,15 @@ const EmployeePage = () => {
           >
             <Upload size={18} /> Import
           </button>
+          
+          <button 
+            className={styles.addBtn} 
+            style={{ backgroundColor: '#25D366', opacity: isFetchingWhatsApp ? 0.7 : 1, cursor: isFetchingWhatsApp ? 'not-allowed' : 'pointer' }}
+            onClick={handleOpenWhatsAppModal}
+            disabled={isFetchingWhatsApp}
+          >
+            <MessageCircle size={18} /> {isFetchingWhatsApp ? 'Loading...' : 'WhatsApp'}
+          </button>
 
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
@@ -274,18 +324,58 @@ const EmployeePage = () => {
       )}
 
       {/* Render table card containing list */}
-      <EmployeeTable
-        data={filteredEmployees}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        selectedType={employeeTypeFilter}
-        onTypeFilterChange={setEmployeeTypeFilter}
-        selectedStatus={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
-        onToggleAbry={handleToggleAbry}
-      />
+      <div style={{ position: 'relative' }}>
+        {isLoading && (
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="loader"></div>
+            </div>
+        )}
+        <EmployeeTable
+          data={filteredEmployees}
+          searchTerm={searchTerm}
+          onSearchChange={(val) => { setSearchTerm(val); setCurrentPage(1); }}
+          selectedType={employeeTypeFilter}
+          onTypeFilterChange={(val) => { setEmployeeTypeFilter(val); setCurrentPage(1); }}
+          selectedStatus={statusFilter}
+          onStatusFilterChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+          onEdit={handleEdit}
+          onDelete={handleDeleteClick}
+          onToggleAbry={handleToggleAbry}
+        />
+        
+        {/* Pagination controls directly mimicking MissingInformationPage */}
+        {!isFormOpen && totalEntries > 0 && (
+          <div className={styles.tableFooter} style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--card-bg)' }}>
+            <div className={styles.footerLeft} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div className={styles.limitControl} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                  className={styles.limitSelect}
+                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>records per page</span>
+              </div>
+              <div className={styles.infoText} style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalEntries)} of {totalEntries} entries
+              </div>
+            </div>
+
+            <div className={styles.pagination}>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Reusable Confirm Delete Modal */}
       <ConfirmModal
@@ -295,6 +385,13 @@ const EmployeePage = () => {
         title="Delete Employee"
         message="Are you sure you want to delete this employee? This action cannot be undone."
       />
+
+      {isWhatsAppModalOpen && (
+        <WhatsAppBulkSendModal
+          employees={whatsAppEmployees}
+          onClose={() => setIsWhatsAppModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

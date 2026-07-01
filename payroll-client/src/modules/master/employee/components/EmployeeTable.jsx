@@ -12,14 +12,7 @@ const formatDate = (dateStr) => {
 };
 
 const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeFilterChange, selectedStatus, onStatusFilterChange, onEdit, onDelete, onToggleAbry }) => {
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-
-  // Reset pagination if filter changes
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, pageSize, selectedType, selectedStatus]);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -47,14 +40,7 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
     return sortableItems;
   }, [data, sortConfig]);
 
-  // Pagination calculations
-  const totalEntries = sortedData.length;
-  const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, totalEntries);
-  const paginatedData = useMemo(() => {
-    return sortedData.slice(startIndex, endIndex);
-  }, [sortedData, startIndex, endIndex]);
+  const paginatedData = sortedData;
 
   const renderSortIcon = (columnKey) => {
     if (sortConfig.key !== columnKey) return <ArrowUpDown size={14} style={{ opacity: 0.4, marginLeft: '4px' }} />;
@@ -65,11 +51,7 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
     <div className={styles.tableCard}>
       {/* Search Controls */}
       <div className={styles.tableControls}>
-        <div style={{ fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-          Total Employees: {totalEntries}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginLeft: 'auto' }}>
           <select
             value={selectedType || ''}
             onChange={(e) => onTypeFilterChange && onTypeFilterChange(e.target.value)}
@@ -333,79 +315,6 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Footer controls: bottom-left limit controls and right page buttons */}
-      <div className={styles.tableFooter}>
-        <div className={styles.footerLeft}>
-          <div className={styles.limitControl}>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              className={styles.limitSelect}
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-            <span>records per page</span>
-          </div>
-          <div className={styles.infoText}>
-            Showing {totalEntries > 0 ? startIndex + 1 : 0} to {endIndex} of {totalEntries} entries
-          </div>
-        </div>
-        <div className={styles.pagination}>
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className={styles.pageBtn}
-          >
-            Previous
-          </button>
-
-          {(() => {
-            const pages = [];
-            if (totalPages <= 7) {
-              for (let i = 1; i <= totalPages; i++) pages.push(i);
-            } else {
-              if (currentPage <= 4) {
-                for (let i = 1; i <= 5; i++) pages.push(i);
-                pages.push('...');
-                pages.push(totalPages);
-              } else if (currentPage >= totalPages - 3) {
-                pages.push(1);
-                pages.push('...');
-                for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
-              } else {
-                pages.push(1);
-                pages.push('...');
-                for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
-                pages.push('...');
-                pages.push(totalPages);
-              }
-            }
-            return pages.map((p, i) => (
-              <button
-                key={i}
-                onClick={() => p !== '...' && setCurrentPage(p)}
-                disabled={p === '...'}
-                className={`${styles.pageBtn} ${currentPage === p ? styles.activePageBtn : ''} ${p === '...' ? styles.dotsBtn : ''}`}
-                style={p === '...' ? { border: 'none', background: 'transparent', cursor: 'default' } : {}}
-              >
-                {p}
-              </button>
-            ));
-          })()}
-
-          <button
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className={styles.pageBtn}
-          >
-            Next
-          </button>
-        </div>
       </div>
     </div>
   );

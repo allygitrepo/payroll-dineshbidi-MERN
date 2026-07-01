@@ -104,7 +104,15 @@ class EmployeeController {
         }
 
         try {
-            const employees = await EmployeeService.getAllEmployees(companyId, req.user);
+            const options = {
+                page: req.query.page,
+                limit: req.query.limit,
+                search: req.query.search,
+                status: req.query.status,
+                employeeType: req.query.employeeType
+            };
+
+            const employees = await EmployeeService.getAllEmployees(companyId, req.user, options);
 
             return res.status(200).json(
                 successResponse(

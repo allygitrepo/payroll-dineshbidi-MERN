@@ -12,13 +12,15 @@ const WhatsAppBulkSendModal = ({ employees = [], onClose }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isSending, setIsSending] = useState(false);
     
+    // Filters
+    const [statusFilter, setStatusFilter] = useState('ACTIVE');
+    const [typeFilter, setTypeFilter] = useState('ALL');
+    
     const addToast = useToast();
 
     useEffect(() => {
         fetchData();
-        // Select all missing employees by default
-        setSelectedEmployees(employees.map(emp => emp.id));
-    }, [employees]);
+    }, []);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -82,10 +84,36 @@ const WhatsAppBulkSendModal = ({ employees = [], onClose }) => {
     };
 
     // Derived states
-    const filteredEmployees = employees.filter(emp => {
-        const fullName = (emp.memberName || '').toLowerCase();
+    const baseFilteredEmployees = React.useMemo(() => {
+        return employees.filter(emp => {
+            // Status filter
+            if (statusFilter !== 'ALL') {
+                const isActive = emp.status === true || String(emp.status).toLowerCase() === 'active' || String(emp.status) === '1';
+                if (statusFilter === 'ACTIVE' && !isActive) return false;
+                if (statusFilter === 'INACTIVE' && isActive) return false;
+            }
+
+            // Employee Type Filter
+            if (typeFilter !== 'ALL') {
+                if (emp.employeeType && String(emp.employeeType).toUpperCase() !== typeFilter) {
+                    return false;
+                } else if (!emp.employeeType) {
+                    return false; // hide if they don't have a type but we filter by type
+                }
+            }
+
+            return true;
+        });
+    }, [employees, statusFilter, typeFilter]);
+
+    useEffect(() => {
+        setSelectedEmployees(baseFilteredEmployees.map(emp => emp.id));
+    }, [baseFilteredEmployees]);
+
+    const filteredEmployees = baseFilteredEmployees.filter(emp => {
+        const fullName = (emp.memberName || emp.name || '').toLowerCase();
         return fullName.includes(searchTerm.toLowerCase()) || 
-               (emp.mobile && emp.mobile.includes(searchTerm));
+               (emp.mobile && String(emp.mobile).includes(searchTerm));
     });
 
     const activeTemplate = templates.find(t => t.id === selectedTemplate);
@@ -137,6 +165,30 @@ const WhatsAppBulkSendModal = ({ employees = [], onClose }) => {
                                 <div className={styles.formGroup} style={{ marginTop: '20px' }}>
                                     <label>2. Select Employees ({selectedEmployees.length} selected)</label>
                                     
+                                    <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                                        <select 
+                                            value={statusFilter} 
+                                            onChange={(e) => setStatusFilter(e.target.value)}
+                                            style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd', outline: 'none' }}
+                                        >
+                                            <option value="ALL">All Status</option>
+                                            <option value="ACTIVE">Active</option>
+                                            <option value="INACTIVE">Inactive</option>
+                                        </select>
+                                        {employees.some(e => e.employeeType) && (
+                                            <select 
+                                                value={typeFilter} 
+                                                onChange={(e) => setTypeFilter(e.target.value)}
+                                                style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd', outline: 'none' }}
+                                            >
+                                                <option value="ALL">All Types</option>
+                                                <option value="BIDI MAKER">Bidi Maker</option>
+                                                <option value="BIDI PACKER">Bidi Packer</option>
+                                                <option value="OFFICE STAFF">Office Staff</option>
+                                            </select>
+                                        )}
+                                    </div>
+
                                     <div className={styles.toolbar}>
                                         <Search size={16} color="#666" />
                                         <input 
@@ -176,7 +228,7 @@ const WhatsAppBulkSendModal = ({ employees = [], onClose }) => {
                                                                     onChange={() => handleSelectEmployee(emp.id)}
                                                                 />
                                                             </td>
-                                                            <td>{emp.memberName || ''}</td>
+                                                            <td>{emp.memberName || emp.name || ''}</td>
                                                             <td>{emp.mobile || 'N/A'}</td>
                                                         </tr>
                                                     ))
