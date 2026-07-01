@@ -42,6 +42,16 @@ const Header = ({ sidebarCollapsed, setSidebarCollapsed }) => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch (err) {
+      console.error("Backend logout failed", err);
+    }
+    localStorage.clear();
+    navigate('/');
+  };
+
   return (
     <header className={styles.navbar}>
       <div className={styles.navLeft}>
@@ -79,7 +89,7 @@ const Header = ({ sidebarCollapsed, setSidebarCollapsed }) => {
           <Mail size={16} />
           <span>Email</span>
         </button>
-        <button className={styles.logoutBtn} onClick={() => navigate('/')}>
+        <button className={styles.logoutBtn} onClick={handleLogout}>
           <LogOut size={16} />
           <span>Logout</span>
         </button>

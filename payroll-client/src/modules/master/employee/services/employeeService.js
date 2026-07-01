@@ -230,27 +230,35 @@ export const getEmployees = async (companyId, params = {}) => {
   const queryString = query.toString() ? `?${query.toString()}` : '';
   const response = await apiClient.get(`employees/company/${companyId}${queryString}`);
   
+  const isPaginationRequested = params.page !== undefined || params.limit !== undefined;
+
   if ((response.data?.status || response.data?.success) && response.data?.data) {
     if (response.data.data.rows) {
-        // Paginated response
-        return {
-            data: response.data.data.rows.map(mapToFrontend),
-            total: response.data.data.total,
-            totalPages: response.data.data.totalPages,
-            currentPage: response.data.data.currentPage
-        };
+        if (isPaginationRequested) {
+            return {
+                data: response.data.data.rows.map(mapToFrontend),
+                total: response.data.data.total,
+                totalPages: response.data.data.totalPages,
+                currentPage: response.data.data.currentPage
+            };
+        } else {
+            return response.data.data.rows.map(mapToFrontend);
+        }
     } else {
-        // Non-paginated response fallback
         const arr = Array.isArray(response.data.data) ? response.data.data : [];
-        return {
-            data: arr.map(mapToFrontend),
-            total: arr.length,
-            totalPages: 1,
-            currentPage: 1
-        };
+        if (isPaginationRequested) {
+            return {
+                data: arr.map(mapToFrontend),
+                total: arr.length,
+                totalPages: 1,
+                currentPage: 1
+            };
+        } else {
+            return arr.map(mapToFrontend);
+        }
     }
   }
-  return { data: [], total: 0, totalPages: 1 };
+  return isPaginationRequested ? { data: [], total: 0, totalPages: 1 } : [];
 };
 
 export const getMissingDetails = async (companyId, fields) => {

@@ -3,7 +3,7 @@ const db = require("../database/models/index");
 
 const connectDB = async () => {
     try {
-        await sequelize.authenticate();
+        await sequelize.authenticate({ sync: { alter: true } });
         console.log("Database Connected Successfully");
 
         // Sync models with foreign key checks temporarily disabled to prevent order issues

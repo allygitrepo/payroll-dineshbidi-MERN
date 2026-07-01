@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, Lock, Building2 } from 'lucide-react';
 import { Input, Button, Select, useToast } from '../../../shared/components';
 import authService from '../services/authService';
+import { getCompanies } from '../../master/company/services/companyService';
 import mobileImage from '../../../assets/Images/mobile.png';
 import logoImage from '../../../assets/Images/Logo.png';
 import styles from './LoginPage.module.css';
@@ -63,8 +64,23 @@ const LoginPage = () => {
         const { user, accessToken } = response.data;
         localStorage.setItem('accessToken', accessToken);
         localStorage.setItem('user', JSON.stringify(user));
-        // Remove company selection handling from login
-        // localStorage.removeItem('selectedCompany');
+        
+        try {
+          const companies = await getCompanies();
+          if (companies && companies.length > 0) {
+            const firstCompanyId = companies[0].id;
+            localStorage.setItem('selectedCompany', firstCompanyId);
+            const selectRes = await authService.selectCompany(firstCompanyId);
+            if (selectRes && selectRes.data && selectRes.data.accessToken) {
+              localStorage.setItem('accessToken', selectRes.data.accessToken);
+            }
+          } else {
+            localStorage.removeItem('selectedCompany');
+          }
+        } catch (compErr) {
+          console.error("Error fetching user companies on login:", compErr);
+          localStorage.removeItem('selectedCompany');
+        }
         
         addToast({
           type: 'success',
