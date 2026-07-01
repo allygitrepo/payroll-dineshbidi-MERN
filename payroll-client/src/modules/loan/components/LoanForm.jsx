@@ -17,8 +17,7 @@ const calculateEMI = (principal, rate, tenure, type) => {
     } else if (type === 'Reducing') {
       const r = (rVal / 12) / 100;
       if (r > 0) {
-        const emiCalc = p * (r * Math.pow(1 + r, t)) / (Math.pow(1 + r, t) - 1);
-        interest = (emiCalc * t) - p;
+        interest = (p * r * (t + 1)) / 2;
       }
     }
   }
@@ -43,10 +42,12 @@ const calculateTenure = (principal, rate, emiAmount, type) => {
     const totalWithInterest = p + (p * (rVal / 100));
     return Math.ceil(totalWithInterest / e).toString();
   } else if (type === 'Reducing') {
-    const r = (rVal / 12) / 100;
-    if (e <= p * r) return ''; // EMI too small to cover interest
-    const t = Math.log(e / (e - p * r)) / Math.log(1 + r);
-    return Math.ceil(t).toString();
+      const r = (rVal / 12) / 100;
+      if (r === 0) return Math.ceil(p / e).toString();
+      const divisor = e - (p * r) / 2;
+      if (divisor <= 0) return '';
+      const t = (p * (1 + r / 2)) / divisor;
+      return Math.ceil(t).toString();
   }
   return '';
 };
@@ -144,6 +145,78 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
 
     onSave(payload);
   };
+
+  const totalPayable = formData.emiAmount && formData.tenureMonths
+    ? (parseFloat(formData.emiAmount) * parseInt(formData.tenureMonths)).toFixed(2)
+    : '-';
+
+  const generateSchedule = () => {
+    if (!formData.totalAmount || !formData.tenureMonths || !formData.emiAmount || !formData.startDate) return null;
+    const p = parseFloat(formData.totalAmount);
+    const t = parseInt(formData.tenureMonths);
+    const e = parseFloat(formData.emiAmount);
+    const rVal = parseFloat(formData.interestRate || 0);
+    const type = formData.interestType;
+    
+    if (isNaN(p) || isNaN(t) || isNaN(e) || p <= 0 || t <= 0 || e <= 0) return null;
+    
+    const schedule = [];
+    let balance = p;
+    let startDate = new Date(formData.startDate);
+
+    if (type === 'Flat' || rVal === 0) {
+      const totalInterest = (e * t) - p;
+      const monthlyInterest = totalInterest / t;
+      const monthlyPrincipal = p / t;
+      
+      for (let i = 1; i <= t; i++) {
+        balance -= monthlyPrincipal;
+        if (balance < 0.01) balance = 0;
+        
+        const dateStr = new Date(startDate.getFullYear(), startDate.getMonth() + (i - 1), startDate.getDate()).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+        
+        schedule.push({
+          month: i,
+          date: dateStr,
+          emi: e.toFixed(2),
+          principal: monthlyPrincipal.toFixed(2),
+          interest: monthlyInterest.toFixed(2),
+          balance: balance.toFixed(2)
+        });
+      }
+    } else if (type === 'Reducing') {
+      const r = (rVal / 12) / 100;
+      const monthlyPrincipal = p / t;
+      for (let i = 1; i <= t; i++) {
+        let interest = balance * r;
+        let currentEmi = monthlyPrincipal + interest;
+        
+        balance -= monthlyPrincipal;
+        if (balance < 0.01) balance = 0;
+        
+        const dateStr = new Date(startDate.getFullYear(), startDate.getMonth() + (i - 1), startDate.getDate()).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+        schedule.push({
+          month: i,
+          date: dateStr,
+          emi: currentEmi.toFixed(2),
+          principal: monthlyPrincipal.toFixed(2),
+          interest: interest.toFixed(2),
+          balance: balance.toFixed(2)
+        });
+      }
+    }
+    
+    // Calculate Totals
+    const totalEmiSum = schedule.reduce((sum, row) => sum + parseFloat(row.emi), 0).toFixed(2);
+    const totalPrincipalSum = schedule.reduce((sum, row) => sum + parseFloat(row.principal), 0).toFixed(2);
+    const totalInterestSum = schedule.reduce((sum, row) => sum + parseFloat(row.interest), 0).toFixed(2);
+    
+    return { schedule, totalEmiSum, totalPrincipalSum, totalInterestSum };
+  };
+
+  const scheduleDataResult = generateSchedule();
+  const scheduleData = scheduleDataResult?.schedule || [];
+  const totals = scheduleDataResult;
 
   return (
     <div className={styles.formCard}>
@@ -253,9 +326,61 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
             />
             {errors.startDate && <span className={styles.errorText}>{errors.startDate}</span>}
           </div>
+
+          {/* Total Payable */}
+          <div className={styles.field}>
+            <label className={styles.label}>Total Payable Amount (₹)</label>
+            <div 
+              className={styles.input} 
+              style={{ backgroundColor: 'var(--bg-secondary)', fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center' }}
+            >
+              {totalPayable !== '-' ? `₹ ${totalPayable}` : '-'}
+            </div>
+          </div>
         </div>
 
-        <div className={styles.buttonGroupCentered}>
+        {scheduleData && scheduleData.length > 0 && (
+          <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+            <h4 style={{ margin: '0 0 12px 0', fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: 600 }}>
+              Amortization Schedule (Repayment Plan)
+            </h4>
+            <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead style={{ backgroundColor: 'var(--bg-secondary)', position: 'sticky', top: 0, zIndex: 1 }}>
+                  <tr>
+                    <th style={{ padding: '10px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)', fontWeight: 600 }}>Month</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)', fontWeight: 600 }}>EMI (₹)</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)', fontWeight: 600 }}>Principal (₹)</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)', fontWeight: 600 }}>Interest (₹)</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)', fontWeight: 600 }}>Balance (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scheduleData.map((row) => (
+                    <tr key={row.month} style={{ borderBottom: '1px solid var(--border)', backgroundColor: '#fff' }}>
+                      <td style={{ padding: '10px 12px' }}>{row.date}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 500 }}>{row.emi}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--primary)' }}>{row.principal}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', color: '#f59e0b' }}>{row.interest}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>{row.balance}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot style={{ backgroundColor: 'var(--bg-secondary)', fontWeight: 700, position: 'sticky', bottom: 0, borderTop: '2px solid var(--border)' }}>
+                  <tr>
+                    <td style={{ padding: '10px 12px' }}>Total</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>{totals.totalEmiSum}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--primary)' }}>{totals.totalPrincipalSum}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', color: '#f59e0b' }}>{totals.totalInterestSum}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>0.00</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+
+        <div className={styles.buttonGroupCentered} style={{ marginTop: '24px' }}>
           <button type="button" onClick={onCancel} className={styles.cancelBtn}>
             Cancel
           </button>
