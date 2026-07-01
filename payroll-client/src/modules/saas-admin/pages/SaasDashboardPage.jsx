@@ -19,7 +19,7 @@ const SaasDashboardPage = () => {
 
         <main className={styles.contentPane}>
           <Outlet />
-          <Footer />
+          {/* <Footer /> */}
         </main>
       </div>
     </div>

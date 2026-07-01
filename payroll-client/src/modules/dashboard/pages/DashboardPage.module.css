@@ -109,7 +109,7 @@
 /* Content Pane */
 .contentPane {
   flex: 1;
-  padding: 30px;
+  padding: 16px;
   overflow-y: auto;
 }
 
