@@ -3,12 +3,22 @@ import { Plus, Trash2, Search, ShieldCheck } from 'lucide-react';
 import styles from '../../../modules/utility/user-management/components/UserManagementPage.module.css';
 import { getCoAdmins } from '../services/saasService';
 import CoAdminModal from './CoAdminModal';
+import { Pagination } from '../../../shared/components';
 
 const SaasCoAdminsPage = () => {
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, itemsPerPage]);
 
   const fetchAdmins = async () => {
     setLoading(true);
@@ -31,6 +41,13 @@ const SaasCoAdminsPage = () => {
     (admin.user_id?.toLowerCase() || '').includes(search.toLowerCase())
   );
 
+  // Pagination calculation
+  const totalEntries = filteredAdmins.length;
+  const totalPages = Math.ceil(totalEntries / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalEntries);
+  const currentAdmins = filteredAdmins.slice(startIndex, endIndex);
+
   return (
     <div className={styles.container}>
       <div className={styles.headerSection}>
@@ -43,8 +60,22 @@ const SaasCoAdminsPage = () => {
       </div>
 
       <div className={styles.tableCard}>
-        <div className={styles.tableToolbar}>
-          <div className={styles.searchBox}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div className={styles.limitControl}>
+            <span>Show</span>
+            <select 
+              className={styles.limitSelect}
+              value={itemsPerPage}
+              onChange={e => setItemsPerPage(Number(e.target.value))}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span>entries</span>
+          </div>
+          <div className={styles.searchWrapper}>
             <Search size={18} className={styles.searchIcon} />
             <input 
               type="text" 
@@ -79,7 +110,7 @@ const SaasCoAdminsPage = () => {
                   </td>
                 </tr>
               ) : (
-                filteredAdmins.map((admin) => (
+                currentAdmins.map((admin) => (
                   <tr key={admin.id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -116,6 +147,19 @@ const SaasCoAdminsPage = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            Showing {totalEntries > 0 ? startIndex + 1 : 0} to {endIndex} of {totalEntries} entries
+          </div>
+          <div className={styles.pagination}>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </div>
       </div>
 

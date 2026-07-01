@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useLocation, Link as RouterLink } from 'react-router-dom';
-import { LayoutDashboard, Users, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, ShieldCheck, BarChart } from 'lucide-react';
 import styles from '../../../shared/components/Sidebar/Sidebar.module.css'; // Reuse existing styles
 
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, path: '/saas-dashboard' },
   { name: 'Client Management', icon: Users, path: '/saas-dashboard/clients' },
-  { name: 'Co-Admins', icon: ShieldCheck, path: '/saas-dashboard/co-admins' }
+  { name: 'Co-Admins', icon: ShieldCheck, path: '/saas-dashboard/co-admins' },
+  { name: 'Employee Stats', icon: BarChart, path: '/saas-dashboard/employee-stats' }
 ];
 
 const SaasSidebar = ({ sidebarCollapsed }) => {
