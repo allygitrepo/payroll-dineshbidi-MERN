@@ -12,6 +12,7 @@ import { exportModuleData } from '../../../../shared/services/exportService';
 import { parseExcelDate } from '../../../../shared/utils/dateUtils';
 import { MessageCircle } from 'lucide-react';
 import WhatsAppBulkSendModal from '../../../utility/whatsapp/components/WhatsAppBulkSendModal';
+import { getWhatsAppStatus } from '../../../utility/whatsapp/services/whatsappService';
 
 const ContractorPage = () => {
   const addToast = useToast();
@@ -27,6 +28,7 @@ const ContractorPage = () => {
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [whatsAppEmployees, setWhatsAppEmployees] = useState([]);
   const [isFetchingWhatsApp, setIsFetchingWhatsApp] = useState(false);
+  const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
   
   // Pagination & Loading States
   const [isLoading, setIsLoading] = useState(true);
@@ -47,6 +49,19 @@ const ContractorPage = () => {
   const dropdownRef = useRef(null);
   const pageTopRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  // Check WhatsApp connection status on mount
+  useEffect(() => {
+    getWhatsAppStatus()
+      .then(res => {
+        if (res && res.status === true && res.data) {
+          setIsWhatsAppConnected(res.data.status === 'connected');
+        } else {
+          setIsWhatsAppConnected(false);
+        }
+      })
+      .catch(() => setIsWhatsAppConnected(false));
+  }, []);
 
   // Load initial addresses
   useEffect(() => {
@@ -392,14 +407,16 @@ const ContractorPage = () => {
             <Upload size={18} /> Upload Excel
           </button>
           
-          <button 
-            className={styles.addBtn} 
-            style={{ backgroundColor: '#25D366', opacity: isFetchingWhatsApp ? 0.7 : 1, cursor: isFetchingWhatsApp ? 'not-allowed' : 'pointer' }}
-            onClick={handleOpenWhatsAppModal}
-            disabled={isFetchingWhatsApp}
-          >
-            <MessageCircle size={18} /> {isFetchingWhatsApp ? 'Loading...' : 'WhatsApp'}
-          </button>
+          {isWhatsAppConnected && (
+            <button 
+              className={styles.addBtn} 
+              style={{ backgroundColor: '#25D366', opacity: isFetchingWhatsApp ? 0.7 : 1, cursor: isFetchingWhatsApp ? 'not-allowed' : 'pointer' }}
+              onClick={handleOpenWhatsAppModal}
+              disabled={isFetchingWhatsApp}
+            >
+              <MessageCircle size={18} /> {isFetchingWhatsApp ? 'Loading...' : 'WhatsApp'}
+            </button>
+          )}
           
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
