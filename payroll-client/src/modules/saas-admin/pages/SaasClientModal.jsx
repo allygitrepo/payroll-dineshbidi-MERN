@@ -3,98 +3,81 @@ import { X, Loader } from 'lucide-react';
 import styles from './SaasClientManagementPage.module.css';
 import { createSaasClient } from '../services/saasService';
 
-// Module/Permission Definitions
-const PERMISSION_GROUPS = [
-  {
-    title: 'Dashboard',
-    items: [{ slug: 'dashboard', label: 'Dashboard', readOnly: true }]
-  },
-  {
-    title: 'Master',
-    items: [
-      { slug: 'company', label: 'Company' },
-      { slug: 'employee', label: 'Employee' },
-      { slug: 'kyc-update', label: 'KYC Update' },
-      { slug: 'contractor', label: 'Contractor' },
-      { slug: 'address', label: 'Address' }
-    ]
-  },
-  {
-    title: 'Setup',
-    items: [
-      { slug: 'packing-wages', label: 'Packing Wages' },
-      { slug: 'bidi-roller-wages', label: 'Bidi Roller Wages' },
-      { slug: 'professional-tax', label: 'Professional Tax' },
-      { slug: 'office-staff-salary', label: 'Office Staff Salary' },
-      { slug: 'challan-setup', label: 'Challan Setup' }
-    ]
-  },
-  {
-    title: 'Attendance',
-    items: [
-      { slug: 'attendence-list', label: 'Attendance List' },
-      { slug: 'leave-management', label: 'Leave Management' },
-      { slug: 'face-attendance-self', label: 'Face Attendance (Self)', readOnly: true }
-    ]
-  },
-  {
-    title: 'Entry',
-    items: [
-      { slug: 'office-staff', label: 'Office Staff' },
-      { slug: 'packers', label: 'Packers' },
-      { slug: 'bidi-roller', label: 'Bidi Roller' },
-      { slug: 'epf-challan-date', label: 'EPF Challan Date' },
-      { slug: 'resignation', label: 'Resignation' }
-    ]
-  },
-  {
-    title: 'Report',
-    items: [
-      { slug: 'salary-sheet', label: 'Salary Sheet', readOnly: true },
-      { slug: 'form-2', label: 'Form 2', readOnly: true },
-      { slug: 'ecr-report', label: 'ECR Report', readOnly: true },
-      { slug: 'esic-report', label: 'ESIC Report', readOnly: true },
-      { slug: 'pmrpy-report', label: 'PMRPY Report', readOnly: true },
-      { slug: 'pf-challan-yearly', label: 'PF Challan Yearly', readOnly: true },
-      { slug: 'epf-challan', label: 'EPF Challan', readOnly: true },
-      { slug: 'pf-summary', label: 'PF Summary', readOnly: true },
-      { slug: 'payment-advice', label: 'Payment Advice', readOnly: true },
-      { slug: 'bonus-sheet', label: 'Bonus Sheet', readOnly: true },
-      { slug: 'gratuity-calculation', label: 'Gratuity Calculation', readOnly: true },
-      { slug: 'report-pt', label: 'Professional Tax', readOnly: true }
-    ]
-  },
-  {
-    title: 'Utility',
-    items: [
-      { slug: 'calender', label: 'Calender' },
-      { slug: 'user-management', label: 'User Management' },
-      { slug: 'employee-data-import', label: 'Employee Data Import', readOnly: true },
-      { slug: 'employee-data-export', label: 'Employee Data Export', readOnly: true },
-      { slug: 'kyc-export', label: 'KYC Export', readOnly: true },
-      { slug: 'attendance-printing', label: 'Attendance Printing', readOnly: true },
-      { slug: 'missing-information', label: 'Missing Information', readOnly: true },
-      { slug: 'delete-month-entry', label: 'Delete Month Entry', readOnly: true },
-      { slug: 'backup', label: 'Backup', readOnly: true },
-      { slug: 'restore', label: 'Restore', readOnly: true }
-    ]
-  },
-  {
-    title: 'Todo List',
-    items: [
-      { slug: '3-month-absent-list', label: '3 Month Absent List', readOnly: true },
-      { slug: '58-years-of-age', label: '58 Years of age', readOnly: true },
-      { slug: 'notes', label: 'Notes' }
-    ]
-  },
-  {
-    title: 'Convert Excel To Text',
-    items: [
-      { slug: 'excel-to-text', label: 'Excel To Text', readOnly: true }
-    ]
-  }
+import { menuItems, nameToSlug } from '../../../shared/components/Sidebar/Sidebar';
+
+const READ_ONLY_SLUGS = [
+  'dashboard', 'face-attendance-self', 'ecr-report', 'esic-report', 'pmrpy-report', 
+  'pf-challan-yearly', 'esic-challan-yearly', 'epf-challan', 'pf-summary', 'payment-advice', 
+  'bonus-sheet', 'gratuity-calculation', 'employee-data-import', 
+  'employee-data-export', 'kyc-export', 'attendance-printing', 
+  'missing-information', 'delete-month-entry', 'backup', 'restore', 
+  '3-month-absent-list', '58-years-of-age', 'excel-to-text', 'whatsapp-gateway',
+  'uan-to-ip-mapping'
 ];
 
+const SLUG_OVERRIDES = {
+  'Report_Professional Tax': 'report-pt',
+  'Report_Salary Sheet': 'salary-sheet',
+  'Report_Forms': 'forms'
+};
+
+const generatePermissionGroups = () => {
+  const groups = [];
+  
+  menuItems.forEach(group => {
+    if (!group.subItems && !group.nestedItems) {
+      const slug = nameToSlug(group.name);
+      groups.push({
+        title: group.name,
+        items: [{ 
+          slug: slug, 
+          label: group.name, 
+          readOnly: READ_ONLY_SLUGS.includes(slug) || group.name.toLowerCase().includes('report') 
+        }]
+      });
+      return;
+    }
+
+    if (group.subItems) {
+      const items = [];
+      group.subItems.forEach(sub => {
+        const overrideKey = `${group.name}_${sub.name}`;
+        if (SLUG_OVERRIDES[overrideKey]) {
+           items.push({
+             slug: SLUG_OVERRIDES[overrideKey],
+             label: sub.name,
+             readOnly: true
+           });
+        } else if (sub.nestedItems) {
+          sub.nestedItems.forEach(nested => {
+            const nestedSlug = nameToSlug(nested.name);
+            items.push({
+              slug: nestedSlug,
+              label: nested.name,
+              readOnly: READ_ONLY_SLUGS.includes(nestedSlug) || group.name === 'Report'
+            });
+          });
+        } else {
+          const subSlug = nameToSlug(sub.name);
+          items.push({
+            slug: subSlug,
+            label: sub.name,
+            readOnly: READ_ONLY_SLUGS.includes(subSlug) || group.name === 'Report' || group.name === 'Convert Excel To Text'
+          });
+        }
+      });
+      
+      groups.push({
+        title: group.name,
+        items
+      });
+    }
+  });
+  
+  return groups;
+};
+
+const PERMISSION_GROUPS = generatePermissionGroups();
 const ALL_PERMISSION_SLUGS = PERMISSION_GROUPS.flatMap(g => g.items.map(i => i.slug));
 
 const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {

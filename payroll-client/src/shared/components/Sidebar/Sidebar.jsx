@@ -61,7 +61,7 @@ const WhatsAppIcon = ({ size = 24, className }) => (
   </svg>
 );
 
-const menuItems = [
+export const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard },
   {
     name: 'Master',
@@ -187,7 +187,7 @@ const menuItems = [
   }
 ];
 
-const nameToSlug = (name) => {
+export const nameToSlug = (name) => {
   return name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
