@@ -1,8 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, QrCode, LogOut, CheckCircle2, Phone, User, AlertTriangle } from 'lucide-react';
+import { QrCode, LogOut, CheckCircle2, Phone, User, AlertTriangle } from 'lucide-react';
 import { useToast } from '../../../../shared/components';
 import styles from './WhatsAppGatewayPage.module.css';
 import { initiateWhatsApp, getWhatsAppStatus, disconnectWhatsApp } from '../services/whatsappService';
+import WhatsAppTemplates from '../components/WhatsAppTemplates';
+
+const WhatsAppIcon = ({ size = 24 }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+  >
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+    <path d="M12 21.942a9.92 9.92 0 0 1-5.068-1.385L2 22l1.492-4.786A9.926 9.926 0 1 1 12 21.942z"/>
+  </svg>
+);
 
 const WhatsAppGatewayPage = () => {
     const [status, setStatus] = useState('loading'); // loading, unlinked, qr_ready, connected
@@ -10,6 +28,9 @@ const WhatsAppGatewayPage = () => {
     const [expiresIn, setExpiresIn] = useState(0);
     const [profile, setProfile] = useState(null);
     const [isActionLoading, setIsActionLoading] = useState(false);
+    const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
+    
+    const templatesRef = useRef(null);
     
     const addToast = useToast();
 
@@ -56,7 +77,6 @@ const WhatsAppGatewayPage = () => {
         
         try {
             const response = await initiateWhatsApp();
-            console.log("handleInitiate Response:", response);
             
             // Handle both response.status and response.success depending on API wrapper
             const isSuccess = response && (response.status === true || response.success === true);
@@ -125,99 +145,135 @@ const WhatsAppGatewayPage = () => {
         }
     };
 
-    return (
-        <div className={styles.container}>
-            <div className={styles.header}>
-                <h1 className={styles.title}>WhatsApp Gateway</h1>
-                <p className={styles.subtitle}>Link your company's WhatsApp to send automated notifications.</p>
-            </div>
+    const renderConnectionContent = () => (
+        <div className={styles.card}>
+            {status === 'loading' && (
+                <div className={styles.loadingSpinner}></div>
+            )}
 
-            <div className={styles.card}>
-                {status === 'loading' && (
-                    <div className={styles.loadingSpinner}></div>
-                )}
-
-                {status === 'unlinked' && (
-                    <>
-                        <div className={styles.iconWrapper}>
-                            <MessageCircle size={40} />
-                        </div>
-                        <h2 className={styles.statusUnlinked}>Not Connected</h2>
-                        <p className={styles.subtitle} style={{ marginBottom: '2rem' }}>
-                            Connect your WhatsApp to start sending salary slips, leave updates, and more directly to your employees.
-                        </p>
-                        <button 
-                            className={styles.btnPrimary} 
-                            onClick={handleInitiate}
-                            disabled={isActionLoading}
-                        >
-                            {isActionLoading ? 'Loading...' : 'Link WhatsApp'}
-                            <QrCode size={20} />
-                        </button>
-                    </>
-                )}
-
-                {status === 'qr_ready' && (
-                    <div className={styles.qrContainer}>
-                        <h2 className={styles.title} style={{ fontSize: '1.4rem' }}>Scan QR Code</h2>
-                        <p className={styles.subtitle}>Open WhatsApp on your phone &gt; Linked Devices &gt; Link a Device</p>
-                        
-                        <div className={styles.qrBox}>
-                            {qrCode ? (
-                                <img src={qrCode} alt="WhatsApp QR Code" className={styles.qrImage} />
-                            ) : (
-                                <div className={styles.loadingSpinner}></div>
-                            )}
-                        </div>
-
-                        <div className={styles.timerContainer}>
-                            <span className={styles.timerText}>{expiresIn}s</span>
-                            <span className={styles.timerLabel}>QR Code expires in</span>
-                        </div>
+            {status === 'unlinked' && (
+                <div className={styles.actionState}>
+                    <div className={styles.iconWrapper}>
+                        <WhatsAppIcon size={40} />
                     </div>
-                )}
+                    <h3 className={styles.statusTitle}>Not Connected</h3>
+                    <p className={styles.statusDesc}>
+                        Link your WhatsApp account to enable messaging capabilities.
+                    </p>
+                    <button 
+                        className={styles.btnPrimary} 
+                        onClick={handleInitiate}
+                        disabled={isActionLoading}
+                    >
+                        {isActionLoading ? 'Preparing...' : 'Link WhatsApp'}
+                        <QrCode size={20} />
+                    </button>
+                </div>
+            )}
 
-                {status === 'connected' && profile && (
-                    <div className={styles.profileContainer}>
-                        <div style={{ position: 'relative' }}>
-                            {profile.profileImage ? (
-                                <img src={profile.profileImage} alt="Profile" className={styles.profileImage} />
-                            ) : (
-                                <div className={styles.iconWrapper} style={{ width: '120px', height: '120px', margin: 0 }}>
-                                    <User size={50} />
-                                </div>
-                            )}
-                            <div style={{
-                                position: 'absolute', bottom: '5px', right: '5px',
-                                background: '#fff', borderRadius: '50%', padding: '2px'
-                            }}>
-                                <CheckCircle2 size={24} color="#25D366" />
-                            </div>
-                        </div>
+            {status === 'qr_ready' && (
+                <div className={styles.qrContainer}>
+                    <h3 className={styles.statusTitle}>Scan QR Code</h3>
+                    <p className={styles.statusDesc}>Open WhatsApp &gt; Linked Devices &gt; Link a Device</p>
+                    
+                    <div className={styles.qrBox}>
+                        {qrCode ? (
+                            <img src={qrCode} alt="WhatsApp QR Code" className={styles.qrImage} />
+                        ) : (
+                            <div className={styles.loadingSpinner}></div>
+                        )}
+                    </div>
 
-                        <div>
-                            <h2 className={styles.profileName}>{profile.name || "WhatsApp User"}</h2>
-                            <span className={styles.connectedBadge}>Active Session</span>
-                        </div>
+                    <div className={styles.timerContainer}>
+                        <span className={styles.timerText}>{expiresIn}s</span>
+                        <span className={styles.timerLabel}>Expires in</span>
+                    </div>
+                </div>
+            )}
 
-                        {profile.phone && (
-                            <div className={styles.profilePhone}>
-                                <Phone size={18} />
-                                {profile.phone}
+            {status === 'connected' && profile && (
+                <div className={styles.profileContainer}>
+                    <div className={styles.profileAvatarWrapper}>
+                        {profile.profileImage ? (
+                            <img src={profile.profileImage} alt="Profile" className={styles.profileImage} />
+                        ) : (
+                            <div className={styles.iconWrapper} style={{ width: '90px', height: '90px', margin: 0 }}>
+                                <User size={40} />
                             </div>
                         )}
-
-                        <button 
-                            className={styles.btnDanger} 
-                            onClick={handleDisconnect}
-                            disabled={isActionLoading}
-                        >
-                            <LogOut size={18} style={{ marginRight: '8px' }}/>
-                            {isActionLoading ? 'Disconnecting...' : 'Disconnect WhatsApp'}
-                        </button>
+                        <div className={styles.statusIndicator}>
+                            <CheckCircle2 size={20} color="#fff" fill="#25D366" />
+                        </div>
                     </div>
-                )}
+
+                    <div className={styles.profileDetails}>
+                        <h2 className={styles.profileName}>{profile.name || "WhatsApp User"}</h2>
+                        <span className={styles.connectedBadge}>Session Active</span>
+                    </div>
+
+                    {profile.phone && (
+                        <div className={styles.profilePhone}>
+                            <Phone size={16} />
+                            {profile.phone}
+                        </div>
+                    )}
+
+                    <button 
+                        className={styles.btnDanger} 
+                        onClick={handleDisconnect}
+                        disabled={isActionLoading}
+                    >
+                        {isActionLoading ? 'Disconnecting...' : 'Disconnect WhatsApp'}
+                        <LogOut size={18} />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+
+    return (
+        <div className={styles.container}>
+            <div className={styles.pageHeaderSection}>
+                <h1 className={styles.pageTitle}>WhatsApp Gateway</h1>
+                <div className={styles.headerActionsGroup}>
+                    <button 
+                        className={styles.statusBadgeBtn} 
+                        onClick={() => setIsConnectionModalOpen(true)}
+                    >
+                        {status === 'connected' ? (
+                            <><span className={styles.statusDotActive}></span> Connected</>
+                        ) : (
+                            <><span className={styles.statusDotInactive}></span> Not Connected</>
+                        )}
+                    </button>
+                    {status === 'connected' && (
+                        <button 
+                            className={styles.btnPrimaryTop} 
+                            onClick={() => templatesRef.current?.handleOpenModal()}
+                        >
+                            + New Template
+                        </button>
+                    )}
+                </div>
             </div>
+
+            <WhatsAppTemplates ref={templatesRef} />
+
+            {isConnectionModalOpen && (
+                <div className={styles.modalOverlay} onClick={() => setIsConnectionModalOpen(false)}>
+                    <div className={styles.modalContentWrapper} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalHeader}>
+                            <h3>WhatsApp Connection</h3>
+                            <button className={styles.closeBtn} onClick={() => setIsConnectionModalOpen(false)}>
+                                ×
+                            </button>
+                        </div>
+                        <div className={styles.modalBody}>
+                            {renderConnectionContent()}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

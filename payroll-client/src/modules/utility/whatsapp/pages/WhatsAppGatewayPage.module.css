@@ -1,63 +1,171 @@
 .container {
-    padding: 2rem;
-    max-width: 800px;
-    margin: 0 auto;
-    font-family: 'Inter', sans-serif;
+    padding: 24px;
+    background: transparent;
 }
 
-.header {
+.pageHeaderSection {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--border);
+}
+
+.pageTitle {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0;
+}
+
+.headerActionsGroup {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.statusBadgeBtn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: all 0.2s;
+}
+
+.statusBadgeBtn:hover {
+    background-color: var(--bg-secondary);
+}
+
+.statusDotActive {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--success, var(--primary));
+}
+
+.statusDotInactive {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--danger, #ef4444);
+}
+
+.btnPrimaryTop {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: all 0.2s;
+}
+
+.btnPrimaryTop:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+/* Modal styles for Connection Modal */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+
+.modalContentWrapper {
+    background: var(--card-bg);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.modalHeader {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-secondary);
+}
+
+.modalHeader h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    color: var(--text-primary);
+}
+
+.closeBtn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.modalBody {
+    padding: 24px;
+}
+
+/* Card details (inside modal) */
+.card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
-    margin-bottom: 2rem;
 }
 
-.title {
-    font-size: 1.8rem;
+.iconWrapper {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    margin: 0 auto 1.5rem;
+}
+
+.statusTitle {
+    font-size: 1.3rem;
     font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 0.5rem;
 }
 
-.subtitle {
+.statusDesc {
     color: var(--text-secondary);
     font-size: 0.95rem;
-}
-
-.card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 2.5rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-}
-
-.iconWrapper {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #25D366, #128C7E);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
     margin-bottom: 1.5rem;
-    box-shadow: 0 8px 16px rgba(37, 211, 102, 0.3);
-}
-
-.statusUnlinked {
-    color: var(--text-primary);
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
 }
 
 .btnPrimary {
-    background: linear-gradient(135deg, #25D366, #128C7E);
+    background-color: var(--primary);
     color: white;
     border: none;
     padding: 12px 24px;
@@ -66,119 +174,144 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-}
-
-.btnPrimary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.2);
-}
-
-.btnPrimary:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.qrContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5rem;
+    width: 100%;
 }
 
 .qrBox {
     padding: 1rem;
     background: white;
     border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    border: 2px solid #e2e8f0;
+    border: 1px solid var(--border);
+    margin-bottom: 1.5rem;
 }
 
 .qrImage {
-    width: 250px;
-    height: 250px;
-    display: block;
+    width: 200px;
+    height: 200px;
 }
 
 .timerContainer {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
 }
 
 .timerText {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
-    color: #e53e3e;
-    font-variant-numeric: tabular-nums;
+    color: var(--danger);
 }
 
-.timerLabel {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-.profileContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    width: 100%;
+.profileAvatarWrapper {
+    position: relative;
+    margin-bottom: 1.5rem;
 }
 
 .profileImage {
-    width: 120px;
-    height: 120px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     object-fit: cover;
-    border: 4px solid #25D366;
-    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.2);
+    border: 3px solid var(--primary);
+}
+
+.statusIndicator {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: #fff;
+    border-radius: 50%;
+    padding: 2px;
+}
+
+.profileDetails {
+    margin-bottom: 1rem;
 }
 
 .profileName {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: var(--text-primary);
 }
 
-.profilePhone {
-    color: var(--text-secondary);
-    font-size: 1.1rem;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
 .connectedBadge {
-    background: #c6f6d5;
-    color: #22543d;
+    background: var(--primary-light);
+    color: var(--primary);
     padding: 4px 12px;
     border-radius: 20px;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
     display: inline-block;
-    margin-top: 0.5rem;
+    margin-top: 4px;
 }
 
 .btnDanger {
-    background: #fff;
-    color: #e53e3e;
-    border: 1px solid #e53e3e;
+    background-color: var(--danger);
+    color: white;
+    border: none;
     padding: 10px 20px;
     border-radius: 8px;
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 1rem;
+}
+
+.loadingSpinner {
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.profilePhone {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2rem;
+    background: #f1f5f9;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.btnDanger {
+    background: var(--card-bg);
+    color: var(--danger);
+    border: 1px solid #fee2e2;
+    background-color: #fef2f2;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
     transition: all 0.2s ease;
-    margin-top: 2rem;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .btnDanger:hover {
-    background: #fff5f5;
+    background: #fee2e2;
+    border-color: #fca5a5;
 }
 
 .btnDanger:disabled {
@@ -191,7 +324,7 @@
     height: 40px;
     border: 3px solid rgba(37, 211, 102, 0.2);
     border-radius: 50%;
-    border-top-color: #25D366;
+    border-top-color: var(--primary);
     animation: spin 1s linear infinite;
     margin: 2rem auto;
 }

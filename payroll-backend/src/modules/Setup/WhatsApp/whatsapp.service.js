@@ -30,14 +30,23 @@ class WhatsAppService {
                 requestBody = { name: `Company-${companyId}` };
             }
 
-            console.log(`[WA-Mitra] Initiating WhatsApp instance for Company: ${companyId}`);
-            console.log(`[WA-Mitra] Request Payload:`, JSON.stringify(requestBody));
-
-            const response = await axios.post(`${WA_MITRA_API_URL}/instance/initiate`, requestBody, {
-                headers: this.getHeaders()
-            });
-
-            console.log(`[WA-Mitra] Response Data:`, JSON.stringify(response.data));
+            let response;
+            try {
+                response = await axios.post(`${WA_MITRA_API_URL}/instance/initiate`, requestBody, {
+                    headers: this.getHeaders()
+                });
+            } catch (err) {
+                // If it fails because instance was not found on the server (deleted, expired), create a new one
+                if (err.response && err.response.status === 404 && err.response.data?.message === "Instance not found") {
+                    // We can also clear the stale key from the request body
+                    requestBody = { name: `Company-${companyId}` };
+                    response = await axios.post(`${WA_MITRA_API_URL}/instance/initiate`, requestBody, {
+                        headers: this.getHeaders()
+                    });
+                } else {
+                    throw err; // Re-throw other errors
+                }
+            }
 
             const data = response.data;
             
@@ -55,8 +64,9 @@ class WhatsAppService {
                     valid_in_seconds: data.validinsecond || 40
                 });
             } else {
-                // Update existing record
+                // Update existing record with the possibly new instance_key
                 await instance.update({
+                    instance_key: data.instanceKey,
                     status: data.status,
                     profile_image: data.profileImage || instance.profile_image,
                     name: data.name || instance.name,
@@ -113,6 +123,10 @@ class WhatsAppService {
             return data;
         } catch (error) {
             console.error("WhatsApp Status Error:", error.response?.data || error.message);
+            if (error.response && error.response.status === 404 && error.response.data?.message === "Instance not found") {
+                // If instance is deleted on server, mark as unlinked here
+                return { success: false, status: 'unlinked', message: 'Instance not found on server' };
+            }
             throw new Error("Failed to check WhatsApp status");
         }
     }

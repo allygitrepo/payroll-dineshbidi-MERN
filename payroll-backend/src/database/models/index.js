@@ -33,6 +33,7 @@ const LeaveBalance = require("../../modules/Attendance/Leave/leaveBalance.model"
 const LeaveTransaction = require("../../modules/Attendance/Leave/leaveTransaction.model");
 const EmployeeType = require("../../modules/Masters/EmployeeType/employeeType.model");
 const WhatsAppInstance = require("../../modules/Setup/WhatsApp/whatsAppInstance.model");
+const WhatsAppTemplate = require("../../modules/Setup/WhatsApp/whatsappTemplate.model");
 
 // Registry object to hold Sequelize, Sequelize constructors, and model definitions
 const db = {};
@@ -71,6 +72,7 @@ db.LeaveBalance = LeaveBalance;
 db.LeaveTransaction = LeaveTransaction;
 db.EmployeeType = EmployeeType;
 db.WhatsAppInstance = WhatsAppInstance;
+db.WhatsAppTemplate = WhatsAppTemplate;
 db.Loan = Loan;
 db.LoanTransaction = LoanTransaction;
 
@@ -586,13 +588,20 @@ db.LeaveType.hasMany(db.LeaveRequest, {
 // WhatsApp relationships
 db.Company.hasOne(db.WhatsAppInstance, {
     foreignKey: "company_id",
-    as: "whatsappInstance",
-    onDelete: "CASCADE",
+    as: "whatsapp_instance",
 });
 db.WhatsAppInstance.belongsTo(db.Company, {
     foreignKey: "company_id",
     as: "company",
 });
 
-module.exports = db;
+db.Company.hasMany(db.WhatsAppTemplate, {
+    foreignKey: "company_id",
+    as: "whatsapp_templates",
+});
+db.WhatsAppTemplate.belongsTo(db.Company, {
+    foreignKey: "company_id",
+    as: "company",
+});
 
+module.exports = db;
