@@ -27,6 +27,30 @@ const calculateEMI = (principal, rate, tenure, type) => {
   return emi.toFixed(2);
 };
 
+const calculateTenure = (principal, rate, emiAmount, type) => {
+  if (!principal || isNaN(principal) || parseFloat(principal) <= 0) return '';
+  if (!emiAmount || isNaN(emiAmount) || parseFloat(emiAmount) <= 0) return '';
+  
+  const p = parseFloat(principal);
+  const rVal = parseFloat(rate || 0);
+  const e = parseFloat(emiAmount);
+  
+  if (rVal === 0) {
+    return Math.ceil(p / e).toString();
+  }
+  
+  if (type === 'Flat') {
+    const totalWithInterest = p + (p * (rVal / 100));
+    return Math.ceil(totalWithInterest / e).toString();
+  } else if (type === 'Reducing') {
+    const r = (rVal / 12) / 100;
+    if (e <= p * r) return ''; // EMI too small to cover interest
+    const t = Math.log(e / (e - p * r)) / Math.log(1 + r);
+    return Math.ceil(t).toString();
+  }
+  return '';
+};
+
 const LoanForm = ({ employee, onSave, onCancel }) => {
   const addToast = useToast();
   const [formData, setFormData] = useState({
@@ -42,17 +66,33 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
 
   const [errors, setErrors] = useState({});
 
-  useEffect(() => {
-    const { totalAmount, interestRate, tenureMonths, interestType } = formData;
-    if (totalAmount && tenureMonths) {
-      const calculated = calculateEMI(totalAmount, interestRate, tenureMonths, interestType);
-      setFormData(prev => ({ ...prev, emiAmount: calculated }));
-    }
-  }, [formData.totalAmount, formData.interestRate, formData.tenureMonths, formData.interestType]);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    setFormData((prev) => {
+      const newData = { ...prev, [name]: value };
+      
+      // Calculate EMI if user changes Tenure, Principal or Interest
+      if (name === 'tenureMonths' || name === 'totalAmount' || name === 'interestRate' || name === 'interestType') {
+        if (newData.totalAmount && newData.tenureMonths) {
+          newData.emiAmount = calculateEMI(newData.totalAmount, newData.interestRate, newData.tenureMonths, newData.interestType);
+        } else if (name === 'tenureMonths' && !value) {
+          newData.emiAmount = '';
+        }
+      }
+      
+      // Calculate Tenure if user changes EMI Amount
+      if (name === 'emiAmount') {
+        if (newData.totalAmount && value) {
+          newData.tenureMonths = calculateTenure(newData.totalAmount, newData.interestRate, value, newData.interestType);
+        } else if (!value) {
+          newData.tenureMonths = '';
+        }
+      }
+      
+      return newData;
+    });
+
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
@@ -156,6 +196,20 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
             {errors.tenureMonths && <span className={styles.errorText}>{errors.tenureMonths}</span>}
           </div>
 
+          {/* EMI Amount */}
+          <div className={styles.field}>
+            <label className={styles.label}>EMI Amount (₹)</label>
+            <input
+              type="number"
+              name="emiAmount"
+              value={formData.emiAmount}
+              onChange={handleChange}
+              placeholder="EMI per period (optional)"
+              className={styles.input}
+            />
+            {errors.emiAmount && <span className={styles.errorText}>{errors.emiAmount}</span>}
+          </div>
+
           {/* Interest Rate */}
           <div className={styles.field}>
             <label className={styles.label}>Interest Rate (%)</label>
@@ -185,19 +239,7 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
             </select>
           </div>
 
-          {/* EMI Amount */}
-          <div className={styles.field}>
-            <label className={styles.label}>EMI Amount (₹)</label>
-            <input
-              type="number"
-              name="emiAmount"
-              value={formData.emiAmount}
-              onChange={handleChange}
-              placeholder="EMI per period (optional)"
-              className={styles.input}
-            />
-            {errors.emiAmount && <span className={styles.errorText}>{errors.emiAmount}</span>}
-          </div>
+          {/* EMI Amount is now grouped above */}
 
           {/* Start Date */}
           <div className={styles.field}>
