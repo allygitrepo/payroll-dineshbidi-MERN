@@ -18,7 +18,7 @@ const connectDB = async () => {
         //     await db.LeaveType.sync();
         // }
 
-        // await db.sequelize.sync();
+        await db.sequelize.sync({ alter: true });
         await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
         console.log("Database models synchronized successfully");
     } catch (err) {

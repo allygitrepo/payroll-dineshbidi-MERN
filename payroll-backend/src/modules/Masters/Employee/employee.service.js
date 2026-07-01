@@ -215,18 +215,24 @@ class EmployeeService {
             personalDetails.image_path = null;
         }
 
+        let normalizedAddressId = address_id || null;
+        if (normalizedAddressId === "") normalizedAddressId = null;
+
+        let normalizedContractorId = contractor_id || null;
+        if (normalizedContractorId === "" || normalizedContractorId === "SELF") normalizedContractorId = null;
+
         // If the user is a contractor, strictly enforce their contractor_id
         if (user.role_name === 'Contractor' && user.contractor_id) {
-            employeeData.contractor_id = user.contractor_id;
+            normalizedContractorId = user.contractor_id;
         }
 
         // 1. Verify Company, Address, and Contractor
         await verifyCompanyAccess(company_id, user);
-        await verifyAddressAssociation(address_id, company_id);
-        await verifyContractorAssociation(employeeData.contractor_id, company_id);
+        await verifyAddressAssociation(normalizedAddressId, company_id);
+        await verifyContractorAssociation(normalizedContractorId, company_id);
 
         // 2. Validate Uniqueness
-        await validateUniqueness(employeeData);
+        await validateUniqueness({ ...employeeData, contractor_id: normalizedContractorId });
 
         // 3. Normalize strings (Uppercase Enforcement & ID lowercase normalization)
         const toUpper = (obj) => {
@@ -252,8 +258,8 @@ class EmployeeService {
                 {
                     ...personalDetails,
                     company_id,
-                    address_id,
-                    contractor_id: employeeData.contractor_id,
+                    address_id: normalizedAddressId,
+                    contractor_id: normalizedContractorId,
                 },
                 { transaction: t }
             );
@@ -530,7 +536,10 @@ class EmployeeService {
         }
 
         // Verify updated contractor / address if provided
-        if (personalDetails.address_id && personalDetails.address_id !== employee.address_id) {
+        if (personalDetails.address_id === "") {
+            personalDetails.address_id = null;
+        }
+        if (personalDetails.address_id !== undefined && personalDetails.address_id !== employee.address_id) {
             await verifyAddressAssociation(personalDetails.address_id, employee.company_id);
         }
 
@@ -539,7 +548,10 @@ class EmployeeService {
             personalDetails.contractor_id = user.contractor_id;
         }
 
-        if (personalDetails.contractor_id && personalDetails.contractor_id !== employee.contractor_id) {
+        if (personalDetails.contractor_id === "" || personalDetails.contractor_id === "SELF") {
+            personalDetails.contractor_id = null;
+        }
+        if (personalDetails.contractor_id !== undefined && personalDetails.contractor_id !== employee.contractor_id) {
             await verifyContractorAssociation(personalDetails.contractor_id, employee.company_id);
         }
 

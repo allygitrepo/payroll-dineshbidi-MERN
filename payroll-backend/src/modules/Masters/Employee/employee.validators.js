@@ -118,6 +118,7 @@ const createEmployeeSchema = Joi.object({
     physical_handicap: Joi.boolean().default(false).optional(),
     pmrpy: Joi.boolean().default(false).optional(),
     abry_applicable: Joi.boolean().default(false).optional(),
+    status: Joi.boolean().default(true).optional(),
     
     // Nested objects
     kyc_details: kycSchema.optional().default({}),
@@ -130,7 +131,7 @@ const updateEmployeeSchema = Joi.object({
         "string.guid": "Company ID must be a valid UUID.",
     }),
     contractor_id: Joi.string().guid().optional().allow(null, ""),
-    address_id: Joi.string().guid().optional().messages({
+    address_id: Joi.string().guid().optional().allow(null, "").messages({
         "string.guid": "Address ID must be a valid UUID.",
     }),
     image_path: Joi.string().optional().allow(null, ""),

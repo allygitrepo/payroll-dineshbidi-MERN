@@ -13,6 +13,28 @@ class WhatsAppService {
         };
     }
 
+    static logApiCall(method, url, payload, responseData, error = null) {
+        console.log("==========================================");
+        console.log(`[WA-Mitra API Request]`);
+        console.log(`Method: ${method.toUpperCase()}`);
+        console.log(`URL: ${url}`);
+        if (payload) {
+            console.log(`Payload:`, JSON.stringify(payload, null, 2));
+        }
+        if (responseData) {
+            console.log(`[WA-Mitra API Response]`);
+            console.log(`Data:`, JSON.stringify(responseData, null, 2));
+        }
+        if (error) {
+            console.log(`[WA-Mitra API Error]`);
+            console.log(`Message:`, error.message);
+            if (error.response?.data) {
+                console.log(`Error Response:`, JSON.stringify(error.response.data, null, 2));
+            }
+        }
+        console.log("==========================================");
+    }
+
     /**
      * Initiate or refresh a WhatsApp instance for a specific company
      */
@@ -39,7 +61,9 @@ class WhatsAppService {
                 response = await axios.post(`${WA_MITRA_API_URL}/instance/initiate`, requestBody, {
                     headers: this.getHeaders()
                 });
+                this.logApiCall('POST', `${WA_MITRA_API_URL}/instance/initiate`, requestBody, response.data);
             } catch (err) {
+                this.logApiCall('POST', `${WA_MITRA_API_URL}/instance/initiate`, requestBody, null, err);
                 // If it fails because instance was not found on the server (deleted, expired), create a new one
                 if (err.response && err.response.status === 404 && err.response.data?.message === "Instance not found") {
                     // We can also clear the stale key from the request body
@@ -47,6 +71,7 @@ class WhatsAppService {
                     response = await axios.post(`${WA_MITRA_API_URL}/instance/initiate`, requestBody, {
                         headers: this.getHeaders()
                     });
+                    this.logApiCall('POST', `${WA_MITRA_API_URL}/instance/initiate`, requestBody, response.data);
                 } else {
                     throw err; // Re-throw other errors
                 }
@@ -111,9 +136,16 @@ class WhatsAppService {
                 return { success: false, status: 'unlinked', message: 'No WhatsApp instance linked to this company' };
             }
 
-            const response = await axios.get(`${WA_MITRA_API_URL}/instance/status?instanceKey=${instance.instance_key}`, {
-                headers: this.getHeaders()
-            });
+            let response;
+            try {
+                response = await axios.get(`${WA_MITRA_API_URL}/instance/status?instanceKey=${instance.instance_key}`, {
+                    headers: this.getHeaders()
+                });
+                this.logApiCall('GET', `${WA_MITRA_API_URL}/instance/status?instanceKey=${instance.instance_key}`, null, response.data);
+            } catch (err) {
+                this.logApiCall('GET', `${WA_MITRA_API_URL}/instance/status?instanceKey=${instance.instance_key}`, null, null, err);
+                throw err;
+            }
 
             const data = response.data;
             if (data.success) {
@@ -145,9 +177,16 @@ class WhatsAppService {
                 return { success: true, message: "No active instance found to delete." };
             }
 
-            const response = await axios.delete(`${WA_MITRA_API_URL}/instance/delete?instanceKey=${instance.instance_key}`, {
-                headers: this.getHeaders()
-            });
+            let response;
+            try {
+                response = await axios.delete(`${WA_MITRA_API_URL}/instance/delete?instanceKey=${instance.instance_key}`, {
+                    headers: this.getHeaders()
+                });
+                this.logApiCall('DELETE', `${WA_MITRA_API_URL}/instance/delete?instanceKey=${instance.instance_key}`, null, response.data);
+            } catch (err) {
+                this.logApiCall('DELETE', `${WA_MITRA_API_URL}/instance/delete?instanceKey=${instance.instance_key}`, null, null, err);
+                throw err;
+            }
 
             if (response.data.success) {
                 await instance.destroy();
@@ -165,19 +204,27 @@ class WhatsAppService {
      * Send a single text message
      */
     static async sendTextMessage(companyId, number, message) {
+        const payload = {};
         try {
             const instance = await WhatsAppInstance.findOne({ where: { company_id: companyId } });
             if (!instance || instance.status !== 'connected') {
                 throw new Error("WhatsApp is not connected for this company");
             }
 
-            const response = await axios.post(`${WA_MITRA_API_URL}/messages/send`, {
-                instanceKey: instance.instance_key,
-                number: number,
-                message: message
-            }, {
-                headers: this.getHeaders()
-            });
+            payload.instanceKey = instance.instance_key;
+            payload.number = number;
+            payload.message = message;
+
+            let response;
+            try {
+                response = await axios.post(`${WA_MITRA_API_URL}/messages/send`, payload, {
+                    headers: this.getHeaders()
+                });
+                this.logApiCall('POST', `${WA_MITRA_API_URL}/messages/send`, payload, response.data);
+            } catch (err) {
+                this.logApiCall('POST', `${WA_MITRA_API_URL}/messages/send`, payload, null, err);
+                throw err;
+            }
 
             return response.data;
         } catch (error) {
@@ -190,18 +237,26 @@ class WhatsAppService {
      * Send bulk messages
      */
     static async sendBulkMessages(companyId, messages) {
+        const payload = {};
         try {
             const instance = await WhatsAppInstance.findOne({ where: { company_id: companyId } });
             if (!instance || instance.status !== 'connected') {
                 throw new Error("WhatsApp is not connected for this company");
             }
 
-            const response = await axios.post(`${WA_MITRA_API_URL}/messages/bulk`, {
-                instanceKey: instance.instance_key,
-                messages: messages
-            }, {
-                headers: this.getHeaders()
-            });
+            payload.instanceKey = instance.instance_key;
+            payload.messages = messages;
+
+            let response;
+            try {
+                response = await axios.post(`${WA_MITRA_API_URL}/messages/bulk`, payload, {
+                    headers: this.getHeaders()
+                });
+                this.logApiCall('POST', `${WA_MITRA_API_URL}/messages/bulk`, payload, response.data);
+            } catch (err) {
+                this.logApiCall('POST', `${WA_MITRA_API_URL}/messages/bulk`, payload, null, err);
+                throw err;
+            }
 
             return response.data;
         } catch (error) {

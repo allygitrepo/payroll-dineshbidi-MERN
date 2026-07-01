@@ -227,7 +227,7 @@ const ContractorPage = () => {
       };
       
       const response = await getContractors(companyId, params);
-      setWhatsAppEmployees(response.data || []);
+      setWhatsAppEmployees(Array.isArray(response) ? response : response.data || []);
       setIsWhatsAppModalOpen(true);
     } catch (err) {
       console.error('Error fetching contractors for WhatsApp:', err);

@@ -106,7 +106,7 @@ const EmployeePage = () => {
       };
       
       const response = await getEmployees(companyId, params);
-      setWhatsAppEmployees(response.data || []);
+      setWhatsAppEmployees(Array.isArray(response) ? response : response.data || []);
       setIsWhatsAppModalOpen(true);
     } catch (err) {
       console.error('Error fetching employees for WhatsApp:', err);
