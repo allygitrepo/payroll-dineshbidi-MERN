@@ -22,8 +22,21 @@ const verifyCompanyAccess = async (companyId, user) => {
             error.messageToShow = "Contractor profile not found.";
             throw error;
         }
+        const Contractor = require("../Contractor/contractor.model");
+        const contractor = await Contractor.findOne({ where: { id: user.contractor_id, company_id: companyId, status: true } });
+        if (!contractor) {
+            const error = new Error("Access denied. Contractor does not belong to this company.");
+            error.statusCode = 403;
+            error.errorCode = "ACCESS_DENIED";
+            error.messageToShow = "Access denied.";
+            throw error;
+        }
     } else {
-        if (company.user_id !== user.id) {
+        const isOwner = company.user_id === user.id;
+        const isParentOwner = user.parent_id && company.user_id === user.parent_id;
+        const isSuperAdmin = user.role_name === 'SUPER ADMIN' || user.role_name === 'SUPER_ADMIN';
+
+        if (!isOwner && !isParentOwner && !isSuperAdmin) {
             const error = new Error("Access denied.");
             error.statusCode = 403;
             error.errorCode = "ACCESS_DENIED";

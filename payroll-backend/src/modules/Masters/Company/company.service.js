@@ -60,7 +60,43 @@ class CompanyService {
      * Retrieves all active companies.
      */
     static async getAllCompanies(userId) {
-        return await Company.findAll({ where: { user_id: userId } });
+        const { User, Role, Contractor } = require("../../../database/models");
+        
+        const user = await User.findByPk(userId, {
+            include: [{ model: Role, as: 'role' }]
+        });
+
+        if (!user) {
+            return await Company.findAll();
+        }
+
+        const roleName = user.role?.name;
+
+        // 1. If Contractor, fetch the company associated with the contractor profile
+        if (roleName === 'Contractor' && user.contractor_id) {
+            const contractor = await Contractor.findByPk(user.contractor_id);
+            if (contractor) {
+                const company = await Company.findOne({ where: { id: contractor.company_id } });
+                if (company) return [company];
+            }
+        }
+
+        // 2. If user has a parent_id, fetch companies of the parent user
+        if (user.parent_id) {
+            const parentCompanies = await Company.findAll({ where: { user_id: user.parent_id } });
+            if (parentCompanies && parentCompanies.length > 0) {
+                return parentCompanies;
+            }
+        }
+
+        // 3. Companies created by this user
+        const myCompanies = await Company.findAll({ where: { user_id: userId } });
+        if (myCompanies && myCompanies.length > 0) {
+            return myCompanies;
+        }
+
+        // 4. Global fallback: return all active companies
+        return await Company.findAll({ where: { cstatus: true } });
     }
 
     /**

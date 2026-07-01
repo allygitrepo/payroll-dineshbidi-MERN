@@ -9,7 +9,7 @@ router.get("/public", CompanyController.getPublicCompanies);
 
 // All routes are protected by JWT authentication
 router.post("/", authenticateJWT, requirePermission("company", "create"), CompanyController.create);
-router.get("/", authenticateJWT, requirePermission("company", "read"), CompanyController.getAll);
+router.get("/", authenticateJWT, CompanyController.getAll);
 router.get("/:id", authenticateJWT, requirePermission("company", "read"), CompanyController.getById);
 router.put("/:id", authenticateJWT, requirePermission("company", "edit"), CompanyController.update);
 router.delete("/:id", authenticateJWT, requirePermission("company", "delete"), CompanyController.delete);

@@ -14,16 +14,16 @@ class WhatsAppService {
     }
 
     static logApiCall(method, url, payload, responseData, error = null) {
-        console.log("==========================================");
-        console.log(`[WA-Mitra API Request]`);
-        console.log(`Method: ${method.toUpperCase()}`);
-        console.log(`URL: ${url}`);
+        // console.log("==========================================");
+        // console.log(`[WA-Mitra API Request]`);
+        // console.log(`Method: ${method.toUpperCase()}`);
+        // console.log(`URL: ${url}`);
         if (payload) {
-            console.log(`Payload:`, JSON.stringify(payload, null, 2));
+            // console.log(`Payload:`, JSON.stringify(payload, null, 2));
         }
         if (responseData) {
-            console.log(`[WA-Mitra API Response]`);
-            console.log(`Data:`, JSON.stringify(responseData, null, 2));
+            // console.log(`[WA-Mitra API Response]`);
+            // console.log(`Data:`, JSON.stringify(responseData, null, 2));
         }
         if (error) {
             console.log(`[WA-Mitra API Error]`);
@@ -42,7 +42,7 @@ class WhatsAppService {
         try {
             // Find existing instance in our DB
             let instance = await WhatsAppInstance.findOne({ where: { company_id: companyId } });
-            
+
             // Fetch company details for naming
             const company = await Company.findByPk(companyId);
             const companyName = company && company.company_name ? company.company_name : companyId;
@@ -78,7 +78,7 @@ class WhatsAppService {
             }
 
             const data = response.data;
-            
+
             if (!data.success) {
                 console.error(`[WA-Mitra] Initiation failed from API:`, data);
                 throw new Error("Failed to initiate WA-Mitra instance");
