@@ -2,6 +2,31 @@ import React, { useState, useEffect } from 'react';
 import styles from './LoanPage.module.css';
 import { useToast, DatePicker } from '../../../shared/components';
 
+const calculateEMI = (principal, rate, tenure, type) => {
+  if (!principal || isNaN(principal) || parseFloat(principal) <= 0) return '';
+  if (!tenure || isNaN(tenure) || parseInt(tenure) <= 0) return '';
+  
+  const p = parseFloat(principal);
+  const rVal = parseFloat(rate || 0);
+  const t = parseInt(tenure);
+  
+  let interest = 0;
+  if (rVal > 0) {
+    if (type === 'Flat') {
+      interest = p * (rVal / 100);
+    } else if (type === 'Reducing') {
+      const r = (rVal / 12) / 100;
+      if (r > 0) {
+        const emiCalc = p * (r * Math.pow(1 + r, t)) / (Math.pow(1 + r, t) - 1);
+        interest = (emiCalc * t) - p;
+      }
+    }
+  }
+  
+  const emi = (p + interest) / t;
+  return emi.toFixed(2);
+};
+
 const LoanForm = ({ employee, onSave, onCancel }) => {
   const addToast = useToast();
   const [formData, setFormData] = useState({
@@ -16,6 +41,14 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
   });
 
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    const { totalAmount, interestRate, tenureMonths, interestType } = formData;
+    if (totalAmount && tenureMonths) {
+      const calculated = calculateEMI(totalAmount, interestRate, tenureMonths, interestType);
+      setFormData(prev => ({ ...prev, emiAmount: calculated }));
+    }
+  }, [formData.totalAmount, formData.interestRate, formData.tenureMonths, formData.interestType]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -109,20 +142,6 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
             </select>
           </div>
 
-          {/* EMI Amount */}
-          <div className={styles.field}>
-            <label className={styles.label}>EMI Amount (₹)</label>
-            <input
-              type="number"
-              name="emiAmount"
-              value={formData.emiAmount}
-              onChange={handleChange}
-              placeholder="EMI per period (optional)"
-              className={styles.input}
-            />
-            {errors.emiAmount && <span className={styles.errorText}>{errors.emiAmount}</span>}
-          </div>
-
           {/* Tenure */}
           <div className={styles.field}>
             <label className={styles.label}>Tenure (Months)</label>
@@ -164,6 +183,20 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
               <option value="Flat">Flat Rate</option>
               <option value="Reducing">Reducing Balance</option>
             </select>
+          </div>
+
+          {/* EMI Amount */}
+          <div className={styles.field}>
+            <label className={styles.label}>EMI Amount (₹)</label>
+            <input
+              type="number"
+              name="emiAmount"
+              value={formData.emiAmount}
+              onChange={handleChange}
+              placeholder="EMI per period (optional)"
+              className={styles.input}
+            />
+            {errors.emiAmount && <span className={styles.errorText}>{errors.emiAmount}</span>}
           </div>
 
           {/* Start Date */}

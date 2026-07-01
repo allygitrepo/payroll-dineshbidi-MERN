@@ -1,30 +1,32 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Coins, 
-  Pause, 
-  Play, 
-  CheckCircle, 
-  AlertCircle, 
-  Calendar, 
-  DollarSign, 
-  User, 
-  CreditCard, 
-  ChevronDown, 
-  ChevronUp, 
+import {
+  Plus,
+  Search,
+  Coins,
+  Pause,
+  Play,
+  CheckCircle,
+  AlertCircle,
+  Calendar,
+  DollarSign,
+  User,
+  CreditCard,
+  ChevronDown,
+  ChevronUp,
   X,
-  TrendingDown
+  TrendingDown,
+  ArrowLeft
 } from 'lucide-react';
 import styles from '../components/LoanPage.module.css';
 import LoanForm from '../components/LoanForm';
 import LoanTable from '../components/LoanTable';
-import { 
-  getLoansByEmployee, 
-  createLoan, 
-  updateLoan, 
-  recordRepayment, 
-  getLoanSummary 
+import {
+  getLoansByEmployee,
+  createLoan,
+  updateLoan,
+  recordRepayment,
+  getLoanSummary,
+  getLoansByCompany
 } from '../services/loanService';
 import { getEmployees } from '../../master/employee/services/employeeService';
 import { getOfficeStaffSalaries } from '../../setup/office-staff-salary/services/officeStaffSalaryService';
@@ -37,11 +39,12 @@ const LoanPage = () => {
   const [loans, setLoans] = useState([]);
   const [summary, setSummary] = useState(null);
   const [salaries, setSalaries] = useState([]);
+  const [companyLoans, setCompanyLoans] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loadingEmployees, setLoadingEmployees] = useState(true);
   const [loadingLoans, setLoadingLoans] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  
+
   // Expanded loan transactions view
   const [expandedLoanId, setExpandedLoanId] = useState(null);
 
@@ -63,14 +66,16 @@ const LoanPage = () => {
       }
       try {
         setLoadingEmployees(true);
-        const [empData, summaryData, salaryData] = await Promise.all([
+        const [empData, summaryData, salaryData, companyLoansData] = await Promise.all([
           getEmployees(companyId),
           getLoanSummary(companyId),
-          getOfficeStaffSalaries(companyId).catch(() => [])
+          getOfficeStaffSalaries(companyId).catch(() => []),
+          getLoansByCompany(companyId).catch(() => [])
         ]);
         setEmployees(empData);
         setSummary(summaryData);
         setSalaries(salaryData || []);
+        setCompanyLoans(companyLoansData || []);
       } catch (err) {
         console.error('Error fetching initial data:', err);
         addToast({ type: 'error', message: 'Failed to load initial employees or statistics.' });
@@ -105,9 +110,9 @@ const LoanPage = () => {
   // Filter employees (only show active ones)
   const filteredEmployees = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return employees.filter(emp => 
+    return employees.filter(emp =>
       emp.status === true && (
-        emp.memberName.toLowerCase().includes(term) || 
+        emp.memberName.toLowerCase().includes(term) ||
         (emp.memberId && emp.memberId.toLowerCase().includes(term)) ||
         (emp.uan && emp.uan.includes(term))
       )
@@ -132,9 +137,9 @@ const LoanPage = () => {
     try {
       const result = await createLoan(loanData);
       if (result.success || result.status) {
-        addToast({ 
-          type: result.warning ? 'warning' : 'success', 
-          message: result.warning ? `Loan created with warning: ${result.warning}` : 'Loan account created successfully!' 
+        addToast({
+          type: result.warning ? 'warning' : 'success',
+          message: result.warning ? `Loan created with warning: ${result.warning}` : 'Loan account created successfully!'
         });
         setShowCreateForm(false);
         if (selectedEmployee) {
@@ -144,9 +149,9 @@ const LoanPage = () => {
       }
     } catch (err) {
       console.error('Error creating loan:', err);
-      addToast({ 
-        type: 'error', 
-        message: err.response?.data?.messageToShow || 'Failed to create loan account.' 
+      addToast({
+        type: 'error',
+        message: err.response?.data?.messageToShow || 'Failed to create loan account.'
       });
     }
   };
@@ -242,6 +247,24 @@ const LoanPage = () => {
     const found = salaries.find(s => s.employeeId === selectedEmployee.id);
     return found ? parseFloat(found.salary) : null;
   }, [selectedEmployee, salaries]);
+
+  // Active/paused loans in the company
+  const activeCompanyLoans = useMemo(() => {
+    const activeLoans = companyLoans.filter(l => 
+      parseFloat(l.remainingAmount) > 0 && 
+      (l.status.toUpperCase() === 'ACTIVE' || l.status.toUpperCase() === 'PAUSED')
+    );
+    return activeLoans.map(loan => {
+      const emp = employees.find(e => e.id === loan.employeeId);
+      return {
+        ...loan,
+        employeeName: emp ? emp.memberName : 'Unknown',
+        employeeCode: emp ? emp.memberId : '',
+        employeeUan: emp ? emp.uan : '',
+        employeeObj: emp
+      };
+    });
+  }, [companyLoans, employees]);
 
   return (
     <div className={styles.container}>
@@ -342,12 +365,21 @@ const LoanPage = () => {
                   Total Loaned: <strong style={{ color: 'var(--text-primary)' }}>₹{employeeTotals.totalLoaned.toFixed(2)}</strong> • Outstanding: <strong style={{ color: 'var(--danger)' }}>₹{employeeTotals.pending.toFixed(2)}</strong> • Repaid: <strong style={{ color: 'var(--primary)' }}>₹{employeeTotals.paid.toFixed(2)}</strong>
                 </span>
               </div>
-              {!showCreateForm && (
-                <button onClick={() => setShowCreateForm(true)} className={styles.addBtn}>
-                  <Plus size={16} />
-                  Issue New Loan
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button 
+                  onClick={() => setSelectedEmployee(null)}
+                  className={styles.backBtn}
+                >
+                  <ArrowLeft size={14} />
+                  Back to Overview
                 </button>
-              )}
+                {!showCreateForm && (
+                  <button onClick={() => setShowCreateForm(true)} className={styles.addBtn}>
+                    <Plus size={16} />
+                    Issue New Loan
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Create Loan form panel */}
@@ -373,7 +405,7 @@ const LoanPage = () => {
                   </div>
                 ) : (
                   loans.map((loan) => {
-                    const percent = loan.totalAmount > 0 
+                    const percent = loan.totalAmount > 0
                       ? Math.round(((loan.totalAmount - loan.remainingAmount) / loan.totalAmount) * 100)
                       : 0;
 
@@ -443,7 +475,7 @@ const LoanPage = () => {
                             {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                             {isExpanded ? 'Hide History' : 'View Transactions'}
                           </button>
-                          
+
                           {loan.status !== 'COMPLETED' && loan.status !== 'MANUAL_CLOSED' && (
                             <>
                               <button
@@ -482,14 +514,91 @@ const LoanPage = () => {
             )}
           </div>
         ) : (
-          <div className={styles.noSelection}>
-            <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '16px', borderRadius: '50%', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', width: '72px', height: '72px' }}>
-              <User size={36} />
-            </div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-primary)' }}>Select Employee</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px', maxWidth: '300px' }}>
-              Choose a worker from the sidebar list to view their outstanding loan ledger.
-            </p>
+          <div className={styles.activeLoansSection}>
+            {activeCompanyLoans.length > 0 ? (
+              <div className={styles.activeLoansSection}>
+                <div className={styles.activeLoansTitle}>
+                  <Coins size={22} style={{ color: 'var(--primary)' }} />
+                  Active Loan Accounts ({activeCompanyLoans.length})
+                </div>
+                <div className={styles.activeLoansGrid}>
+                  {activeCompanyLoans.map(loan => {
+                    const percent = loan.totalAmount > 0 
+                      ? Math.round(((loan.totalAmount - loan.remainingAmount) / loan.totalAmount) * 100)
+                      : 0;
+                    
+                    let statusClass = styles.badgeActive;
+                    if (loan.status.toUpperCase() === 'PAUSED') statusClass = styles.badgePaused;
+                    if (loan.status.toUpperCase() === 'COMPLETED') statusClass = styles.badgeCompleted;
+                    if (loan.status.toUpperCase() === 'MANUAL_CLOSED') statusClass = styles.badgeClosed;
+
+                    return (
+                      <div 
+                        key={loan.id} 
+                        className={styles.activeLoanCard}
+                        onClick={() => handleSelectEmployee(loan.employeeObj)}
+                      >
+                        <div className={styles.activeLoanCardHeader}>
+                          <div>
+                            <div className={styles.activeLoanEmpName}>{loan.employeeName}</div>
+                            <div className={styles.activeLoanEmpCode}>UAN: {loan.employeeUan || 'N/A'}</div>
+                          </div>
+                          <span className={`${styles.statusBadge} ${statusClass}`}>
+                            {loan.status}
+                          </span>
+                        </div>
+
+                        <div className={styles.loanHeader} style={{ marginTop: '0', borderBottom: 'none', paddingBottom: '0' }}>
+                          <div className={styles.loanSummaryInfo}>
+                            <div className={styles.loanName} style={{ fontSize: '1rem' }}>₹{loan.totalAmount.toFixed(2)} Loan Account</div>
+                            <div className={styles.loanSubText}>
+                              Issued: {new Date(loan.startDate).toLocaleDateString('en-IN')}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={styles.loanDetailsGrid} style={{ marginTop: '12px', gap: '10px' }}>
+                          <div className={styles.detailItem}>
+                            <span className={styles.detailLabel}>EMI AMOUNT</span>
+                            <span className={styles.detailValue}>₹{loan.emiAmount.toFixed(2)}</span>
+                          </div>
+                          <div className={styles.detailItem}>
+                            <span className={styles.detailLabel}>INTEREST STYLE</span>
+                            <span className={styles.detailValue}>{loan.interestRate}% ({loan.interestType})</span>
+                          </div>
+                          <div className={styles.detailItem}>
+                            <span className={styles.detailLabel}>OUTSTANDING</span>
+                            <span className={styles.detailValue} style={{ color: 'var(--danger)', fontWeight: '600' }}>
+                              ₹{loan.remainingAmount.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className={styles.progressSection} style={{ marginTop: '14px' }}>
+                          <div className={styles.progressLabelWrapper}>
+                            <span>Repayment Progress</span>
+                            <span>{percent}% Paid</span>
+                          </div>
+                          <div className={styles.progressBarContainer}>
+                            <div className={styles.progressBar} style={{ width: `${percent}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className={styles.noSelection} style={{ margin: 'auto', padding: '60px 0' }}>
+                <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '16px', borderRadius: '50%', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', width: '72px', height: '72px' }}>
+                  <User size={36} />
+                </div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-primary)' }}>Select Employee</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px', maxWidth: '300px' }}>
+                  Choose a worker from the sidebar list to view their outstanding loan ledger.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -500,8 +609,8 @@ const LoanPage = () => {
           <div className={styles.modalContent}>
             <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center' }}>
               <div className={styles.modalTitle}>Record Manual Payment</div>
-              <button 
-                onClick={() => setShowPaymentModal(false)} 
+              <button
+                onClick={() => setShowPaymentModal(false)}
                 style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}
               >
                 <X size={20} />
@@ -556,16 +665,16 @@ const LoanPage = () => {
               </div>
 
               <div className={styles.buttonGroupCentered} style={{ marginTop: '12px' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setShowPaymentModal(false)} 
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentModal(false)}
                   className={styles.cancelBtn}
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
-                  disabled={submittingPayment} 
+                <button
+                  type="submit"
+                  disabled={submittingPayment}
                   className={styles.saveBtn}
                 >
                   {submittingPayment ? 'Recording...' : 'Submit Payment'}

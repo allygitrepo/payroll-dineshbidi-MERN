@@ -58,7 +58,7 @@ export const updateLoan = async (id, updateData) => {
   const payload = {};
   if (updateData.status) payload.status = updateData.status;
   if (updateData.emiAmount) payload.emi_amount = parseFloat(updateData.emiAmount);
-  
+
   const response = await apiClient.put(`loans/override/${id}`, payload);
   return response.data;
 };
@@ -89,4 +89,13 @@ export const getLoanSummary = async (companyId) => {
     return response.data.data;
   }
   return null;
+};
+
+export const getLoansByCompany = async (companyId) => {
+  if (!companyId) return [];
+  const response = await apiClient.get(`loans/company/${companyId}`);
+  if ((response.data?.status || response.data?.success) && response.data?.data) {
+    return response.data.data.map(mapToFrontend);
+  }
+  return [];
 };

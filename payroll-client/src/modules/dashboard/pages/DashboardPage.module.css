@@ -110,9 +110,6 @@
 .contentPane {
   flex: 1;
   padding: 30px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
   overflow-y: auto;
 }
 
