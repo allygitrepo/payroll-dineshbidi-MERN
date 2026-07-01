@@ -57,6 +57,10 @@ const Contractor = sequelize.define(
             type: DataTypes.STRING(11),
             allowNull: true,
         },
+        whatsapp_number: {
+            type: DataTypes.STRING(15),
+            allowNull: true,
+        },
         status: {
             type: DataTypes.BOOLEAN,
             defaultValue: true,

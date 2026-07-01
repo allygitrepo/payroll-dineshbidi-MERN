@@ -138,8 +138,8 @@ const ContractorPage = () => {
     if (deleteTargetId) {
       const companyId = localStorage.getItem('selectedCompany');
       try {
-        const updated = await deleteContractor(deleteTargetId, companyId);
-        setContractors(updated);
+        await deleteContractor(deleteTargetId, companyId);
+        fetchContractors();
         addToast({ type: 'success', message: 'Contractor deleted successfully!' });
       } catch (err) {
         console.error('Error deleting contractor:', err);
@@ -158,8 +158,8 @@ const ContractorPage = () => {
   const handleSave = async (contractorData) => {
     const companyId = localStorage.getItem('selectedCompany');
     try {
-      const updated = await saveContractor(contractorData, companyId, addresses);
-      setContractors(updated);
+      await saveContractor(contractorData, companyId, addresses);
+      fetchContractors();
       setIsFormOpen(false);
       setEditingContractor(null);
       addToast({
@@ -516,6 +516,7 @@ const ContractorPage = () => {
       {isWhatsAppModalOpen && (
         <WhatsAppBulkSendModal
           employees={whatsAppEmployees} // Works for contractors too
+          recipientType="contractor"
           onClose={() => setIsWhatsAppModalOpen(false)}
         />
       )}

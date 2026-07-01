@@ -101,7 +101,7 @@ class WhatsAppTemplateController {
     static async sendBulkMessage(req, res) {
         try {
             const companyId = req.user.company_id || req.user.id;
-            const { templateId, employeeIds } = req.body;
+            const { templateId, employeeIds, recipientType = 'employee' } = req.body;
 
             if (!templateId || !employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
                 return res.status(400).json(errorResponse("VALIDATION_ERROR", "Invalid input", "Please select a template and at least one employee"));
@@ -116,28 +116,38 @@ class WhatsAppTemplateController {
                 return res.status(404).json(errorResponse("NOT_FOUND", "Template not found", "Template not found"));
             }
 
-            // 2. Fetch employees
-            const employees = await Employee.findAll({
-                where: {
-                    id: { [Op.in]: employeeIds },
-                    company_id: companyId
-                }
-            });
+            // 2. Fetch recipients based on type
+            let recipients = [];
+            if (recipientType === 'contractor') {
+                const Contractor = require("../../../database/models").Contractor;
+                recipients = await Contractor.findAll({
+                    where: {
+                        id: { [Op.in]: employeeIds },
+                        company_id: companyId
+                    }
+                });
+            } else {
+                recipients = await Employee.findAll({
+                    where: {
+                        id: { [Op.in]: employeeIds },
+                        company_id: companyId
+                    }
+                });
+            }
 
-            if (employees.length === 0) {
-                return res.status(404).json(errorResponse("NOT_FOUND", "No valid employees found", "No valid employees found"));
+            if (recipients.length === 0) {
+                return res.status(404).json(errorResponse("NOT_FOUND", "No valid recipients found", "No valid recipients found"));
             }
 
             // 3. Prepare bulk messages payload for WA-Mitra API
-            // Format expected by WA-Mitra Bulk API:
-            // [ { "number": "919999999999", "message": "..." }, ... ]
             const messagesPayload = [];
 
-            for (const emp of employees) {
-                // Ensure employee has a valid phone number
-                if (!emp.mobile) continue;
+            for (const rec of recipients) {
+                let mobile = recipientType === 'contractor' ? rec.whatsapp_number : rec.mobile;
+                
+                // Ensure recipient has a valid phone number
+                if (!mobile) continue;
 
-                let mobile = emp.mobile;
                 // Clean and prefix with 91 if it's a 10 digit Indian number and doesn't have country code
                 mobile = mobile.replace(/\D/g, ''); // keep digits only
                 if (mobile.length === 10) {
@@ -145,9 +155,9 @@ class WhatsAppTemplateController {
                 }
 
                 // 4. Parse template dynamically
-                // Currently supporting {{name}} which maps to emp.name
+                // Currently supporting {{name}} which maps to rec.name
                 let parsedMessage = template.content;
-                const fullName = (emp.name || "").trim();
+                const fullName = (rec.name || "").trim();
                 
                 parsedMessage = parsedMessage.replace(/{{name}}/gi, fullName);
 
@@ -158,7 +168,7 @@ class WhatsAppTemplateController {
             }
 
             if (messagesPayload.length === 0) {
-                return res.status(400).json(errorResponse("NO_VALID_NUMBERS", "No valid phone numbers found", "None of the selected employees have valid phone numbers."));
+                return res.status(400).json(errorResponse("NO_VALID_NUMBERS", "No valid phone numbers found", "None of the selected recipients have valid phone numbers."));
             }
 
             // 5. Send via WhatsAppService

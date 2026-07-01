@@ -4,7 +4,7 @@ import { getTemplates, sendBulkMessage } from '../services/whatsappService';
 import styles from './WhatsAppComponents.module.css';
 import { Send, Search, X } from 'lucide-react';
 
-const WhatsAppBulkSendModal = ({ employees = [], onClose }) => {
+const WhatsAppBulkSendModal = ({ employees = [], recipientType = 'employee', onClose }) => {
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState('');
     const [selectedEmployees, setSelectedEmployees] = useState([]);
@@ -71,7 +71,8 @@ const WhatsAppBulkSendModal = ({ employees = [], onClose }) => {
         try {
             const payload = {
                 templateId: selectedTemplate,
-                employeeIds: selectedEmployees
+                employeeIds: selectedEmployees,
+                recipientType: recipientType
             };
             await sendBulkMessage(payload);
             addToast({ type: 'success', message: `WhatsApp messages successfully initiated for ${selectedEmployees.length} employees.` });

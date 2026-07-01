@@ -16,6 +16,8 @@ const mapToFrontend = (c) => ({
   bankAccount: c.bank_ac || '',
   bankName: c.bank_name || '',
   ifsc: c.ifsc || '',
+  whatsappNumber: c.whatsapp_number || '',
+  mobile: c.whatsapp_number || '',
   status: c.status ? 'Active' : 'Inactive',
   address_id: c.address_id
 });
@@ -34,6 +36,7 @@ const mapToBackend = (c, companyId, addresses = []) => {
     bank_ac: c.bankAccount || null,
     bank_name: c.bankName || null,
     ifsc: c.ifsc || null,
+    whatsapp_number: c.whatsappNumber || null,
     status: c.status === 'Active'
   };
 };

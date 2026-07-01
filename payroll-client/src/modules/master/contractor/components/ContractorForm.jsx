@@ -21,6 +21,7 @@ const ContractorForm = ({ contractor, addresses = [], onSave, onCancel }) => {
     bankAccount: '',
     bankName: '',
     ifsc: '',
+    whatsappNumber: '',
     isActive: true
   });
 
@@ -50,6 +51,7 @@ const ContractorForm = ({ contractor, addresses = [], onSave, onCancel }) => {
         bankAccount: '',
         bankName: '',
         ifsc: '',
+        whatsappNumber: '',
         isActive: true
       });
     }
@@ -432,6 +434,20 @@ const ContractorForm = ({ contractor, addresses = [], onSave, onCancel }) => {
               className={styles.input}
             />
             {errors.ifsc && <span className={styles.errorText}>{errors.ifsc}</span>}
+          </div>
+
+          {/* WhatsApp No. */}
+          <div className={styles.field}>
+            <label className={styles.label}>WhatsApp No.</label>
+            <input
+              type="text"
+              name="whatsappNumber"
+              value={formData.whatsappNumber}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="ENTER WHATSAPP NO."
+              className={styles.input}
+            />
           </div>
 
           {/* Status (Active) */}

@@ -162,8 +162,8 @@ const EmployeePage = () => {
     if (deleteTargetId) {
       const companyId = localStorage.getItem('selectedCompany');
       try {
-        const updated = await deleteEmployee(deleteTargetId, companyId);
-        setEmployees(updated);
+        await deleteEmployee(deleteTargetId, companyId);
+        fetchEmployees();
         addToast({ type: 'success', message: 'Employee deleted successfully!' });
       } catch (err) {
         console.error('Error deleting employee:', err);
@@ -182,8 +182,8 @@ const EmployeePage = () => {
   const handleSave = async (employeeData) => {
     const companyId = localStorage.getItem('selectedCompany');
     try {
-      const updated = await saveEmployee(employeeData, companyId, addresses, contractors);
-      setEmployees(updated);
+      await saveEmployee(employeeData, companyId, addresses, contractors);
+      fetchEmployees();
       setIsFormOpen(false);
       setEditingEmployee(null);
       addToast({
