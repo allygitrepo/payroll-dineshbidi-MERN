@@ -17,6 +17,7 @@ const requireSaaSAdmin = (req, res, next) => {
 };
 
 router.post("/clients", authenticateJWT, requireSaaSAdmin, saasController.createSaasClient);
+router.put("/clients/:id", authenticateJWT, requireSaaSAdmin, saasController.updateSaasClient);
 router.get("/clients", authenticateJWT, requireSaaSAdmin, saasController.getSaasClients);
 router.get("/dashboard-stats", authenticateJWT, requireSaaSAdmin, saasController.getDashboardStats);
 router.get("/employee-reports", authenticateJWT, requireSaaSAdmin, saasController.getEmployeeReports);

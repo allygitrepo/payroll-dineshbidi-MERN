@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader } from 'lucide-react';
 import styles from './SaasClientManagementPage.module.css';
-import { createSaasClient } from '../services/saasService';
+import { createSaasClient, updateSaasClient } from '../services/saasService';
 
 import { menuItems, nameToSlug } from '../../../shared/components/Sidebar/Sidebar';
 
@@ -181,7 +181,7 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
 
     try {
       if (editingClient) {
-        alert("Edit functionality pending for SaaS Client");
+        await updateSaasClient(editingClient.id, formData);
       } else {
         await createSaasClient(formData);
       }

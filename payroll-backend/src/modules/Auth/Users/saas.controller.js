@@ -86,6 +86,76 @@ class SaasController {
         }
     }
 
+    static async updateSaasClient(req, res) {
+        try {
+            const userId = req.params.id;
+            const { 
+                user_name, password, 
+                company_name, establishment_id, company_type,
+                epfo_office, lin_number, esic_id,
+                address_line, post_office, district, pincode,
+                pan, tan, professional_tax_reg_no,
+                email_id, phone, website,
+                permissions
+            } = req.body;
+
+            const existingUser = await User.findByPk(userId);
+            if (!existingUser) {
+                return res.status(404).json(errorResponse("NOT_FOUND", "User not found", "Client not found."));
+            }
+
+            const transaction = await User.sequelize.transaction();
+            try {
+                // Update Role permissions
+                if (permissions) {
+                    await Role.update({ permissions }, { where: { id: existingUser.role_id }, transaction });
+                }
+
+                // Update User details
+                const updateData = { user_name };
+                if (password && password.trim() !== '') {
+                    updateData.password = await bcrypt.hash(password, 10);
+                }
+                await User.update(updateData, { where: { id: userId }, transaction });
+
+                // Update Company
+                await Company.update({
+                    establishment_id,
+                    company_name,
+                    company_type,
+                    epfo_office,
+                    lin_number: lin_number || null,
+                    esic_id: esic_id || null,
+                    address_line,
+                    post_office,
+                    district,
+                    pincode,
+                    pan,
+                    tan,
+                    professional_tax_reg_no: professional_tax_reg_no || null,
+                    email_id,
+                    phone,
+                    website: website || null
+                }, { where: { user_id: userId }, transaction });
+
+                await transaction.commit();
+
+                return res.status(200).json(successResponse(
+                    "CLIENT_UPDATED",
+                    "Client updated successfully",
+                    "Client profile updated successfully",
+                    {}
+                ));
+            } catch (err) {
+                await transaction.rollback();
+                throw err;
+            }
+        } catch (error) {
+            console.error("Saas Client Update Error:", error);
+            return res.status(500).json(errorResponse("SERVER_ERROR", error.message, "Failed to update SaaS Client."));
+        }
+    }
+
     static async getSaasClients(req, res) {
         try {
             const { Op } = require("sequelize");
