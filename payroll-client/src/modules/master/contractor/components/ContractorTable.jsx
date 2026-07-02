@@ -175,9 +175,13 @@ const ContractorTable = ({
                       </button>
                       <button
                         onClick={() => onCreateLogin(contractor)}
-                        title="Create Login"
+                        title={contractor.hasLogin ? "Update Login" : "Create Login"}
                         className={styles.editBtn}
-                        style={{ color: '#0ea5e9', border: '1px solid #bae6fd', backgroundColor: '#f0f9ff' }}
+                        style={{
+                          color: contractor.hasLogin ? 'white' : '#0ea5e9',
+                          border: contractor.hasLogin ? 'none' : '1px solid #bae6fd',
+                          backgroundColor: contractor.hasLogin ? '#16a34a' : '#f0f9ff'
+                        }}
                       >
                         <Key size={14} />
                       </button>

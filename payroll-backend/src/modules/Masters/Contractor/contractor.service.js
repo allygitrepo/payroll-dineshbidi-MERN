@@ -186,6 +186,12 @@ class ContractorService {
                 {
                     model: Address,
                     as: "address",
+                },
+                {
+                    model: User,
+                    as: "user_account",
+                    attributes: ["id", "status"],
+                    required: false
                 }
             ],
             order: [["createdAt", "DESC"]],
@@ -457,7 +463,8 @@ class ContractorService {
             user_id: username,
             password: hashedPassword,
             role_id: role.id,
-            contractor_id: contractorId
+            contractor_id: contractorId,
+            parent_id: user.id
         });
 
         const userJson = newUser.toJSON();

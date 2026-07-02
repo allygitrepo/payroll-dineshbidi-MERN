@@ -45,6 +45,7 @@ const ContractorLoginModal = ({ isOpen, onClose, onSave, contractorName, existin
             onChange={(e) => setUsername(e.target.value)}
             style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '14px', outline: 'none' }}
             placeholder="Enter username"
+            autoComplete="new-password"
           />
         </div>
         
@@ -56,6 +57,7 @@ const ContractorLoginModal = ({ isOpen, onClose, onSave, contractorName, existin
             onChange={(e) => setPassword(e.target.value)}
             style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '14px', outline: 'none' }}
             placeholder={existingLogin ? "Enter new password (optional)" : "Enter password"}
+            autoComplete="new-password"
           />
         </div>
 
