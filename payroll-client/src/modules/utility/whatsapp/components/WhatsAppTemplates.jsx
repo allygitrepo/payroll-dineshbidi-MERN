@@ -1,5 +1,5 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { useToast } from '../../../../shared/components';
+import { useToast, ConfirmModal } from '../../../../shared/components';
 import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '../services/whatsappService';
 import styles from './WhatsAppComponents.module.css';
 import { Edit2, Trash2, Plus, X } from 'lucide-react';
@@ -9,6 +9,8 @@ const WhatsAppTemplates = forwardRef((props, ref) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState(null);
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const [templateToDelete, setTemplateToDelete] = useState(null);
     
     // Form state
     const [name, setName] = useState('');
@@ -77,15 +79,21 @@ const WhatsAppTemplates = forwardRef((props, ref) => {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm("Are you sure you want to delete this template?")) {
-            try {
-                await deleteTemplate(id);
-                addToast({ type: 'success', message: "Template deleted successfully." });
-                fetchTemplates();
-            } catch (error) {
-                addToast({ type: 'error', message: error.messageToShow || "Failed to delete template." });
-            }
+    const handleDeleteClick = (tpl) => {
+        setTemplateToDelete(tpl);
+        setIsConfirmOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!templateToDelete) return;
+        setIsConfirmOpen(false);
+        try {
+            await deleteTemplate(templateToDelete.id);
+            addToast({ type: 'success', message: "Template deleted successfully." });
+            setTemplateToDelete(null);
+            fetchTemplates();
+        } catch (error) {
+            addToast({ type: 'error', message: error.messageToShow || "Failed to delete template." });
         }
     };
 
@@ -122,7 +130,7 @@ const WhatsAppTemplates = forwardRef((props, ref) => {
                                     <Edit2 size={16} />
                                     <span>Edit</span>
                                 </button>
-                                <button onClick={() => handleDelete(tpl.id)} className={`${styles.actionBtn} ${styles.actionBtnDanger}`} title="Delete Template">
+                                <button onClick={() => handleDeleteClick(tpl)} className={`${styles.actionBtn} ${styles.actionBtnDanger}`} title="Delete Template">
                                     <Trash2 size={16} />
                                     <span>Delete</span>
                                 </button>
@@ -179,6 +187,14 @@ const WhatsAppTemplates = forwardRef((props, ref) => {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={isConfirmOpen}
+                onClose={() => setIsConfirmOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title="Delete Template"
+                message="Are you sure you want to delete this template? This action cannot be undone."
+            />
         </div>
     );
 });

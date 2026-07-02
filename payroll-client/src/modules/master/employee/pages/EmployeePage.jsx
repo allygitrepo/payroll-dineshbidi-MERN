@@ -30,7 +30,7 @@ const EmployeePage = () => {
   const [whatsAppEmployees, setWhatsAppEmployees] = useState([]);
   const [isFetchingWhatsApp, setIsFetchingWhatsApp] = useState(false);
   const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
-  
+
   // Pagination & Loading States
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -84,17 +84,17 @@ const EmployeePage = () => {
       addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const params = {
-          page: currentPage,
-          limit: pageSize,
-          search: searchTerm,
-          status: statusFilter === 'ACTIVE' ? '1' : statusFilter === 'INACTIVE' ? '0' : '',
-          employeeType: employeeTypeFilter
+        page: currentPage,
+        limit: pageSize,
+        search: searchTerm,
+        status: statusFilter === 'ACTIVE' ? '1' : statusFilter === 'INACTIVE' ? '0' : '',
+        employeeType: employeeTypeFilter
       };
-      
+
       const response = await getEmployees(companyId, params);
       setEmployees(response.data || []);
       setTotalEntries(response.total || 0);
@@ -119,7 +119,7 @@ const EmployeePage = () => {
         employeeType: employeeTypeFilter
         // Intentionally omitting page and limit to fetch all matching records
       };
-      
+
       const response = await getEmployees(companyId, params);
       setWhatsAppEmployees(Array.isArray(response) ? response : response.data || []);
       setIsWhatsAppModalOpen(true);
@@ -217,7 +217,7 @@ const EmployeePage = () => {
   const handleToggleAbry = async (employeeId) => {
     const employee = employees.find(e => e.id === employeeId);
     if (!employee) return;
-    
+
     const companyId = localStorage.getItem('selectedCompany');
     try {
       const updatedEmployees = await toggleAbryStatus(employeeId, employee.abryApplicable, companyId);
@@ -279,25 +279,25 @@ const EmployeePage = () => {
               <Plus size={18} /> Employee
             </button>
           )}
-          
-          <button 
-            className={styles.addBtn} 
+
+          <button
+            className={styles.addBtn}
             style={{ backgroundColor: 'var(--primary)', opacity: 0.9 }}
             onClick={() => navigate('/utility/employee-data-import')}
           >
             <Upload size={18} /> Import
           </button>
-          
+          {/* 
           {isWhatsAppConnected && (
-            <button 
-              className={styles.addBtn} 
+            <button
+              className={styles.addBtn}
               style={{ backgroundColor: '#25D366', opacity: isFetchingWhatsApp ? 0.7 : 1, cursor: isFetchingWhatsApp ? 'not-allowed' : 'pointer' }}
               onClick={handleOpenWhatsAppModal}
               disabled={isFetchingWhatsApp}
             >
-              <MessageCircle size={18} /> {isFetchingWhatsApp ? 'Loading...' : 'WhatsApp'}
+              <img src="/wa-whatsapp-icon.png" width={18} height={18} alt="WhatsApp" style={{ verticalAlign: 'middle', marginRight: '4px' }} /> {isFetchingWhatsApp ? 'Loading...' : 'WhatsApp'}
             </button>
-          )}
+          )} */}
 
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
@@ -326,6 +326,16 @@ const EmployeePage = () => {
               </div>
             )}
           </div>
+          {isWhatsAppConnected && (
+            <button
+              style={{ backgroundColor: 'transparent', border: 'none', opacity: isFetchingWhatsApp ? 0.7 : 1, cursor: isFetchingWhatsApp ? 'not-allowed' : 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onClick={handleOpenWhatsAppModal}
+              disabled={isFetchingWhatsApp}
+              title="Send WhatsApp Message"
+            >
+              {isFetchingWhatsApp ? <span style={{ fontSize: '14px', color: 'var(--text-color)', fontWeight: 'bold' }}>...</span> : <img src="/wa-whatsapp-icon.png" width={38} height={38} alt="WhatsApp" />}
+            </button>
+          )}
         </div>
       </div>
 
@@ -343,9 +353,9 @@ const EmployeePage = () => {
       {/* Render table card containing list */}
       <div style={{ position: 'relative' }}>
         {isLoading && (
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div className="loader"></div>
-            </div>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="loader"></div>
+          </div>
         )}
         <EmployeeTable
           data={filteredEmployees}
@@ -359,7 +369,7 @@ const EmployeePage = () => {
           onDelete={handleDeleteClick}
           onToggleAbry={handleToggleAbry}
         />
-        
+
         {/* Pagination controls directly mimicking MissingInformationPage */}
         {!isFormOpen && totalEntries > 0 && (
           <div className={styles.tableFooter} style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--card-bg)' }}>

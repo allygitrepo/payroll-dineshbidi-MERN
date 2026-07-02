@@ -101,19 +101,24 @@ class WhatsAppTemplateController {
     static async sendBulkMessage(req, res) {
         try {
             const companyId = req.user.company_id || req.user.id;
-            const { templateId, employeeIds, recipientType = 'employee' } = req.body;
+            const { templateId, customMessage, employeeIds, recipientType = 'employee' } = req.body;
 
-            if (!templateId || !employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
-                return res.status(400).json(errorResponse("VALIDATION_ERROR", "Invalid input", "Please select a template and at least one employee"));
+            if ((!templateId && !customMessage) || !employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+                return res.status(400).json(errorResponse("VALIDATION_ERROR", "Invalid input", "Please provide a message and select at least one employee"));
             }
 
-            // 1. Fetch template
-            const template = await WhatsAppTemplate.findOne({
-                where: { id: templateId, company_id: companyId }
-            });
+            let messageTemplateStr = customMessage;
 
-            if (!template) {
-                return res.status(404).json(errorResponse("NOT_FOUND", "Template not found", "Template not found"));
+            // 1. Fetch template if custom message is not provided
+            if (!customMessage && templateId) {
+                const template = await WhatsAppTemplate.findOne({
+                    where: { id: templateId, company_id: companyId }
+                });
+
+                if (!template) {
+                    return res.status(404).json(errorResponse("NOT_FOUND", "Template not found", "Template not found"));
+                }
+                messageTemplateStr = template.content;
             }
 
             // 2. Fetch recipients based on type
@@ -156,7 +161,7 @@ class WhatsAppTemplateController {
 
                 // 4. Parse template dynamically
                 // Currently supporting {{name}} which maps to rec.name
-                let parsedMessage = template.content;
+                let parsedMessage = messageTemplateStr;
                 const fullName = (rec.name || "").trim();
                 
                 parsedMessage = parsedMessage.replace(/{{name}}/gi, fullName);

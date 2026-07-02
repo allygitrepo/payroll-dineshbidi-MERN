@@ -29,7 +29,7 @@ const ContractorPage = () => {
   const [whatsAppEmployees, setWhatsAppEmployees] = useState([]);
   const [isFetchingWhatsApp, setIsFetchingWhatsApp] = useState(false);
   const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
-  
+
   // Pagination & Loading States
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -85,16 +85,16 @@ const ContractorPage = () => {
       addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const params = {
-          page: currentPage,
-          limit: pageSize,
-          search: searchTerm,
-          status: statusFilter === 'ACTIVE' ? '1' : statusFilter === 'INACTIVE' ? '0' : ''
+        page: currentPage,
+        limit: pageSize,
+        search: searchTerm,
+        status: statusFilter === 'ACTIVE' ? '1' : statusFilter === 'INACTIVE' ? '0' : ''
       };
-      
+
       const response = await getContractors(companyId, params);
       setContractors(response.data || []);
       setTotalEntries(response.total || 0);
@@ -240,7 +240,7 @@ const ContractorPage = () => {
         status: statusFilter === 'ACTIVE' ? '1' : statusFilter === 'INACTIVE' ? '0' : ''
         // Intentionally omitting page and limit to fetch all matching records
       };
-      
+
       const response = await getContractors(companyId, params);
       setWhatsAppEmployees(Array.isArray(response) ? response : response.data || []);
       setIsWhatsAppModalOpen(true);
@@ -258,13 +258,13 @@ const ContractorPage = () => {
   // Export handlers
   const handleExportClick = async (type) => {
     setIsDropdownOpen(false);
-    
+
     if (type === 'Excel' || type === 'Excel Template') {
       const isTemplate = type === 'Excel Template';
       const aoa = [
         ['ID (Do Not Modify)', 'Code', 'Name', 'Address', 'Post Office', 'District', 'Pincode', 'PF Code', 'Date of Joining', 'PAN', 'Aadhaar', 'GST No', 'Bank Account', 'Bank Name', 'IFSC', 'Status']
       ];
-      
+
       if (!isTemplate) {
         filteredContractors.forEach(c => {
           aoa.push([
@@ -272,7 +272,7 @@ const ContractorPage = () => {
           ]);
         });
       }
-      
+
       const worksheet = XLSX.utils.aoa_to_sheet(aoa);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Contractors');
@@ -312,7 +312,7 @@ const ContractorPage = () => {
         let successCount = 0;
         for (const row of importedData) {
           let cId = row['ID (Do Not Modify)'];
-          
+
           const safeVal = (val) => {
             const str = val ? String(val).trim() : '';
             if (str.toUpperCase() === 'NA' || str.toUpperCase() === 'N/A' || str === '-') return '';
@@ -320,7 +320,7 @@ const ContractorPage = () => {
           };
 
           if (!cId && row['Code']) {
-            const existingContractor = contractors.find(c => 
+            const existingContractor = contractors.find(c =>
               String(c.ccode).trim().toLowerCase() === String(row['Code']).trim().toLowerCase()
             );
             if (existingContractor) {
@@ -347,11 +347,11 @@ const ContractorPage = () => {
             status: (row['Status'] === 1 || String(row['Status']).toLowerCase() === 'active' || String(row['Status']).toLowerCase() === 'true') ? 'Active' : 'Inactive'
           };
           if (!contractorData.name) continue;
-          
+
           await saveContractor(contractorData, companyId, addresses);
           successCount++;
         }
-        
+
         addToast({ type: 'success', message: `Successfully uploaded ${successCount} contractors.` });
         const updated = await getContractors(companyId);
         setContractors(updated);
@@ -392,12 +392,12 @@ const ContractorPage = () => {
               <Plus size={18} /> Contractor
             </button>
           )}
-          <input 
-            type="file" 
-            accept=".xlsx, .xls" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
-            style={{ display: 'none' }} 
+          <input
+            type="file"
+            accept=".xlsx, .xls"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
           />
           <button
             className={styles.downloadBtn}
@@ -406,18 +406,8 @@ const ContractorPage = () => {
           >
             <Upload size={18} /> Upload Excel
           </button>
-          
-          {isWhatsAppConnected && (
-            <button 
-              className={styles.addBtn} 
-              style={{ backgroundColor: '#25D366', opacity: isFetchingWhatsApp ? 0.7 : 1, cursor: isFetchingWhatsApp ? 'not-allowed' : 'pointer' }}
-              onClick={handleOpenWhatsAppModal}
-              disabled={isFetchingWhatsApp}
-            >
-              <MessageCircle size={18} /> {isFetchingWhatsApp ? 'Loading...' : 'WhatsApp'}
-            </button>
-          )}
-          
+
+
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
               className={styles.downloadBtn}
@@ -448,6 +438,16 @@ const ContractorPage = () => {
               </div>
             )}
           </div>
+          {isWhatsAppConnected && (
+            <button
+              style={{ backgroundColor: 'transparent', border: 'none', opacity: isFetchingWhatsApp ? 0.7 : 1, cursor: isFetchingWhatsApp ? 'not-allowed' : 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onClick={handleOpenWhatsAppModal}
+              disabled={isFetchingWhatsApp}
+              title="Send WhatsApp Message"
+            >
+              {isFetchingWhatsApp ? <span style={{ fontSize: '14px', color: 'var(--text-color)', fontWeight: 'bold' }}>...</span> : <img src="/wa-whatsapp-icon.png" width={38} height={38} alt="WhatsApp" />}
+            </button>
+          )}
         </div>
       </div>
 
@@ -464,9 +464,9 @@ const ContractorPage = () => {
       {/* Render table card containing list */}
       <div style={{ position: 'relative' }}>
         {isLoading && (
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div className="loader"></div>
-            </div>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="loader"></div>
+          </div>
         )}
         <ContractorTable
           data={filteredContractors}
@@ -478,7 +478,7 @@ const ContractorPage = () => {
           onDelete={handleDeleteClick}
           onCreateLogin={handleCreateLoginClick}
         />
-        
+
         {/* Pagination controls */}
         {!isFormOpen && totalEntries > 0 && (
           <div className={styles.tableFooter} style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--card-bg)' }}>
