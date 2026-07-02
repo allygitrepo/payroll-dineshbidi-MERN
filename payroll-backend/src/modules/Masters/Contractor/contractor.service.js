@@ -5,6 +5,36 @@ const Role = require("../../Auth/Users/roles.model");
 const bcrypt = require("bcrypt");
 const Company = require("../Company/company.model");
 const Address = require("../Address/address.model");
+const WhatsAppTemplate = require("../../Setup/WhatsApp/whatsappTemplate.model");
+const WhatsAppService = require("../../Setup/WhatsApp/whatsapp.service");
+
+/**
+ * Helper to send Contractor credentials via WhatsApp
+ */
+const sendContractorCredentialsWhatsApp = async (contractor, username, password) => {
+    if (!contractor.whatsapp_number || !password) return;
+    try {
+        const template = await WhatsAppTemplate.findOne({
+            where: { 
+                company_id: contractor.company_id,
+                name: 'Contractor Login Credentials'
+            }
+        });
+
+        if (template) {
+            let message = template.content;
+            message = message.replace(/\{\{name\}\}/g, contractor.name);
+            message = message.replace(/\{\{username\}\}/g, username);
+            message = message.replace(/\{\{password\}\}/g, password);
+
+            WhatsAppService.sendTextMessage(contractor.company_id, contractor.whatsapp_number, message)
+                .then(() => console.log(`Login credentials sent via WhatsApp to ${contractor.whatsapp_number}`))
+                .catch(err => console.error(`Failed to send WhatsApp credentials:`, err.message));
+        }
+    } catch (err) {
+        console.error("Error processing WhatsApp credentials:", err.message);
+    }
+};
 
 /**
  * Helper to verify company exists and belongs to user.
@@ -18,7 +48,6 @@ const verifyCompanyAccess = async (companyId, user) => {
         error.messageToShow = "Company not found.";
         throw error;
     }
-
     if (user.role_name === 'Contractor') {
         if (!user.contractor_id) {
             const error = new Error("Contractor profile not found.");
@@ -410,7 +439,7 @@ class ContractorService {
 
         // Check if user login already exists for this contractor
         const existingUser = await User.findOne({ where: { contractor_id: contractorId, status: true } });
-        const { username, password } = loginData;
+        const { username, password, sendWhatsapp } = loginData;
 
         if (existingUser) {
             if (existingUser.user_id !== username) {
@@ -431,6 +460,12 @@ class ContractorService {
             }
             existingUser.parent_id = contractor.company_id;
             await existingUser.save();
+            
+            if (password && sendWhatsapp) {
+                // Fire and forget WhatsApp message
+                sendContractorCredentialsWhatsApp(contractor, username, password);
+            }
+
             const userJson = existingUser.toJSON();
             delete userJson.password;
             return userJson;
@@ -467,6 +502,11 @@ class ContractorService {
             contractor_id: contractorId,
             parent_id: contractor.company_id
         });
+
+        if (sendWhatsapp) {
+            // Fire and forget WhatsApp message
+            sendContractorCredentialsWhatsApp(contractor, username, password);
+        }
 
         const userJson = newUser.toJSON();
         delete userJson.password;

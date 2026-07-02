@@ -229,20 +229,20 @@ class ContractorController {
      */
     static async createLogin(req, res) {
         const { id } = req.params;
-        const { username, password } = req.body;
+        const { username, password, sendWhatsapp } = req.body;
 
-        if (!username || !password) {
+        if (!username) {
             return res.status(400).json(
                 errorResponse(
                     "VALIDATION_ERROR",
-                    "Username and password are required.",
-                    "Username and password are required."
+                    "Username is required.",
+                    "Username is required."
                 )
             );
         }
 
         try {
-            const loginUser = await ContractorService.createLogin(id, req.user, { username, password });
+            const loginUser = await ContractorService.createLogin(id, req.user, { username, password, sendWhatsapp });
 
             return res.status(201).json(
                 successResponse(

@@ -89,10 +89,12 @@ db.User.belongsTo(db.Role, {
 db.User.hasMany(db.User, {
     foreignKey: "parent_id",
     as: "staff",
+    constraints: false
 });
 db.User.belongsTo(db.User, {
     foreignKey: "parent_id",
     as: "creator",
+    constraints: false
 });
 
 db.User.hasMany(db.RefreshToken, {

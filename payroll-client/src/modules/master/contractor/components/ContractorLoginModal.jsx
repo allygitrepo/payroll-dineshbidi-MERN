@@ -4,6 +4,7 @@ import styles from '../../../../shared/components/ConfirmModal/ConfirmModal.modu
 const ContractorLoginModal = ({ isOpen, onClose, onSave, contractorName, existingLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [sendWhatsapp, setSendWhatsapp] = useState(true);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -13,6 +14,7 @@ const ContractorLoginModal = ({ isOpen, onClose, onSave, contractorName, existin
         setUsername('');
       }
       setPassword('');
+      setSendWhatsapp(true);
     }
   }, [isOpen, existingLogin]);
 
@@ -27,7 +29,7 @@ const ContractorLoginModal = ({ isOpen, onClose, onSave, contractorName, existin
       alert("Password is required for new logins.");
       return;
     }
-    onSave({ username, password });
+    onSave({ username, password, sendWhatsapp });
   };
 
   return (
@@ -49,7 +51,7 @@ const ContractorLoginModal = ({ isOpen, onClose, onSave, contractorName, existin
           />
         </div>
         
-        <div style={{ marginBottom: '24px' }}>
+        <div style={{ marginBottom: '16px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: 'var(--text-secondary)' }}>Password {existingLogin && '(Leave blank to keep current)'}</label>
           <input
             type="password"
@@ -59,6 +61,19 @@ const ContractorLoginModal = ({ isOpen, onClose, onSave, contractorName, existin
             placeholder={existingLogin ? "Enter new password (optional)" : "Enter password"}
             autoComplete="new-password"
           />
+        </div>
+
+        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input 
+            type="checkbox" 
+            id="sendWhatsappCheckbox" 
+            checked={sendWhatsapp}
+            onChange={(e) => setSendWhatsapp(e.target.checked)}
+            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+          />
+          <label htmlFor="sendWhatsappCheckbox" style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            Send WhatsApp Message
+          </label>
         </div>
 
         <div className={styles.actions}>
