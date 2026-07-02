@@ -294,8 +294,8 @@ class LeaveRequestController {
 
             // Role validation: Only Admin, Owner, or Contractor can approve
             const userRole = req.user?.role_name || '';
-            const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
-            const isContractor = userRole === 'Contractor';
+            const isAdmin = userRole.toUpperCase().startsWith('ADMIN') || userRole.toUpperCase().startsWith('OWNER');
+            const isContractor = userRole === 'Contractor' || userRole === 'CONTRACTOR';
             if (!isAdmin && !isContractor) {
                 await transaction.rollback();
                 return res.status(403).json(
@@ -470,8 +470,8 @@ class LeaveRequestController {
 
             // Role validation: Only Admin, Owner, or Contractor can reject
             const userRole = req.user?.role_name || '';
-            const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
-            const isContractor = userRole === 'Contractor';
+            const isAdmin = userRole.toUpperCase().startsWith('ADMIN') || userRole.toUpperCase().startsWith('OWNER');
+            const isContractor = userRole === 'Contractor' || userRole === 'CONTRACTOR';
             if (!isAdmin && !isContractor) {
                 await transaction.rollback();
                 return res.status(403).json(
@@ -536,8 +536,8 @@ class LeaveRequestController {
 
             // Role validation: Only Admin, Owner, or Contractor can cancel
             const userRole = req.user?.role_name || '';
-            const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
-            const isContractor = userRole === 'Contractor';
+            const isAdmin = userRole.toUpperCase().startsWith('ADMIN') || userRole.toUpperCase().startsWith('OWNER');
+            const isContractor = userRole === 'Contractor' || userRole === 'CONTRACTOR';
             if (!isAdmin && !isContractor) {
                 await transaction.rollback();
                 return res.status(403).json(

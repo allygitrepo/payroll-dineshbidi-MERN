@@ -118,8 +118,10 @@ const faceService = {
    * Match user face descriptor against registered biometrics
    */
   recognize: async (descriptor) => {
+    const companyId = localStorage.getItem('selectedCompany');
     const payload = {
-      descriptor: Array.from(descriptor)
+      descriptor: Array.from(descriptor),
+      company_id: companyId
     };
     const res = await apiClient.post('employees/face/recognize', payload);
     return res;

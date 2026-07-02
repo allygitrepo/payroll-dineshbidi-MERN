@@ -458,8 +458,8 @@ class AttendanceService {
      */
     static async approveRecord(recordId, user) {
         const userRole = user?.role_name || '';
-        const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
-        const isContractor = userRole === 'Contractor';
+        const isAdmin = userRole.toUpperCase().startsWith('ADMIN') || userRole.toUpperCase().startsWith('OWNER');
+        const isContractor = userRole === 'Contractor' || userRole === 'CONTRACTOR';
         
         if (!isAdmin && !isContractor) {
             const error = new Error("Access denied.");
@@ -513,8 +513,8 @@ class AttendanceService {
      */
     static async rejectRecord(recordId, user) {
         const userRole = user?.role_name || '';
-        const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
-        const isContractor = userRole === 'Contractor';
+        const isAdmin = userRole.toUpperCase().startsWith('ADMIN') || userRole.toUpperCase().startsWith('OWNER');
+        const isContractor = userRole === 'Contractor' || userRole === 'CONTRACTOR';
 
         if (!isAdmin && !isContractor) {
             const error = new Error("Access denied.");

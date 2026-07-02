@@ -9,9 +9,15 @@ const MATCH_GAP_THRESHOLD = 0.05;
 const DUPLICATE_THRESHOLD = 0.50;
 const SAMPLE_VARIATION_THRESHOLD = 0.45;
 
-function ensureDataDir() {
+function ensureDataDir(companyId = null) {
     if (!fs.existsSync(FACE_DATA_DIR)) {
         fs.mkdirSync(FACE_DATA_DIR, { recursive: true });
+    }
+    if (companyId) {
+        const companyDir = path.join(FACE_DATA_DIR, companyId);
+        if (!fs.existsSync(companyDir)) {
+            fs.mkdirSync(companyDir, { recursive: true });
+        }
     }
 }
 
@@ -96,12 +102,15 @@ class FaceController {
                 mean[i] = mean[i] / validDescriptors.length;
             }
 
-            // Check for duplicate face across other employees
-            ensureDataDir();
-            const files = fs.readdirSync(FACE_DATA_DIR).filter((f) => f.endsWith(".json"));
+            // Check for duplicate face across other employees within the same company subfolder
+            const companyId = employee.company_id;
+            const companyFolder = path.join(FACE_DATA_DIR, companyId);
+            ensureDataDir(companyId);
+
+            const files = fs.readdirSync(companyFolder).filter((f) => f.endsWith(".json"));
             for (const f of files) {
                 try {
-                    const fileData = JSON.parse(fs.readFileSync(path.join(FACE_DATA_DIR, f), "utf8"));
+                    const fileData = JSON.parse(fs.readFileSync(path.join(companyFolder, f), "utf8"));
                     // Skip checking against the same employee (allows updating biometrics)
                     if (fileData.employee_id === employee_id) {
                         continue;
@@ -139,9 +148,10 @@ class FaceController {
             }
 
             const fileName = `${employee_id}.json`;
-            const filePath = path.join(FACE_DATA_DIR, fileName);
+            const filePath = path.join(companyFolder, fileName);
             const payload = {
                 employee_id,
+                company_id: companyId,
                 name: name || employee.name,
                 descriptors: validDescriptors,
                 mean_descriptor: mean
@@ -151,7 +161,7 @@ class FaceController {
             fs.writeFileSync(filePath, JSON.stringify(payload, null, 2));
 
             // Store relative path in database
-            const relativePath = path.join("face_data", fileName).replace(/\\/g, "/");
+            const relativePath = path.join("face_data", companyId, fileName).replace(/\\/g, "/");
             await employee.update({ face_descriptor_path: relativePath });
 
             return res.status(201).json(
@@ -179,7 +189,7 @@ class FaceController {
      */
     static async recognize(req, res) {
         try {
-            const { descriptor } = req.body;
+            const { descriptor, company_id } = req.body;
             if (!Array.isArray(descriptor) || !descriptor.length) {
                 return res.status(400).json(
                     errorResponse(
@@ -190,9 +200,38 @@ class FaceController {
                 );
             }
 
-            ensureDataDir();
-            const files = fs.readdirSync(FACE_DATA_DIR).filter((f) => f.endsWith(".json"));
-            if (!files.length) {
+            const targetCompanyId = company_id || req.headers['x-company-id'] || (req.user ? req.user.company_id : null);
+
+            let candidateFiles = [];
+            if (targetCompanyId) {
+                const companyFolder = path.join(FACE_DATA_DIR, targetCompanyId);
+                if (fs.existsSync(companyFolder)) {
+                    const files = fs.readdirSync(companyFolder).filter((f) => f.endsWith(".json"));
+                    candidateFiles = files.map(f => ({
+                        fullPath: path.join(companyFolder, f),
+                        fileName: f
+                    }));
+                }
+            } else {
+                // Fallback: search all company subdirectories recursively
+                if (fs.existsSync(FACE_DATA_DIR)) {
+                    const items = fs.readdirSync(FACE_DATA_DIR);
+                    for (const item of items) {
+                        const fullPath = path.join(FACE_DATA_DIR, item);
+                        if (fs.statSync(fullPath).isDirectory()) {
+                            const subFiles = fs.readdirSync(fullPath).filter(f => f.endsWith(".json"));
+                            for (const sf of subFiles) {
+                                candidateFiles.push({
+                                    fullPath: path.join(fullPath, sf),
+                                    fileName: sf
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!candidateFiles.length) {
                 return res.status(200).json(
                     successResponse(
                         "NO_ENROLLED_FACES",
@@ -206,9 +245,9 @@ class FaceController {
             let best = { employee_id: null, name: null, distance: Infinity };
             let secondBest = { employee_id: null, name: null, distance: Infinity };
 
-            for (const f of files) {
+            for (const candidate of candidateFiles) {
                 try {
-                    const fileData = JSON.parse(fs.readFileSync(path.join(FACE_DATA_DIR, f), "utf8"));
+                    const fileData = JSON.parse(fs.readFileSync(candidate.fullPath, "utf8"));
                     let minDistanceForEmp = Infinity;
 
                     // Prefer all stored descriptors if available
@@ -323,8 +362,30 @@ class FaceController {
      */
     static async list(req, res) {
         try {
-            ensureDataDir();
-            const files = fs.readdirSync(FACE_DATA_DIR).filter((f) => f.endsWith(".json"));
+            const targetCompanyId = req.headers['x-company-id'] || (req.user ? req.user.company_id : null);
+
+            let candidateFiles = [];
+            if (targetCompanyId) {
+                const companyFolder = path.join(FACE_DATA_DIR, targetCompanyId);
+                if (fs.existsSync(companyFolder)) {
+                    const files = fs.readdirSync(companyFolder).filter((f) => f.endsWith(".json"));
+                    candidateFiles = files.map(f => path.join(companyFolder, f));
+                }
+            } else {
+                // Fallback: search all company subdirectories recursively
+                if (fs.existsSync(FACE_DATA_DIR)) {
+                    const items = fs.readdirSync(FACE_DATA_DIR);
+                    for (const item of items) {
+                        const fullPath = path.join(FACE_DATA_DIR, item);
+                        if (fs.statSync(fullPath).isDirectory()) {
+                            const subFiles = fs.readdirSync(fullPath).filter(f => f.endsWith(".json"));
+                            for (const sf of subFiles) {
+                                candidateFiles.push(path.join(fullPath, sf));
+                            }
+                        }
+                    }
+                }
+            }
 
             // Get all employees to map their names dynamically from DB
             const employees = await Employee.findAll({ attributes: ["id", "name"] });
@@ -334,9 +395,9 @@ class FaceController {
             }
 
             const data = [];
-            for (const f of files) {
+            for (const filePath of candidateFiles) {
                 try {
-                    const fileData = JSON.parse(fs.readFileSync(path.join(FACE_DATA_DIR, f), "utf8"));
+                    const fileData = JSON.parse(fs.readFileSync(filePath, "utf8"));
                     const currentName = employeeMap[fileData.employee_id] || fileData.name;
                     data.push({ employee_id: fileData.employee_id, name: currentName });
                 } catch (e) {
