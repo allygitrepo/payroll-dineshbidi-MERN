@@ -22,6 +22,7 @@ import {
   recalculateRow
 } from '../services/officeStaffEntryService';
 import { getAttendanceSummary } from '../../../attendance/attendanceService';
+import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 /* ---- Helpers ---- */
 const formatMonthLabel = (monthYear) => {
@@ -53,6 +54,8 @@ const OfficeStaffEntryPage = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState(null);
+
+  const { canCreate, canEdit } = usePermissions('office-staff-entry');
 
   // Pagination & Search
   const [currentPage, setCurrentPage] = useState(1);
@@ -366,13 +369,15 @@ const OfficeStaffEntryPage = () => {
             onChange={handleFileUpload} 
             style={{ display: 'none' }} 
           />
-          <button
-            className={styles.downloadBtn}
-            style={{ backgroundColor: 'var(--success-color, #10b981)' }}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload size={18} /> Upload Excel
-          </button>
+          {canCreate && (
+            <button
+              className={styles.downloadBtn}
+              style={{ backgroundColor: 'var(--success-color, #10b981)' }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload size={18} /> Upload Excel
+            </button>
+          )}
           
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
@@ -422,7 +427,7 @@ const OfficeStaffEntryPage = () => {
           <button className={styles.searchBtn} onClick={handleSearch} disabled={loading}>
             <Search size={16} /> {loading ? 'Loading...' : 'Search'}
           </button>
-          {hasSearched && (
+          {hasSearched && canEdit && (
             <button 
               className={styles.searchBtn} 
               style={{ backgroundColor: 'var(--success-color, #10b981)' }} 
@@ -540,10 +545,10 @@ const OfficeStaffEntryPage = () => {
                       <input
                         type="number"
                         min={0}
-                        max={31}
                         value={row.daysWorked}
                         onChange={e => handleFieldChange(row.employeeId, 'daysWorked', e.target.value)}
                         className={styles.tableInput}
+                        disabled={!canEdit}
                       />
                     </td>
 
@@ -561,6 +566,7 @@ const OfficeStaffEntryPage = () => {
                         value={row.addition}
                         onChange={e => handleFieldChange(row.employeeId, 'addition', e.target.value)}
                         className={styles.tableInput}
+                        disabled={!canEdit}
                       />
                     </td>
 
@@ -612,11 +618,13 @@ const OfficeStaffEntryPage = () => {
           />
 
           {/* Save Button */}
-          <div className={styles.saveSection}>
-            <button className={styles.saveBtn} onClick={handleSave} disabled={loading}>
-              <Save size={18} /> {loading ? 'Saving...' : 'Save'}
-            </button>
-          </div>
+          {canEdit && (
+            <div className={styles.saveSection}>
+              <button className={styles.saveBtn} onClick={handleSave} disabled={loading}>
+                <Save size={18} /> {loading ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

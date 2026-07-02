@@ -15,6 +15,7 @@ import {
   getEmployeeBalances,
   adjustBalance
 } from '../services/leaveMasterService';
+import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 const SearchableSelect = ({ value, onChange, options, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -87,6 +88,8 @@ const SearchableSelect = ({ value, onChange, options, placeholder }) => {
 const LeaveMasterPage = () => {
   const addToast = useToast();
   const companyId = localStorage.getItem('selectedCompany');
+
+  const { canCreate, canEdit, canDelete } = usePermissions('leave');
 
   // Tab State
   const [activeTab, setActiveTab] = useState('types'); // 'types', 'policies', 'settings'
@@ -495,7 +498,7 @@ const LeaveMasterPage = () => {
           <h1 className={styles.title}>Leave Setup & Configuration</h1>
           <span className={styles.subTitle}>Configure custom leave types, employee policies, and sandwich validation settings</span>
         </div>
-        {activeTab === 'types' && !isFormOpen && (
+        {activeTab === 'types' && !isFormOpen && canCreate && (
           <button onClick={handleAddNewTypeClick} className={styles.addBtn}>
             <Plus size={18} /> Add Leave Type
           </button>
@@ -683,12 +686,16 @@ const LeaveMasterPage = () => {
                               </td>
                               <td>
                                 <div className={styles.actionCell}>
-                                  <button onClick={() => handleEditClick(row)} className={styles.editBtn} title="Edit Leave Type">
-                                    <Edit2 size={13} />
-                                  </button>
-                                  <button onClick={() => handleDeleteClick(row.id)} className={styles.deleteBtn} title="Delete Leave Type">
-                                    <Trash2 size={13} />
-                                  </button>
+                                  {canEdit && (
+                                    <button onClick={() => handleEditClick(row)} className={styles.editBtn} title="Edit Leave Type">
+                                      <Edit2 size={13} />
+                                    </button>
+                                  )}
+                                  {canDelete && (
+                                    <button onClick={() => handleDeleteClick(row.id)} className={styles.deleteBtn} title="Delete Leave Type">
+                                      <Trash2 size={13} />
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>

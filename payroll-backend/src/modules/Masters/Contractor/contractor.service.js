@@ -22,10 +22,14 @@ const sendContractorCredentialsWhatsApp = async (contractor, username, password)
         });
 
         if (template) {
+            const company = await Company.findByPk(contractor.company_id);
+            const companyName = company ? company.company_name : 'Our Company';
+
             let message = template.content;
             message = message.replace(/\{\{name\}\}/g, contractor.name);
             message = message.replace(/\{\{username\}\}/g, username);
             message = message.replace(/\{\{password\}\}/g, password);
+            message = message.replace(/\{\{company_name\}\}/g, companyName);
 
             WhatsAppService.sendTextMessage(contractor.company_id, contractor.whatsapp_number, message)
                 .then(() => console.log(`Login credentials sent via WhatsApp to ${contractor.whatsapp_number}`))

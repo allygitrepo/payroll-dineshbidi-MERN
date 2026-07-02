@@ -8,6 +8,7 @@ import { getProfessionalTax, saveProfessionalTax, deleteProfessionalTax } from '
 import { useToast, ConfirmModal } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import { parseExcelDate } from '../../../../shared/utils/dateUtils';
+import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 const formatDateForExport = (dateStr) => {
   if (!dateStr) return '';
@@ -21,6 +22,8 @@ const formatDateForExport = (dateStr) => {
 const ProfessionalTaxPage = () => {
   const addToast = useToast();
   
+  const { canCreate, canEdit, canDelete } = usePermissions('professional-tax');
+
   const [wagesList, setWagesList] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingWages, setEditingWages] = useState(null);
@@ -256,7 +259,7 @@ const ProfessionalTaxPage = () => {
       <div className={styles.headerSection}>
         <h1 className={styles.title}>Professional Tax</h1>
         <div className={styles.headerActions}>
-          {!isFormOpen && (
+          {!isFormOpen && canCreate && (
             <button onClick={handleAddNew} className={styles.addBtn}>
               <Plus size={18} /> Professional Tax
             </button>
@@ -268,13 +271,15 @@ const ProfessionalTaxPage = () => {
             onChange={handleFileUpload} 
             style={{ display: 'none' }} 
           />
-          <button
-            className={styles.downloadBtn}
-            style={{ backgroundColor: 'var(--success-color, #10b981)' }}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload size={18} /> Upload Excel
-          </button>
+          {canCreate && (
+            <button
+              className={styles.downloadBtn}
+              style={{ backgroundColor: 'var(--success-color, #10b981)' }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload size={18} /> Upload Excel
+            </button>
+          )}
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button 
               className={styles.downloadBtn} 
@@ -322,8 +327,8 @@ const ProfessionalTaxPage = () => {
         data={filteredWages}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
+        onEdit={canEdit ? handleEdit : undefined}
+        onDelete={canDelete ? handleDeleteClick : undefined}
       />
 
       {/* Delete Confirmation Modal */}

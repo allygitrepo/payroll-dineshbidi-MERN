@@ -20,7 +20,9 @@ const ContractorTable = ({
   onStatusFilterChange,
   onEdit,
   onDelete,
-  onCreateLogin
+  onCreateLogin,
+  canEdit = true,
+  canDelete = true
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
@@ -161,40 +163,48 @@ const ContractorTable = ({
               paginatedData.map((contractor, index) => (
                 <tr 
                   key={contractor.id}
-                  onClick={() => onEdit(contractor)}
-                  style={{ cursor: 'pointer' }}
+                  onClick={() => canEdit ? onEdit(contractor) : null}
+                  style={{ cursor: canEdit ? 'pointer' : 'default' }}
                 >
                   <td onClick={(e) => e.stopPropagation()}>
                     <div className={styles.actionCell}>
-                      <button
-                        onClick={() => onEdit(contractor)}
-                        title="Edit Contractor"
-                        className={styles.editBtn}
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => onCreateLogin(contractor)}
-                        title={contractor.hasLogin ? "Update Login" : "Create Login"}
-                        className={styles.editBtn}
-                        style={{
-                          color: contractor.hasLogin ? 'white' : '#0ea5e9',
-                          border: contractor.hasLogin ? 'none' : '1px solid #bae6fd',
-                          backgroundColor: contractor.hasLogin ? '#16a34a' : '#f0f9ff'
-                        }}
-                      >
-                        <Key size={14} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(contractor.id);
-                        }}
-                        title="Delete Contractor"
-                        className={styles.deleteBtn}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => onEdit(contractor)}
+                          title="Edit Contractor"
+                          className={styles.editBtn}
+                        >
+                          <Edit size={14} />
+                        </button>
+                      )}
+                      
+                      {canEdit && (
+                        <button
+                          onClick={() => onCreateLogin(contractor)}
+                          title={contractor.hasLogin ? "Update Login" : "Create Login"}
+                          className={styles.editBtn}
+                          style={{
+                            color: contractor.hasLogin ? 'white' : '#0ea5e9',
+                            border: contractor.hasLogin ? 'none' : '1px solid #bae6fd',
+                            backgroundColor: contractor.hasLogin ? '#16a34a' : '#f0f9ff'
+                          }}
+                        >
+                          <Key size={14} />
+                        </button>
+                      )}
+
+                      {canDelete && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(contractor.id);
+                          }}
+                          title="Delete Contractor"
+                          className={styles.deleteBtn}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td style={{ textAlign: 'center', fontWeight: '500' }}>

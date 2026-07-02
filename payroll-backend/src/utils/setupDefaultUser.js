@@ -33,15 +33,29 @@ async function setupDefaultUser() {
             await role.update({ permissions: permissions });
         }
 
+        const contractorPermissions = {};
+        const contractorSlugs = [
+            'dashboard', 
+            'employee', 'contractor', 
+            'office-attendance', 'packing-attendance', 'bidi-roller-attendance',
+            'office-staff', 'packers', 'bidi-roller', 'epf-challan-date', 'resignation'
+        ];
+        contractorSlugs.forEach(slug => {
+            contractorPermissions[slug] = { read: true, create: true, edit: true, delete: true };
+        });
+
         // Ensure Contractor role exists automatically
         let contractorRole = await db.Role.findOne({ where: { name: "Contractor" } });
         if (!contractorRole) {
             await db.Role.create({
                 name: "Contractor",
-                permissions: {},
+                permissions: contractorPermissions,
                 status: true
             });
             console.log("Default role 'Contractor' created automatically.");
+        } else if (!contractorRole.permissions || Object.keys(contractorRole.permissions).length === 0) {
+            await contractorRole.update({ permissions: contractorPermissions });
+            console.log("Default role 'Contractor' updated with default permissions.");
         }
 
         // 2. Check if user ally exists

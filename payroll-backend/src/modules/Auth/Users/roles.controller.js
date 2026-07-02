@@ -4,7 +4,7 @@ exports.createRole = async (req, res) => {
     try {
         const { name, permissions } = req.body;
         const created_by = req.user ? req.user.id : null;
-        
+
         const existingRole = await Role.findOne({ where: { name, created_by } });
         if (existingRole) {
             return res.status(400).json({ status: false, message: "Role with this name already exists" });
@@ -21,12 +21,8 @@ exports.getAllRoles = async (req, res) => {
     try {
         const whereClause = {};
         if (req.user) {
-            if (req.user.role_name === 'OWNER') {
-                const { Op } = require('sequelize');
-                whereClause.created_by = { [Op.or]: [null, req.user.id] };
-            } else {
-                whereClause.created_by = req.user.id;
-            }
+            const { Op } = require('sequelize');
+            whereClause.created_by = { [Op.or]: [null, req.user.id] };
         }
         const roles = await Role.findAll({ where: whereClause });
         res.status(200).json({ status: true, data: roles });
@@ -45,7 +41,7 @@ exports.updateRole = async (req, res) => {
         if (!role) {
             return res.status(404).json({ status: false, message: "Role not found" });
         }
-        
+
         // Ensure uniqueness for the user
         const existingRole = await Role.findOne({ where: { name, created_by } });
         if (existingRole && existingRole.id !== role.id) {
@@ -63,7 +59,7 @@ exports.deleteRole = async (req, res) => {
     try {
         const { id } = req.params;
         const role = await Role.findByPk(id);
-        
+
         if (!role) {
             return res.status(404).json({ status: false, message: "Role not found" });
         }

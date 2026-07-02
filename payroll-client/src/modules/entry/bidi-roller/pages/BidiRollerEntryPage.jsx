@@ -8,6 +8,7 @@ import { useToast, MonthYearPicker, Pagination } from '../../../../shared/compon
 import { getContractors } from '../../../master/contractor/services/contractorService';
 import { getBidiRollerEntry, saveBidiRollerEntry, recalculateBidiRollerRow } from '../services/bidiRollerEntryService';
 import { getAttendanceSummary } from '../../../attendance/attendanceService';
+import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 /* ---- Helpers ---- */
 const formatMonthLabel = (monthYear) => {
@@ -45,6 +46,8 @@ const BidiRollerEntryPage = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState(null);
+
+  const { canCreate, canEdit } = usePermissions('bidi-roller');
 
   // Pagination & Search
   const [currentPage, setCurrentPage] = useState(1);
@@ -420,13 +423,15 @@ const BidiRollerEntryPage = () => {
             onChange={handleFileUpload} 
             style={{ display: 'none' }} 
           />
-          <button
-            className={styles.downloadBtn}
-            style={{ backgroundColor: 'var(--success-color, #10b981)' }}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload size={18} /> Upload Excel
-          </button>
+          {canCreate && (
+            <button
+              className={styles.downloadBtn}
+              style={{ backgroundColor: 'var(--success-color, #10b981)' }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload size={18} /> Upload Excel
+            </button>
+          )}
           
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
@@ -535,7 +540,7 @@ const BidiRollerEntryPage = () => {
           <button type="button" className={styles.searchBtn} onClick={handleSearch} disabled={loading}>
             <Search size={16} /> {loading ? 'Loading...' : 'Search'}
           </button>
-          {hasSearched && (
+          {hasSearched && canEdit && (
             <button 
               type="button"
               className={styles.searchBtn} 
@@ -654,20 +659,25 @@ const BidiRollerEntryPage = () => {
 
                     {/* Units */}
                     <td style={{ textAlign: 'center', minWidth: 70 }}>
-                      <input type="text" value={row.unit1} onChange={e => handleFieldChange(row.employeeId, 'unit1', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center' }} />
+                      <input type="text" value={row.unit1} onChange={e => handleFieldChange(row.employeeId, 'unit1', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center' }} disabled={!canEdit} />
                     </td>
                     <td style={{ textAlign: 'center', minWidth: 70 }}>
-                      <input type="text" value={row.unit2} onChange={e => handleFieldChange(row.employeeId, 'unit2', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center' }} />
+                      <input type="text" value={row.unit2} onChange={e => handleFieldChange(row.employeeId, 'unit2', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center' }} disabled={!canEdit} />
                     </td>
 
                     {/* Days Worked */}
                     <td style={{ textAlign: 'center', minWidth: 70 }}>
-                      <input type="text" value={row.daysWorked} onChange={e => handleFieldChange(row.employeeId, 'daysWorked', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center', backgroundColor: '#f0f4f8' }} />
+                      <input type="text" value={row.daysWorked} onChange={e => handleFieldChange(row.employeeId, 'daysWorked', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center', backgroundColor: '#f0f4f8' }} disabled={!canEdit} />
+                    </td>
+
+                    {/* Additional Paid Wages */}
+                    <td style={{ textAlign: 'center', minWidth: 80 }}>
+                      <input type="text" value={row.addition} onChange={e => handleFieldChange(row.employeeId, 'addition', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center' }} disabled={!canEdit} />
                     </td>
 
                     {/* Leave With Pay */}
                     <td style={{ textAlign: 'center', minWidth: 70 }}>
-                      <input type="text" value={row.leaveWithPay} onChange={e => handleFieldChange(row.employeeId, 'leaveWithPay', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center' }} />
+                      <input type="text" value={row.leaveWithPay} onChange={e => handleFieldChange(row.employeeId, 'leaveWithPay', e.target.value)} className={styles.tableInput} style={{ textAlign: 'center' }} disabled={!canEdit} />
                     </td>
 
                     {/* Calculated fields */}
@@ -718,11 +728,13 @@ const BidiRollerEntryPage = () => {
           />
 
           {/* Save Button */}
-          <div className={styles.saveSection}>
-            <button className={styles.saveBtn} onClick={handleSave} disabled={loading}>
-              <Save size={18} /> {loading ? 'Saving...' : 'Save'}
-            </button>
-          </div>
+          {canEdit && (
+            <div className={styles.saveSection}>
+              <button className={styles.saveBtn} onClick={handleSave} disabled={loading}>
+                <Save size={18} /> {loading ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -16,7 +16,7 @@ async function seedWhatsAppTemplates() {
 
             const templateContent = `Hello {{name}},
 Your login ID and password are as follows for 
- ${company.company_name}
+Company name: {{company_name}}
 Url: payroll.allysoftsolutions.com
 Username: {{username}}
 Password: {{password}}`;
@@ -29,6 +29,12 @@ Password: {{password}}`;
                     status: true
                 });
                 console.log(`Default WhatsApp template created for company ${company.company_name}`);
+            } else {
+                // Update old templates to use {{company_name}} if they had hardcoded names
+                if (template.content.includes('Payroll management system') || !template.content.includes('{{company_name}}')) {
+                    await template.update({ content: templateContent });
+                    console.log(`WhatsApp template updated for company ${company.company_name}`);
+                }
             }
         }
     } catch (error) {

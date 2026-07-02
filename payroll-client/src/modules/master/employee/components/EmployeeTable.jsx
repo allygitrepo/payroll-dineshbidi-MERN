@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Edit, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Edit, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Star } from 'lucide-react';
 import styles from './EmployeePage.module.css';
 
 const formatDate = (dateStr) => {
@@ -11,7 +11,7 @@ const formatDate = (dateStr) => {
   return dateStr;
 };
 
-const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeFilterChange, selectedStatus, onStatusFilterChange, onEdit, onDelete, onToggleAbry }) => {
+const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeFilterChange, selectedStatus, onStatusFilterChange, onEdit, onDelete, onToggleAbry, canEdit = true, canDelete = true }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const handleSort = (key) => {
@@ -200,7 +200,7 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
           <tbody>
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={11} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                <td colSpan={28} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                   No matching records found.
                 </td>
               </tr>
@@ -208,28 +208,49 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
               paginatedData.map((employee) => (
                 <tr 
                   key={employee.id} 
-                  onClick={() => onEdit(employee)}
-                  style={{ cursor: 'pointer' }}
+                  onClick={() => canEdit ? onEdit(employee) : null}
+                  style={{ cursor: canEdit ? 'pointer' : 'default' }}
                 >
                   <td onClick={(e) => e.stopPropagation()}>
                     <div className={styles.actionCell}>
-                      <button
-                        onClick={() => onEdit(employee)}
-                        title="Edit Employee"
-                        className={styles.editBtn}
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(employee.id);
-                        }}
-                        title="Delete Employee"
-                        className={styles.deleteBtn}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => onEdit(employee)}
+                          title="Edit Employee"
+                          className={styles.editBtn}
+                        >
+                          <Edit size={14} />
+                        </button>
+                      )}
+                      
+                      {/* ABRY Toggle Button */}
+                      {canEdit && (
+                        <button
+                          onClick={() => onToggleAbry(employee.id, employee.abry_status)}
+                          title={employee.abry_status ? "Disable ABRY" : "Enable ABRY"}
+                          className={styles.editBtn}
+                          style={{
+                            color: employee.abry_status ? 'white' : '#0ea5e9',
+                            border: employee.abry_status ? 'none' : '1px solid #bae6fd',
+                            backgroundColor: employee.abry_status ? '#16a34a' : '#f0f9ff'
+                          }}
+                        >
+                          <Star size={14} />
+                        </button>
+                      )}
+
+                      {canDelete && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(employee.id);
+                          }}
+                          title="Delete Employee"
+                          className={styles.deleteBtn}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
