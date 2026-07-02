@@ -102,10 +102,10 @@ const validateUniqueness = async (data, excludeId = null) => {
 
     // Check ccode uniqueness
     await checkField("ccode", data.ccode, "Contractor Code");
-    
+
     // Check name uniqueness
     await checkField("name", data.name, "Contractor Name");
-    
+
     // Check PAN uniqueness
     await checkField("pan", data.pan, "PAN Number");
 
@@ -125,7 +125,7 @@ class ContractorService {
 
         // 1. Verify Company Ownership
         await verifyCompanyAccess(company_id, user);
-        
+
         if (user.role_name === 'Contractor') {
             const error = new Error("Access denied. Contractors cannot create other contractors.");
             error.statusCode = 403;
@@ -145,7 +145,7 @@ class ContractorService {
 
         // 5. Create contractor
         const newContractor = await Contractor.create(contractorData);
-        
+
         // Reload to include address details in response
         return await Contractor.findOne({
             where: { id: newContractor.id },
@@ -162,7 +162,7 @@ class ContractorService {
 
         const { page, limit, search, status } = options;
         const whereClause = { company_id: companyId };
-        
+
         if (user.role_name === 'Contractor' && user.contractor_id) {
             whereClause.id = user.contractor_id;
         }
@@ -201,7 +201,7 @@ class ContractorService {
             const pageNumber = parseInt(page, 10) || 1;
             const pageSize = parseInt(limit, 10) || 20;
             const offset = (pageNumber - 1) * pageSize;
-            
+
             queryOptions.limit = pageSize;
             queryOptions.offset = offset;
 
@@ -429,12 +429,13 @@ class ContractorService {
                 const saltRounds = 10;
                 existingUser.password = await bcrypt.hash(password, saltRounds);
             }
+            existingUser.parent_id = contractor.company_id;
             await existingUser.save();
             const userJson = existingUser.toJSON();
             delete userJson.password;
             return userJson;
         }
-        
+
         // Check if username is taken
         const usernameExists = await User.findOne({ where: { user_id: username, status: true } });
         if (usernameExists) {
@@ -464,7 +465,7 @@ class ContractorService {
             password: hashedPassword,
             role_id: role.id,
             contractor_id: contractorId,
-            parent_id: user.id
+            parent_id: contractor.company_id
         });
 
         const userJson = newUser.toJSON();
@@ -505,7 +506,7 @@ class ContractorService {
             throw error;
         }
 
-        const existingUser = await User.findOne({ 
+        const existingUser = await User.findOne({
             where: { contractor_id: contractorId, status: true },
             attributes: ['id', 'user_name', 'user_id']
         });

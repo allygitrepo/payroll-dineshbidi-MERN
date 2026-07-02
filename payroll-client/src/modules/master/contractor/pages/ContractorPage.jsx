@@ -220,6 +220,7 @@ const ContractorPage = () => {
       setIsLoginModalOpen(false);
       setLoginTargetContractor(null);
       setExistingLogin(null);
+      fetchContractors(); // Refresh the list to update the login icon
     } catch (err) {
       console.error('Error creating contractor login:', err);
       addToast({

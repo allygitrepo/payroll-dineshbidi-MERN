@@ -33,6 +33,17 @@ async function setupDefaultUser() {
             await role.update({ permissions: permissions });
         }
 
+        // Ensure Contractor role exists automatically
+        let contractorRole = await db.Role.findOne({ where: { name: "Contractor" } });
+        if (!contractorRole) {
+            await db.Role.create({
+                name: "Contractor",
+                permissions: {},
+                status: true
+            });
+            console.log("Default role 'Contractor' created automatically.");
+        }
+
         // 2. Check if user ally exists
         const user = await db.User.findOne({ where: { user_id: "ally" } });
         if (user) {
