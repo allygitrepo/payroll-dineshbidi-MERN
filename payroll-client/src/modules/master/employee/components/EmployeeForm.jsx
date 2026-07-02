@@ -147,6 +147,37 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
     }
   }, [employee, initialTab]);
 
+  const handleAddressChange = (e) => {
+    const val = e.target.value;
+    const template = addresses.find((t) => t.address === val);
+    
+    let updatedFormData;
+    if (template) {
+      updatedFormData = {
+        ...formData,
+        address: val,
+        postOffice: template.postOffice || template.post_office || '',
+        district: template.district || template.dist || '',
+        pincode: template.pincode || template.pin || ''
+      };
+    } else {
+      updatedFormData = {
+        ...formData,
+        address: val
+      };
+    }
+    setFormData(updatedFormData);
+
+    // Clear validation errors for these fields if auto-populated
+    setErrors((prev) => ({
+      ...prev,
+      address: '',
+      postOffice: '',
+      district: '',
+      pincode: ''
+    }));
+  };
+
   // Main handlers
   const validateField = (name, value) => {
     if (name === 'uan') {
@@ -170,10 +201,18 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
     if (name === 'dateOfJoining') {
       return !value ? 'Date Of Joining is required!' : '';
     }
-    if (name === 'address') return '';
-    if (name === 'postOffice') return '';
-    if (name === 'district') return '';
-    if (name === 'pincode') return '';
+    if (name === 'address') {
+      return !value ? 'Address is required!' : '';
+    }
+    if (name === 'postOffice') {
+      return !value.trim() ? 'Post Office is required!' : '';
+    }
+    if (name === 'district') {
+      return !value.trim() ? 'District is required!' : '';
+    }
+    if (name === 'pincode') {
+      return !value.trim() ? 'Pincode is required!' : '';
+    }
     if (name === 'employeeType') {
       return !value ? 'Type of Employee is required!' : '';
     }
@@ -859,23 +898,26 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
             <div className={styles.field}>
               <label className={styles.label}>
-                Address
+                Address <span className={styles.required}>*</span>
               </label>
-              <textarea
+              <select
                 name="address"
                 value={formData.address}
-                onChange={handleChange}
+                onChange={handleAddressChange}
                 onBlur={handleBlur}
-                placeholder="ENTER ADDRESS"
-                className={styles.input}
-                rows="2"
-              />
+                className={styles.select}
+              >
+                <option value="">SELECT ADDRESS</option>
+                {addresses.filter(opt => opt.status === 'Active').map((opt) => (
+                  <option key={opt.id} value={opt.address}>{opt.address}</option>
+                ))}
+              </select>
               {errors.address && <span className={styles.errorText}>{errors.address}</span>}
             </div>
 
             <div className={styles.field}>
               <label className={styles.label}>
-                Post Office
+                Post Office <span className={styles.required}>*</span>
               </label>
               <input
                 type="text"
@@ -883,7 +925,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
                 value={formData.postOffice}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                placeholder="ENTER POST OFFICE"
+                placeholder="ENTER POST OFFICE *"
                 className={styles.input}
               />
               {errors.postOffice && <span className={styles.errorText}>{errors.postOffice}</span>}
@@ -891,30 +933,30 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
             <div className={styles.field}>
               <label className={styles.label}>
-                Dist
+                Dist <span className={styles.required}>*</span>
               </label>
               <input
                 type="text"
                 name="district"
                 value={formData.district}
-                onChange={handleChange}
-                placeholder="ENTER DIST"
-                className={styles.input}
+                readOnly
+                placeholder="ENTER DIST *"
+                className={`${styles.input} ${styles.disabledInput}`}
               />
               {errors.district && <span className={styles.errorText}>{errors.district}</span>}
             </div>
 
             <div className={styles.field}>
               <label className={styles.label}>
-                Pincode
+                Pincode <span className={styles.required}>*</span>
               </label>
               <input
                 type="text"
                 name="pincode"
                 value={formData.pincode}
-                onChange={handleChange}
-                placeholder="ENTER PIN"
-                className={styles.input}
+                readOnly
+                placeholder="ENTER PIN *"
+                className={`${styles.input} ${styles.disabledInput}`}
               />
               {errors.pincode && <span className={styles.errorText}>{errors.pincode}</span>}
             </div>

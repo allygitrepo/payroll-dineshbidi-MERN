@@ -223,22 +223,6 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
                         </button>
                       )}
 
-                      {/* ABRY Toggle Button */}
-                      {canEdit && (
-                        <button
-                          onClick={() => onToggleAbry(employee.id, employee.abry_status)}
-                          title={employee.abry_status ? "Disable ABRY" : "Enable ABRY"}
-                          className={styles.editBtn}
-                          style={{
-                            color: employee.abry_status ? 'white' : '#0ea5e9',
-                            border: employee.abry_status ? 'none' : '1px solid #bae6fd',
-                            backgroundColor: employee.abry_status ? '#16a34a' : '#f0f9ff'
-                          }}
-                        >
-                          <Star size={14} />
-                        </button>
-                      )}
-
                       {canEdit && (
                         <button
                           onClick={(e) => {
