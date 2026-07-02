@@ -247,8 +247,8 @@ const AttendanceListPage = () => {
   }, [userStr]);
 
   const userRole = userObj?.role?.name || '';
-  const isAdmin = userRole === 'Admin' || userRole === 'ADMIN' || userRole === 'OWNER';
-  const isContractor = userRole === 'Contractor';
+  const isAdmin = userRole.toUpperCase().startsWith('ADMIN') || userRole.toUpperCase().startsWith('OWNER');
+  const isContractor = userRole === 'Contractor' || userRole === 'CONTRACTOR';
   const canApproveOrReject = isAdmin || isContractor;
 
   const [employees, setEmployees] = useState([]);
@@ -936,14 +936,32 @@ const AttendanceListPage = () => {
                       )}
                     </td>
                     <td>
-                      {rec.record?.action_by_name ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.82rem' }}>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{rec.record.action_by_name}</span>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>({rec.record.action_by_role})</span>
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
-                      )}
+                      {(() => {
+                        const role = rec.record?.action_by_role;
+                        const name = rec.record?.action_by_name;
+                        if (!role) return <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>;
+                        const upperRole = role.toUpperCase();
+                        let displayName = '';
+                        if (upperRole.startsWith('OWNER')) {
+                          displayName = 'Owner';
+                        } else if (upperRole.startsWith('ADMIN')) {
+                          displayName = 'Admin';
+                        } else if (upperRole.startsWith('CONTRACTOR')) {
+                          displayName = 'Contractor';
+                        } else {
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.82rem' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{name}</span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>({role})</span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                            {displayName}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td>
                       <div className={styles.actions}>

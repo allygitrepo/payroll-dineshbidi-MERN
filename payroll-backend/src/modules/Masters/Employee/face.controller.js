@@ -96,7 +96,7 @@ class FaceController {
                 mean[i] = mean[i] / validDescriptors.length;
             }
 
-            // Check for duplicate face across other employees
+            // Check for duplicate face across other employees within the same company
             ensureDataDir();
             const files = fs.readdirSync(FACE_DATA_DIR).filter((f) => f.endsWith(".json"));
             for (const f of files) {
@@ -104,6 +104,24 @@ class FaceController {
                     const fileData = JSON.parse(fs.readFileSync(path.join(FACE_DATA_DIR, f), "utf8"));
                     // Skip checking against the same employee (allows updating biometrics)
                     if (fileData.employee_id === employee_id) {
+                        continue;
+                    }
+
+                    // Check duplicate face ONLY if they belong to the same company
+                    let isSameCompany = false;
+                    const otherCompanyId = fileData.company_id;
+                    if (otherCompanyId) {
+                        isSameCompany = otherCompanyId === employee.company_id;
+                    } else {
+                        // Fallback: look up the other employee in DB to check company ID
+                        const dbEmp = await Employee.findOne({ where: { id: fileData.employee_id } });
+                        if (dbEmp) {
+                            isSameCompany = dbEmp.company_id === employee.company_id;
+                        }
+                    }
+
+                    // If they belong to different companies, skip the duplicate check
+                    if (!isSameCompany) {
                         continue;
                     }
 
@@ -142,6 +160,7 @@ class FaceController {
             const filePath = path.join(FACE_DATA_DIR, fileName);
             const payload = {
                 employee_id,
+                company_id: employee.company_id,
                 name: name || employee.name,
                 descriptors: validDescriptors,
                 mean_descriptor: mean
@@ -179,7 +198,7 @@ class FaceController {
      */
     static async recognize(req, res) {
         try {
-            const { descriptor } = req.body;
+            const { descriptor, company_id } = req.body;
             if (!Array.isArray(descriptor) || !descriptor.length) {
                 return res.status(400).json(
                     errorResponse(
@@ -189,6 +208,8 @@ class FaceController {
                     )
                 );
             }
+
+            const targetCompanyId = company_id || req.headers['x-company-id'] || (req.user ? req.user.company_id : null);
 
             ensureDataDir();
             const files = fs.readdirSync(FACE_DATA_DIR).filter((f) => f.endsWith(".json"));
@@ -209,6 +230,27 @@ class FaceController {
             for (const f of files) {
                 try {
                     const fileData = JSON.parse(fs.readFileSync(path.join(FACE_DATA_DIR, f), "utf8"));
+
+                    // Scope by active company if provided
+                    if (targetCompanyId) {
+                        let isSameCompany = false;
+                        const otherCompanyId = fileData.company_id;
+                        if (otherCompanyId) {
+                            isSameCompany = otherCompanyId === targetCompanyId;
+                        } else {
+                            // Fallback: look up the employee in DB to check company ID
+                            const dbEmp = await Employee.findOne({ where: { id: fileData.employee_id } });
+                            if (dbEmp) {
+                                isSameCompany = dbEmp.company_id === targetCompanyId;
+                            }
+                        }
+
+                        // If not the same company, skip matching this face
+                        if (!isSameCompany) {
+                            continue;
+                        }
+                    }
+
                     let minDistanceForEmp = Infinity;
 
                     // Prefer all stored descriptors if available

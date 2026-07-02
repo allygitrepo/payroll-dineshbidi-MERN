@@ -273,8 +273,9 @@ const Sidebar = ({ sidebarCollapsed }) => {
     } catch(e) {}
   }
 
-  const isContractor = userStr && JSON.parse(userStr)?.role?.name === 'Contractor';
-  const isAdmin = userStr && (JSON.parse(userStr)?.role?.name === 'ADMIN' || JSON.parse(userStr)?.role?.name === 'Admin');
+  const roleName = userStr ? (JSON.parse(userStr)?.role?.name || '') : '';
+  const isContractor = roleName === 'Contractor' || roleName === 'CONTRACTOR';
+  const isAdmin = roleName.toUpperCase().startsWith('ADMIN') || roleName.toUpperCase().startsWith('OWNER');
 
   const hasReadPermission = (slug) => {
     if (isAdmin) return true; // Optionally bypass for admins
