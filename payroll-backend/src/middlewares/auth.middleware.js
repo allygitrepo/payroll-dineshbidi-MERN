@@ -26,7 +26,7 @@ const authenticateJWT = (req, res, next) => {
         req.user = decoded;
 
         const xCompanyId = req.headers['x-company-id'];
-        const activeCompanyId = decoded.company_id || xCompanyId;
+        const activeCompanyId = xCompanyId || decoded.company_id;
 
         if (activeCompanyId) {
             req.companyId = activeCompanyId;
