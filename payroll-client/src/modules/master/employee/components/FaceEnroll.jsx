@@ -15,6 +15,10 @@ const FaceEnroll = ({ employeeId, name, faceDescriptorPath, onDescriptorsCapture
   const [isFaceRegistered, setIsFaceRegistered] = useState(!!faceDescriptorPath);
 
   useEffect(() => {
+    setIsFaceRegistered(!!faceDescriptorPath);
+  }, [faceDescriptorPath]);
+
+  useEffect(() => {
     // Only load models if camera is activated or face needs registration
     if (isCameraActive) {
       const load = async () => {
@@ -109,6 +113,7 @@ const FaceEnroll = ({ employeeId, name, faceDescriptorPath, onDescriptorsCapture
       setEnrollmentStatus('✓ 12 Face snapshots captured successfully!');
       // Pass the descriptors to parent form state
       onDescriptorsCaptured(descriptorsRef.current);
+      setIsFaceRegistered(true);
       setIsCameraActive(false);
     } else {
       setEnrollmentError('Unable to scan 12 clear face samples. Please ensure good lighting and try again.');
@@ -128,23 +133,60 @@ const FaceEnroll = ({ employeeId, name, faceDescriptorPath, onDescriptorsCapture
         <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700' }}>Face Biometric Registration</h3>
       </div>
 
+      <div style={{
+        marginBottom: '24px',
+        padding: '16px 20px',
+        background: 'linear-gradient(135deg, var(--card-bg) 0%, var(--bg-secondary) 100%)',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px',
+        boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.02)'
+      }}>
+        <div style={{
+          width: '42px',
+          height: '42px',
+          borderRadius: '50%',
+          backgroundColor: 'var(--primary)',
+          color: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: '700',
+          fontSize: '1.1rem',
+          boxShadow: '0 4px 10px rgba(39, 214, 138, 0.2)'
+        }}>
+          {name ? name.charAt(0).toUpperCase() : 'E'}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            Name
+          </span>
+          <span style={{ fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: '700' }}>
+            {name}
+          </span>
+        </div>
+      </div>
+
       {!isCameraActive ? (
         <div style={{
-          backgroundColor: 'var(--bg-secondary)',
-          border: '1px solid var(--border)',
+          backgroundColor: isFaceRegistered ? 'rgba(39, 214, 138, 0.03)' : 'rgba(239, 68, 68, 0.02)',
+          border: isFaceRegistered ? '1.5px solid rgba(39, 214, 138, 0.25)' : '1px dashed rgba(239, 68, 68, 0.2)',
           borderRadius: '12px',
-          padding: '24px',
+          padding: '28px 24px',
           textAlign: 'center',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '16px'
+          gap: '16px',
+          boxShadow: isFaceRegistered ? '0 4px 12px rgba(39, 214, 138, 0.04)' : 'none'
         }}>
           {isFaceRegistered ? (
             <>
-              <CheckCircle2 size={48} style={{ color: 'var(--primary)' }} />
+              <CheckCircle2 size={52} style={{ color: 'var(--primary)' }} />
               <div>
-                <h4 style={{ margin: '0 0 4px 0', fontWeight: '600', color: 'var(--text-primary)' }}>Face Enrolled</h4>
+                <h4 style={{ margin: '0 0 6px 0', fontWeight: '600', color: 'var(--text-primary)', fontSize: '1.05rem' }}>Face Enrolled Successfully</h4>
                 <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                   This employee has active face biometrics registered in the database.
                 </p>
@@ -160,9 +202,9 @@ const FaceEnroll = ({ employeeId, name, faceDescriptorPath, onDescriptorsCapture
             </>
           ) : (
             <>
-              <Camera size={48} style={{ color: 'var(--text-muted)' }} />
+              <Camera size={52} style={{ color: '#ef4444' }} />
               <div>
-                <h4 style={{ margin: '0 0 4px 0', fontWeight: '600', color: 'var(--text-primary)' }}>Face Not Enrolled</h4>
+                <h4 style={{ margin: '0 0 6px 0', fontWeight: '600', color: 'var(--text-primary)', fontSize: '1.05rem' }}>Face Not Enrolled</h4>
                 <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                   Register employee's face for face-recognition attendance clocking.
                 </p>
@@ -171,7 +213,7 @@ const FaceEnroll = ({ employeeId, name, faceDescriptorPath, onDescriptorsCapture
                 type="button"
                 className={styles.addBtn}
                 onClick={handleStartScanning}
-                style={{ marginTop: '8px' }}
+                style={{ marginTop: '8px', backgroundColor: '#ef4444', borderColor: '#ef4444' }}
               >
                 <Sparkles size={16} /> Start Scanning Face
               </button>

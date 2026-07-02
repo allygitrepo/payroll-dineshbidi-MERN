@@ -21,6 +21,7 @@ const EmployeePage = () => {
   const [contractors, setContractors] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [formInitialTab, setFormInitialTab] = useState('Personal Info');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [employeeTypeFilter, setEmployeeTypeFilter] = useState('');
@@ -153,11 +154,26 @@ const EmployeePage = () => {
 
   const handleAddNew = () => {
     setEditingEmployee(null);
+    setFormInitialTab('Personal Info');
     setIsFormOpen(true);
   };
 
   const handleEdit = (employee) => {
     setEditingEmployee(employee);
+    setFormInitialTab('Personal Info');
+    setIsFormOpen(true);
+    setTimeout(() => {
+      if (pageTopRef.current) {
+        pageTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  const handleRegisterFace = (employee) => {
+    setEditingEmployee(employee);
+    setFormInitialTab('Face Registration');
     setIsFormOpen(true);
     setTimeout(() => {
       if (pageTopRef.current) {
@@ -347,6 +363,7 @@ const EmployeePage = () => {
           contractors={contractors}
           onSave={handleSave}
           onCancel={handleCancel}
+          initialTab={formInitialTab}
         />
       )}
 
@@ -368,6 +385,7 @@ const EmployeePage = () => {
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
           onToggleAbry={handleToggleAbry}
+          onRegisterFace={handleRegisterFace}
         />
 
         {/* Pagination controls directly mimicking MissingInformationPage */}

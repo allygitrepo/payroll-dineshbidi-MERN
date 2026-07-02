@@ -701,3 +701,36 @@
   transform: scale(1.1);
 }
 
+.faceBtn {
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.faceBtn.registered {
+  color: white;
+  background-color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.faceBtn.registered:hover {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.faceBtn.notRegistered {
+  color: var(--text-secondary);
+  background-color: white;
+  border: 1px solid #dcdcdc;
+}
+
+.faceBtn.notRegistered:hover {
+  background-color: var(--bg-main);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+

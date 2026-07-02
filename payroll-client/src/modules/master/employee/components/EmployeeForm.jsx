@@ -11,9 +11,9 @@ const QUALIFICATIONS = ['UNDER MATRIC', 'MATRIC', 'INTERMEDIATE', 'GRADUATE', 'P
 const EMPLOYEE_TYPES = ['BIDI PACKER', 'BIDI MAKER', 'OFFICE STAFF'];
 const DOC_TYPES = ['AADHAAR', 'PAN', 'UAN', 'BANK PASSBOOK', 'VOTER ID'];
 
-const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCancel }) => {
+const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCancel, initialTab = 'Personal Info' }) => {
   const addToast = useToast();
-  const [activeTab, setActiveTab] = useState('Personal Info');
+  const [activeTab, setActiveTab] = useState(initialTab || 'Personal Info');
   const [errors, setErrors] = useState({});
 
   const userStr = localStorage.getItem('user');
@@ -97,6 +97,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
   // Sync edit mode
   useEffect(() => {
     setErrors({});
+    setActiveTab(initialTab || 'Personal Info');
     if (employee) {
       setFormData({
         ...employee,
@@ -144,7 +145,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
         status: true
       });
     }
-  }, [employee]);
+  }, [employee, initialTab]);
 
   // Main handlers
   const validateField = (name, value) => {
