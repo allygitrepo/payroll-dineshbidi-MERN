@@ -7,6 +7,7 @@ import styles from './PackersEntryPage.module.css';
 import { useToast, MonthYearPicker, Pagination } from '../../../../shared/components';
 import { getPackersEntry, savePackersEntry, recalculateRow } from '../services/packersEntryService';
 import { getAttendanceSummary } from '../../../attendance/attendanceService';
+import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 /* ---- Helpers ---- */
 const formatMonthLabel = (monthYear) => {
@@ -38,6 +39,8 @@ const PackersEntryPage = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState(null);
+
+  const { canCreate, canEdit } = usePermissions('packers');
 
   // Pagination & Search
   const [currentPage, setCurrentPage] = useState(1);
@@ -388,13 +391,15 @@ const PackersEntryPage = () => {
             onChange={handleFileUpload} 
             style={{ display: 'none' }} 
           />
-          <button
-            className={styles.downloadBtn}
-            style={{ backgroundColor: 'var(--success-color, #10b981)' }}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload size={18} /> Upload Excel
-          </button>
+          {canCreate && (
+            <button
+              className={styles.downloadBtn}
+              style={{ backgroundColor: 'var(--success-color, #10b981)' }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload size={18} /> Upload Excel
+            </button>
+          )}
           
           <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
@@ -444,7 +449,7 @@ const PackersEntryPage = () => {
           <button className={styles.searchBtn} onClick={handleSearch} disabled={loading}>
             <Search size={16} /> {loading ? 'Loading...' : 'Search'}
           </button>
-          {hasSearched && (
+          {hasSearched && canEdit && (
             <button 
               className={styles.searchBtn} 
               style={{ backgroundColor: 'var(--success-color, #10b981)' }} 
@@ -570,9 +575,16 @@ const PackersEntryPage = () => {
                       </div>
                     </td>
 
-                    {/* Days Worked */}
-                    <td style={{ textAlign: 'right', minWidth: 70 }}>
-                      <input type="text" value={row.daysWorked} onChange={e => handleFieldChange(row.employeeId, 'daysWorked', e.target.value)} className={styles.tableInput} />
+                    {/* Editable: Days Worked */}
+                    <td style={{ textAlign: 'right' }}>
+                      <input
+                        type="number"
+                        min={0}
+                        value={row.daysWorked}
+                        onChange={e => handleFieldChange(row.employeeId, 'daysWorked', e.target.value)}
+                        className={styles.tableInput}
+                        disabled={!canEdit}
+                      />
                     </td>
 
                     {/* Unit 1 */}
@@ -598,9 +610,16 @@ const PackersEntryPage = () => {
                     <td style={{ textAlign: 'right' }}>{parseFloat(config?.rate3 || 0).toFixed(2)}</td>
                     <td style={{ textAlign: 'right' }}>{parseFloat(config?.rate4 || 0).toFixed(2)}</td>
 
-                    {/* Additional Paid Wages */}
-                    <td style={{ textAlign: 'right', minWidth: 80 }}>
-                      <input type="text" value={row.addition} onChange={e => handleFieldChange(row.employeeId, 'addition', e.target.value)} className={styles.tableInput} />
+                    {/* Editable: Addition */}
+                    <td style={{ textAlign: 'right' }}>
+                      <input
+                        type="number"
+                        min={0}
+                        value={row.addition}
+                        onChange={e => handleFieldChange(row.employeeId, 'addition', e.target.value)}
+                        className={styles.tableInput}
+                        disabled={!canEdit}
+                      />
                     </td>
 
                     {/* Calculated fields */}
@@ -657,11 +676,13 @@ const PackersEntryPage = () => {
           />
 
           {/* Save Button */}
-          <div className={styles.saveSection}>
-            <button className={styles.saveBtn} onClick={handleSave} disabled={loading}>
-              <Save size={18} /> {loading ? 'Saving...' : 'Save'}
-            </button>
-          </div>
+          {canEdit && (
+            <div className={styles.saveSection}>
+              <button className={styles.saveBtn} onClick={handleSave} disabled={loading}>
+                <Save size={18} /> {loading ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

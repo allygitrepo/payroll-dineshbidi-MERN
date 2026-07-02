@@ -5,6 +5,40 @@ const Role = require("../../Auth/Users/roles.model");
 const bcrypt = require("bcrypt");
 const Company = require("../Company/company.model");
 const Address = require("../Address/address.model");
+const WhatsAppTemplate = require("../../Setup/WhatsApp/whatsappTemplate.model");
+const WhatsAppService = require("../../Setup/WhatsApp/whatsapp.service");
+
+/**
+ * Helper to send Contractor credentials via WhatsApp
+ */
+const sendContractorCredentialsWhatsApp = async (contractor, username, password) => {
+    if (!contractor.whatsapp_number || !password) return;
+    try {
+        const template = await WhatsAppTemplate.findOne({
+            where: { 
+                company_id: contractor.company_id,
+                name: 'Contractor Login Credentials'
+            }
+        });
+
+        if (template) {
+            const company = await Company.findByPk(contractor.company_id);
+            const companyName = company ? company.company_name : 'Our Company';
+
+            let message = template.content;
+            message = message.replace(/\{\{name\}\}/g, contractor.name);
+            message = message.replace(/\{\{username\}\}/g, username);
+            message = message.replace(/\{\{password\}\}/g, password);
+            message = message.replace(/\{\{company_name\}\}/g, companyName);
+
+            WhatsAppService.sendTextMessage(contractor.company_id, contractor.whatsapp_number, message)
+                .then(() => console.log(`Login credentials sent via WhatsApp to ${contractor.whatsapp_number}`))
+                .catch(err => console.error(`Failed to send WhatsApp credentials:`, err.message));
+        }
+    } catch (err) {
+        console.error("Error processing WhatsApp credentials:", err.message);
+    }
+};
 
 /**
  * Helper to verify company exists and belongs to user.
@@ -18,7 +52,6 @@ const verifyCompanyAccess = async (companyId, user) => {
         error.messageToShow = "Company not found.";
         throw error;
     }
-
     if (user.role_name === 'Contractor') {
         if (!user.contractor_id) {
             const error = new Error("Contractor profile not found.");
@@ -102,10 +135,10 @@ const validateUniqueness = async (data, excludeId = null) => {
 
     // Check ccode uniqueness
     await checkField("ccode", data.ccode, "Contractor Code");
-    
+
     // Check name uniqueness
     await checkField("name", data.name, "Contractor Name");
-    
+
     // Check PAN uniqueness
     await checkField("pan", data.pan, "PAN Number");
 
@@ -125,7 +158,7 @@ class ContractorService {
 
         // 1. Verify Company Ownership
         await verifyCompanyAccess(company_id, user);
-        
+
         if (user.role_name === 'Contractor') {
             const error = new Error("Access denied. Contractors cannot create other contractors.");
             error.statusCode = 403;
@@ -145,7 +178,7 @@ class ContractorService {
 
         // 5. Create contractor
         const newContractor = await Contractor.create(contractorData);
-        
+
         // Reload to include address details in response
         return await Contractor.findOne({
             where: { id: newContractor.id },
@@ -162,7 +195,7 @@ class ContractorService {
 
         const { page, limit, search, status } = options;
         const whereClause = { company_id: companyId };
-        
+
         if (user.role_name === 'Contractor' && user.contractor_id) {
             whereClause.id = user.contractor_id;
         }
@@ -201,7 +234,7 @@ class ContractorService {
             const pageNumber = parseInt(page, 10) || 1;
             const pageSize = parseInt(limit, 10) || 20;
             const offset = (pageNumber - 1) * pageSize;
-            
+
             queryOptions.limit = pageSize;
             queryOptions.offset = offset;
 
@@ -410,7 +443,7 @@ class ContractorService {
 
         // Check if user login already exists for this contractor
         const existingUser = await User.findOne({ where: { contractor_id: contractorId, status: true } });
-        const { username, password } = loginData;
+        const { username, password, sendWhatsapp } = loginData;
 
         if (existingUser) {
             if (existingUser.user_id !== username) {
@@ -429,12 +462,19 @@ class ContractorService {
                 const saltRounds = 10;
                 existingUser.password = await bcrypt.hash(password, saltRounds);
             }
+            existingUser.parent_id = contractor.company_id;
             await existingUser.save();
+            
+            if (password && sendWhatsapp) {
+                // Fire and forget WhatsApp message
+                sendContractorCredentialsWhatsApp(contractor, username, password);
+            }
+
             const userJson = existingUser.toJSON();
             delete userJson.password;
             return userJson;
         }
-        
+
         // Check if username is taken
         const usernameExists = await User.findOne({ where: { user_id: username, status: true } });
         if (usernameExists) {
@@ -464,8 +504,13 @@ class ContractorService {
             password: hashedPassword,
             role_id: role.id,
             contractor_id: contractorId,
-            parent_id: user.id
+            parent_id: contractor.company_id
         });
+
+        if (sendWhatsapp) {
+            // Fire and forget WhatsApp message
+            sendContractorCredentialsWhatsApp(contractor, username, password);
+        }
 
         const userJson = newUser.toJSON();
         delete userJson.password;
@@ -505,7 +550,7 @@ class ContractorService {
             throw error;
         }
 
-        const existingUser = await User.findOne({ 
+        const existingUser = await User.findOne({
             where: { contractor_id: contractorId, status: true },
             attributes: ['id', 'user_name', 'user_id']
         });

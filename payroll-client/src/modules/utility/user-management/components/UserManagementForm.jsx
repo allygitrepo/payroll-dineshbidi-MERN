@@ -122,19 +122,26 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
 
   const normalizePermissions = (perms) => {
     const normalized = {};
+    const isArrayFormat = Array.isArray(perms);
+    
     ALL_PERMISSION_SLUGS.forEach(slug => {
-      const val = perms[slug];
-      if (typeof val === 'boolean') {
-        normalized[slug] = { read: val, create: val, edit: val, delete: val };
-      } else if (val && typeof val === 'object') {
-        normalized[slug] = {
-          read: !!val.read,
-          create: !!val.create,
-          edit: !!val.edit,
-          delete: !!val.delete
-        };
+      if (isArrayFormat) {
+        const hasPerm = perms.includes(slug);
+        normalized[slug] = { read: hasPerm, create: hasPerm, edit: hasPerm, delete: hasPerm };
       } else {
-        normalized[slug] = { read: false, create: false, edit: false, delete: false };
+        const val = perms[slug];
+        if (typeof val === 'boolean') {
+          normalized[slug] = { read: val, create: val, edit: val, delete: val };
+        } else if (val && typeof val === 'object') {
+          normalized[slug] = {
+            read: !!val.read,
+            create: !!val.create,
+            edit: !!val.edit,
+            delete: !!val.delete
+          };
+        } else {
+          normalized[slug] = { read: false, create: false, edit: false, delete: false };
+        }
       }
     });
     return normalized;
@@ -151,7 +158,7 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
         error = 'User Id must contain only lowercase letters and numbers.';
       }
     } else if (name === 'password') {
-      if (!value.trim()) error = 'Password is required.';
+      if (!user && !value.trim()) error = 'Password is required.';
     }
     return error;
   };

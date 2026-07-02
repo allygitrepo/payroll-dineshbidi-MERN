@@ -120,7 +120,7 @@ const EpfChallanDateTable = ({ data, searchTerm, onSearchChange, onEdit, onDelet
               <th onClick={() => handleSort('returnDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>Return Date {renderSortIcon('returnDate')}</div>
               </th>
-              <th style={{ textAlign: 'center', width: '90px' }}>Action</th>
+              {(onEdit || onDelete) && <th style={{ textAlign: 'center', width: '90px' }}>Action</th>}
             </tr>
           </thead>
           <tbody>
@@ -148,24 +148,30 @@ const EpfChallanDateTable = ({ data, searchTerm, onSearchChange, onEdit, onDelet
                   <td>{formatDate(row.returnDate)}</td>
 
                   {/* Actions Column */}
-                  <td style={{ textAlign: 'center' }}>
-                    <div className={styles.actionCell}>
-                      <button
-                        onClick={() => onEdit(row)}
-                        className={styles.editBtn}
-                        title="Edit Record"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => onDelete(row.id)}
-                        className={styles.deleteBtn}
-                        title="Delete Record"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
+                  {(onEdit || onDelete) && (
+                    <td style={{ textAlign: 'center' }}>
+                      <div className={styles.actionCell}>
+                        {onEdit && (
+                          <button
+                            onClick={() => onEdit(row)}
+                            className={styles.editBtn}
+                            title="Edit Record"
+                          >
+                            <Edit size={16} />
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            onClick={() => onDelete(row.id)}
+                            className={styles.deleteBtn}
+                            title="Delete Record"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             ) : (

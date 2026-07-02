@@ -9,9 +9,9 @@ import { getAddresses } from '../../address/services/addressService';
 import { getContractors } from '../../contractor/services/contractorService';
 import { useToast, ConfirmModal, Pagination } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
-import { MessageCircle } from 'lucide-react';
 import WhatsAppBulkSendModal from '../../../utility/whatsapp/components/WhatsAppBulkSendModal';
 import { getWhatsAppStatus } from '../../../utility/whatsapp/services/whatsappService';
+import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 const EmployeePage = () => {
   const addToast = useToast();
@@ -22,6 +22,8 @@ const EmployeePage = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [formInitialTab, setFormInitialTab] = useState('Personal Info');
+
+  const { canRead, canCreate, canEdit, canDelete } = usePermissions('employee');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [employeeTypeFilter, setEmployeeTypeFilter] = useState('');
@@ -290,7 +292,7 @@ const EmployeePage = () => {
       <div className={styles.headerSection}>
         <h1 className={styles.title}>Employee</h1>
         <div className={styles.headerActions}>
-          {!isFormOpen && (
+          {!isFormOpen && canCreate && (
             <button onClick={handleAddNew} className={styles.addBtn}>
               <Plus size={18} /> Employee
             </button>
@@ -385,7 +387,8 @@ const EmployeePage = () => {
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
           onToggleAbry={handleToggleAbry}
-          onRegisterFace={handleRegisterFace}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
 
         {/* Pagination controls directly mimicking MissingInformationPage */}

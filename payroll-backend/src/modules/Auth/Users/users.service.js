@@ -301,17 +301,24 @@ class UsersService {
      * Gets all users
      */
     static async getAllUsers(currentUser) {
+        const { Op } = require("sequelize");
         const whereClause = { status: true };
         
         if (currentUser) {
-            // Both OWNER and ADMIN should only see users they directly created
-            whereClause.parent_id = currentUser.id;
+            if (currentUser.company_id) {
+                whereClause.parent_id = {
+                    [Op.in]: [currentUser.id, currentUser.company_id]
+                };
+            } else {
+                whereClause.parent_id = currentUser.id;
+            }
         }
 
         const users = await User.findAll({
             where: whereClause,
             include: [{ model: Role, as: 'role' }]
         });
+
         return users.map(user => {
             const userJson = user.toJSON();
             delete userJson.password;

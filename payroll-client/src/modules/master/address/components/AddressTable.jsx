@@ -109,28 +109,32 @@ const AddressTable = ({ data, searchTerm, onSearchChange, statusFilter, onStatus
               paginatedData.map((addr, index) => (
                 <tr
                   key={addr.id}
-                  onClick={() => onEdit(addr)}
-                  style={{ cursor: 'pointer' }}
+                  onClick={() => onEdit && onEdit(addr)}
+                  style={{ cursor: onEdit ? 'pointer' : 'default' }}
                 >
                   <td onClick={(e) => e.stopPropagation()}>
                     <div className={styles.actionCell}>
-                      <button
-                        onClick={() => onEdit(addr)}
-                        title="Edit Address"
-                        className={styles.editBtn}
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(addr.id);
-                        }}
-                        title="Delete Address"
-                        className={styles.deleteBtn}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {onEdit && (
+                        <button
+                          onClick={() => onEdit(addr)}
+                          title="Edit Address"
+                          className={styles.editBtn}
+                        >
+                          <Edit size={14} />
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(addr.id);
+                          }}
+                          title="Delete Address"
+                          className={styles.deleteBtn}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td style={{ textAlign: 'center', fontWeight: '500' }}>

@@ -12,6 +12,7 @@ import {
   saveBulkEpfChallans
 } from '../services/epfChallanDateService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
@@ -24,6 +25,8 @@ const formatDate = (dateStr) => {
 
 const EpfChallanDatePage = () => {
   const addToast = useToast();
+
+  const { canCreate, canEdit, canDelete } = usePermissions('epf-challan-date');
 
   const [challans, setChallans] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -306,7 +309,7 @@ const EpfChallanDatePage = () => {
       <div className={styles.headerSection}>
         <h1 className={styles.title}>EPF Challan Date Entry</h1>
         <div className={styles.headerActions}>
-          {!isFormOpen && (
+          {!isFormOpen && canCreate && (
             <button onClick={handleAddNew} className={styles.addBtn}>
               <Plus size={18} /> EPF Challan Date
             </button>
@@ -374,8 +377,8 @@ const EpfChallanDatePage = () => {
         data={filteredChallans}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
+        onEdit={canEdit ? handleEdit : undefined}
+        onDelete={canDelete ? handleDeleteClick : undefined}
       />
 
       {/* Delete Confirmation Modal */}

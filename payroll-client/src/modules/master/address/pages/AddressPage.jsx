@@ -6,13 +6,15 @@ import AddressForm from '../components/AddressForm';
 import AddressTable from '../components/AddressTable';
 import { getAddresses, saveAddress, deleteAddress } from '../services/addressService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
+import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 const AddressPage = () => {
   const addToast = useToast();
   const [addresses, setAddresses] = useState([]);
   const [editingAddress, setEditingAddress] = useState(null);
 
-  // Search filter and download dropdown states
+  const { canCreate, canEdit, canDelete } = usePermissions('address');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Active');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -281,12 +283,14 @@ const AddressPage = () => {
         </div>
       </div>
 
-      {/* Render form card (always open) */}
-      <AddressForm
-        address={editingAddress}
-        onSave={handleSave}
-        onCancel={handleCancelEdit}
-      />
+      {/* Render form card based on permissions */}
+      {(canCreate || (canEdit && editingAddress)) && (
+        <AddressForm
+          address={editingAddress}
+          onSave={handleSave}
+          onCancel={handleCancelEdit}
+        />
+      )}
 
       {/* Render table card containing list */}
       <AddressTable
@@ -295,8 +299,8 @@ const AddressPage = () => {
         onSearchChange={setSearchTerm}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
+        onEdit={canEdit ? handleEdit : undefined}
+        onDelete={canDelete ? handleDeleteClick : undefined}
       />
 
       {/* Reusable Confirm Delete Modal */}

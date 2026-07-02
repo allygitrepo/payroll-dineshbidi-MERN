@@ -6,6 +6,7 @@ import ChallanSetupTable from '../components/ChallanSetupTable';
 import { getChallanSetup, saveChallanSetup, deleteChallanSetup } from '../services/challanSetupService';
 import { useToast, ConfirmModal } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
+import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 const formatDateForExport = (dateStr) => {
   if (!dateStr) return '';
@@ -16,6 +17,8 @@ const formatDateForExport = (dateStr) => {
 
 const ChallanSetupPage = () => {
   const addToast = useToast();
+
+  const { canCreate, canEdit, canDelete } = usePermissions('challan-setup');
 
   const [challanList, setChallanList] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -179,7 +182,7 @@ const ChallanSetupPage = () => {
       <div className={styles.headerSection}>
         <h1 className={styles.title}>Challan Setup</h1>
         <div className={styles.headerActions}>
-          {!isFormOpen && (
+          {!isFormOpen && canCreate && (
             <button onClick={handleAddNew} className={styles.addBtn}>
               <Plus size={18} /> Challan Setup
             </button>
@@ -228,8 +231,8 @@ const ChallanSetupPage = () => {
         data={filteredChallan}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
+        onEdit={canEdit ? handleEdit : undefined}
+        onDelete={canDelete ? handleDeleteClick : undefined}
       />
 
       {/* Delete Confirmation Modal */}

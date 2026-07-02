@@ -13,6 +13,7 @@ import { parseExcelDate } from '../../../../shared/utils/dateUtils';
 import { MessageCircle } from 'lucide-react';
 import WhatsAppBulkSendModal from '../../../utility/whatsapp/components/WhatsAppBulkSendModal';
 import { getWhatsAppStatus } from '../../../utility/whatsapp/services/whatsappService';
+import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 const ContractorPage = () => {
   const addToast = useToast();
@@ -21,7 +22,7 @@ const ContractorPage = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingContractor, setEditingContractor] = useState(null);
 
-  // Search filter and download dropdown states
+  const { canRead, canCreate, canEdit, canDelete } = usePermissions('contractor');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -220,6 +221,7 @@ const ContractorPage = () => {
       setIsLoginModalOpen(false);
       setLoginTargetContractor(null);
       setExistingLogin(null);
+      fetchContractors(); // Refresh the list to update the login icon
     } catch (err) {
       console.error('Error creating contractor login:', err);
       addToast({
@@ -387,7 +389,7 @@ const ContractorPage = () => {
           <h1 className={styles.title} style={{ fontSize: '1.75rem', fontWeight: 700 }}>Contractor</h1>
         </div>
         <div className={styles.headerActions}>
-          {!isFormOpen && (
+          {!isFormOpen && canCreate && (
             <button onClick={handleAddNew} className={styles.addBtn}>
               <Plus size={18} /> Contractor
             </button>
@@ -477,6 +479,8 @@ const ContractorPage = () => {
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
           onCreateLogin={handleCreateLoginClick}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
 
         {/* Pagination controls */}

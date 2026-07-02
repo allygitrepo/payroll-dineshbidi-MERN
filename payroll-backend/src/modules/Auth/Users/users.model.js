@@ -48,12 +48,6 @@ const User = sequelize.define(
         parent_id: {
             type: DataTypes.UUID,
             allowNull: true,
-            references: {
-                model: "Users",
-                key: "id",
-            },
-            onDelete: "CASCADE",
-            onUpdate: "CASCADE",
         },
     },
     {

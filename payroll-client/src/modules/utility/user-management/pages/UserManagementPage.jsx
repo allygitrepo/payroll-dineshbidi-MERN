@@ -40,11 +40,25 @@ const UserManagementPage = () => {
       ]);
       // Map backend fields to frontend fields for backwards compatibility
       const mappedUsers = fetchedUsers.map(u => {
-        let rawPerms = u.role ? u.role.permissions : {};
+        let rawPerms = u.permissions;
         if (typeof rawPerms === 'string') {
           try {
             rawPerms = JSON.parse(rawPerms);
           } catch (e) {
+            rawPerms = {};
+          }
+        }
+        if (!rawPerms || Object.keys(rawPerms).length === 0) {
+          if (u.role && u.role.permissions) {
+            rawPerms = u.role.permissions;
+            if (typeof rawPerms === 'string') {
+              try {
+                rawPerms = JSON.parse(rawPerms);
+              } catch (e) {
+                rawPerms = {};
+              }
+            }
+          } else {
             rawPerms = {};
           }
         }
@@ -153,9 +167,12 @@ const UserManagementPage = () => {
         id: userData.id,
         user_name: userData.userName,
         user_id: userData.userId,
-        password: userData.password,
         role_id: updatedRole.id
       };
+      
+      if (userData.password) {
+        payload.password = userData.password;
+      }
       
       await saveUser(payload);
       await loadData();

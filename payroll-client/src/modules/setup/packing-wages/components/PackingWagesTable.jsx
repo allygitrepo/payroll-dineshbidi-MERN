@@ -62,13 +62,13 @@ const PackingWagesTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete 
               <th>Rate3</th>
               <th>Rate4</th>
               <th>Bonus</th>
-              <th style={{ width: '120px', textAlign: 'center' }}>Action</th>
+              {(onEdit || onDelete) && <th style={{ width: '120px', textAlign: 'center' }}>Action</th>}
             </tr>
           </thead>
           <tbody>
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                <td colSpan={(onEdit || onDelete) ? 9 : 8} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                   No matching records found.
                 </td>
               </tr>
@@ -85,24 +85,30 @@ const PackingWagesTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete 
                   <td>{item.rate3}</td>
                   <td>{item.rate4}</td>
                   <td>{item.bonus}</td>
-                  <td>
-                    <div className={styles.actionCell}>
-                      <button 
-                        onClick={() => onEdit(item)} 
-                        title="Edit Record"
-                        className={styles.editBtn}
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button 
-                        onClick={() => onDelete(item.id)} 
-                        title="Delete Record"
-                        className={styles.deleteBtn}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
+                  {(onEdit || onDelete) && (
+                    <td>
+                      <div className={styles.actionCell}>
+                        {onEdit && (
+                          <button 
+                            onClick={() => onEdit(item)} 
+                            title="Edit Record"
+                            className={styles.editBtn}
+                          >
+                            <Edit size={16} />
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button 
+                            onClick={() => onDelete(item.id)} 
+                            title="Delete Record"
+                            className={styles.deleteBtn}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
