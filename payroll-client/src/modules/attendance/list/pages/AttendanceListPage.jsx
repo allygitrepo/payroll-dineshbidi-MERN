@@ -269,7 +269,9 @@ const AttendanceListPage = () => {
   };
 
   const todayStr = getTodayDateStr();
-  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [fromDate, setFromDate] = useState(todayStr);
+  const [toDate, setToDate] = useState(todayStr);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('All');
   
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -507,6 +509,31 @@ const AttendanceListPage = () => {
     setIsDropdownOpen(false);
   };
 
+  // Helper to generate dates between fromDate and toDate
+  const getDatesInRange = (startDate, endDate) => {
+    const dates = [];
+    let currentDate = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Safety check to prevent infinite loops or massive arrays
+    if (isNaN(currentDate.getTime()) || isNaN(end.getTime())) return dates;
+    
+    // Max 31 days if we are not filtering by a specific employee, to avoid freezing the browser.
+    // If a specific employee is selected, they can go up to 365 days.
+    const maxDays = selectedEmployeeId !== 'All' ? 366 : 31;
+    let days = 0;
+    
+    while (currentDate <= end && days < maxDays) {
+      const yyyy = currentDate.getFullYear();
+      const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(currentDate.getDate()).padStart(2, '0');
+      dates.push(`${yyyy}-${mm}-${dd}`);
+      currentDate.setDate(currentDate.getDate() + 1);
+      days++;
+    }
+    return dates;
+  };
+
   // Generate Daily Attendance Sheet (combining check-ins with generated Absent logs)
   const generateDailySheet = () => {
     const resolveStatus = (log) => {
@@ -516,8 +543,8 @@ const AttendanceListPage = () => {
       return log.sign_in_time ? 'Present' : 'Absent';
     };
 
-    if (!selectedDate) {
-      // Show All: Map every check-in log from DB to its employee details
+    if (!fromDate || !toDate) {
+      // Just map raw logs if dates are cleared entirely
       return logs.map((log) => {
         const emp = employees.find((e) => e.id === log.employee_id) || {};
         return {
@@ -535,39 +562,47 @@ const AttendanceListPage = () => {
       });
     }
 
-    // For a specific selected date, generate status for all active employees
-    return employees.map((emp) => {
-      const log = logs.find((l) => l.employee_id === emp.id && l.date === selectedDate);
-      
-      if (log) {
-        return {
-          id: log.id,
-          empCode: emp.uan || 'N/A',
-          name: emp.memberName || emp.name || log.employee?.name || 'Unknown Employee',
-          category: emp.employeeType || log.employee?.employee_type || 'N/A',
-          contact: emp.mobile || '',
-          address: emp.address || '',
-          avatarSeed: 1,
-          date: log.date,
-          status: resolveStatus(log),
-          record: log
-        };
-      } else {
-        // Construct mock Absent record
-        return {
-          id: `absent-${emp.id}-${selectedDate}`,
-          empCode: emp.uan || 'N/A',
-          name: emp.memberName || emp.name || 'Unknown Employee',
-          category: emp.employeeType || 'N/A',
-          contact: emp.mobile || '',
-          address: emp.address || '',
-          avatarSeed: 1,
-          date: selectedDate,
-          status: 'Absent',
-          record: null
-        };
-      }
+    const dates = getDatesInRange(fromDate, toDate);
+    const empsToProcess = selectedEmployeeId === 'All' 
+        ? employees 
+        : employees.filter(e => e.id === selectedEmployeeId);
+
+    const sheet = [];
+
+    empsToProcess.forEach(emp => {
+      dates.forEach(date => {
+        const log = logs.find((l) => l.employee_id === emp.id && l.date === date);
+        if (log) {
+          sheet.push({
+            id: log.id,
+            empCode: emp.uan || 'N/A',
+            name: emp.memberName || emp.name || log.employee?.name || 'Unknown Employee',
+            category: emp.employeeType || log.employee?.employee_type || 'N/A',
+            contact: emp.mobile || '',
+            address: emp.address || '',
+            avatarSeed: 1,
+            date: log.date,
+            status: resolveStatus(log),
+            record: log
+          });
+        } else {
+          sheet.push({
+            id: `absent-${emp.id}-${date}`,
+            empCode: emp.uan || 'N/A',
+            name: emp.memberName || emp.name || 'Unknown Employee',
+            category: emp.employeeType || 'N/A',
+            contact: emp.mobile || '',
+            address: emp.address || '',
+            avatarSeed: 1,
+            date: date,
+            status: 'Absent',
+            record: null
+          });
+        }
+      });
     });
+
+    return sheet;
   };
 
   const dailySheet = generateDailySheet();
@@ -608,6 +643,23 @@ const AttendanceListPage = () => {
     });
   }, [sortedRecords, search, categoryFilter, statusFilter]);
 
+  // Calculate summary stats for single employee
+  const summaryStats = useMemo(() => {
+    if (selectedEmployeeId === 'All' || !fromDate || !toDate) return null;
+    
+    let presentCount = 0;
+    let absentCount = 0;
+    let pendingCount = 0;
+
+    filteredRecords.forEach(rec => {
+        if (rec.status === 'Present' || rec.status === 'Late') presentCount++;
+        else if (rec.status === 'Absent') absentCount++;
+        else if (rec.status === 'Pending') pendingCount++;
+    });
+
+    return { presentCount, absentCount, pendingCount, total: presentCount + absentCount + pendingCount };
+  }, [filteredRecords, selectedEmployeeId, fromDate, toDate]);
+
   // Pagination calculations
   const totalPages = Math.ceil(filteredRecords.length / rowsPerPage);
   const paginatedRecords = useMemo(() => {
@@ -620,7 +672,7 @@ const AttendanceListPage = () => {
   // Reset pagination on filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, categoryFilter, statusFilter, selectedDate, rowsPerPage]);
+  }, [search, categoryFilter, statusFilter, fromDate, toDate, selectedEmployeeId, rowsPerPage]);
 
   const openLocationModal = (rec) => {
     if (rec.status === 'Absent') return;
@@ -784,30 +836,50 @@ const AttendanceListPage = () => {
               Total Records: {filteredRecords.length}
             </div>
 
-            {/* Calendar Date Picker Filter */}
+            {/* Date Range Picker Filter */}
             <div className={styles.dateFilter}>
+              <span className={styles.controlLabel} style={{ marginRight: '5px' }}>From</span>
               <DatePicker
-                name="selectedDate"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                name="fromDate"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className={styles.datePickerInput}
+              />
+              <span className={styles.controlLabel} style={{ margin: '0 5px' }}>To</span>
+              <DatePicker
+                name="toDate"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
                 className={styles.datePickerInput}
               />
               <button
                 type="button"
-                className={`${styles.quickBtn} ${selectedDate === todayStr ? styles.activeQuickBtn : ''}`}
-                onClick={() => setSelectedDate(todayStr)}
+                className={styles.quickBtn}
+                onClick={() => {
+                  setFromDate(todayStr);
+                  setToDate(todayStr);
+                }}
                 title="Go to Today"
               >
                 Today
               </button>
-              <button
-                type="button"
-                className={`${styles.quickBtn} ${!selectedDate ? styles.activeQuickBtn : ''}`}
-                onClick={() => setSelectedDate('')}
-                title="Show All Dates"
+            </div>
+
+            {/* Employee Selector */}
+            <div className={styles.categorySelect}>
+              <span className={styles.controlLabel}>Employee</span>
+              <select
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                style={{ minWidth: '150px' }}
               >
-                All
-              </button>
+                <option value="All">All Employees</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.memberName || emp.name} ({emp.uan || 'No UAN'})
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Category Selector */}
@@ -850,6 +922,18 @@ const AttendanceListPage = () => {
             />
           </div>
         </div>
+
+        {summaryStats && (
+            <div style={{ padding: '15px 20px', backgroundColor: '#f0fdf4', borderBottom: '1px solid #dcfce7', display: 'flex', gap: '30px', alignItems: 'center' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#166534' }}>Employee Report Summary</div>
+                <div style={{ display: 'flex', gap: '20px', fontSize: '0.95rem', color: '#15803d' }}>
+                    <div><strong>Total Days:</strong> {summaryStats.total}</div>
+                    <div><strong>Present:</strong> {summaryStats.presentCount}</div>
+                    <div><strong>Absent:</strong> {summaryStats.absentCount}</div>
+                    {summaryStats.pendingCount > 0 && <div><strong>Pending:</strong> {summaryStats.pendingCount}</div>}
+                </div>
+            </div>
+        )}
 
       {/* Responsive Table */}
       <div className={styles.tableResponsive}>
@@ -1013,7 +1097,7 @@ const AttendanceListPage = () => {
             ) : (
               <tr>
                 <td colSpan="8" className={styles.emptyTable}>
-                  No attendance records found for {selectedDate ? formatDateFriendly(selectedDate) : 'selected query'}
+                  No attendance records found for {fromDate && toDate ? `${formatDateFriendly(fromDate)} to ${formatDateFriendly(toDate)}` : 'selected query'}
                 </td>
               </tr>
             )}
