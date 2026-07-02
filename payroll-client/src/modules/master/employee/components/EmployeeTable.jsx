@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Edit, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Star } from 'lucide-react';
+import { Edit, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Star, Smile } from 'lucide-react';
 import styles from './EmployeePage.module.css';
 
 const formatDate = (dateStr) => {
@@ -11,7 +11,7 @@ const formatDate = (dateStr) => {
   return dateStr;
 };
 
-const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeFilterChange, selectedStatus, onStatusFilterChange, onEdit, onDelete, onToggleAbry, canEdit = true, canDelete = true }) => {
+const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeFilterChange, selectedStatus, onStatusFilterChange, onEdit, onDelete, onToggleAbry, onRegisterFace, canEdit = true, canDelete = true }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const handleSort = (key) => {
@@ -236,6 +236,19 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
                           }}
                         >
                           <Star size={14} />
+                        </button>
+                      )}
+
+                      {canEdit && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRegisterFace && onRegisterFace(employee);
+                          }}
+                          title="Register Face"
+                          className={`${styles.faceBtn} ${employee.faceDescriptorPath ? styles.registered : styles.notRegistered}`}
+                        >
+                          <Smile size={14} />
                         </button>
                       )}
 

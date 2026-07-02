@@ -387,6 +387,7 @@ const EmployeePage = () => {
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
           onToggleAbry={handleToggleAbry}
+          onRegisterFace={handleRegisterFace}
           canEdit={canEdit}
           canDelete={canDelete}
         />
