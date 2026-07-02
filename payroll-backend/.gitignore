@@ -2,7 +2,7 @@ node_modules
 .env
 
 # Ignore biometric templates and captures
-face_data/*.json
+face_data/
 uploads/
 **/*.png
 **/*.jpg
