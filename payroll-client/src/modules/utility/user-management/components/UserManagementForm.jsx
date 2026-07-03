@@ -297,6 +297,21 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
       <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--text-primary)' }}>
         {user ? 'Edit User Credentials & Access' : 'New User Setup'}
       </h3>
+      {user && user.contractor_id && (
+        <div style={{
+          backgroundColor: 'rgba(39, 214, 138, 0.08)',
+          border: '1.5px solid rgba(39, 214, 138, 0.25)',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          marginBottom: '20px',
+          color: 'var(--text-primary)',
+          fontSize: '0.88rem',
+          lineHeight: '1.4',
+          fontWeight: '500'
+        }}>
+          💡 <strong>Contractor Login Detected</strong>: You are editing the access credentials and module permissions for Contractor <strong>{user.userName}</strong>. Adjusting these permissions determines what sections this Contractor can access and manage.
+        </div>
+      )}
       <form onSubmit={handleSubmit}>
         <div className={styles.formGrid}>
           {/* User Name */}

@@ -154,23 +154,25 @@ const SaasEmployeeReportPage = () => {
 
                         {company.employeesTotal > 0 ? (
                           <div className={styles.typeGrid}>
-                            {Object.entries(company.typeBreakdown).map(([typeName, stats]) => (
-                              <div key={typeName} className={styles.typeCard}>
-                                <div className={styles.typeTitle}>{typeName}</div>
-                                <div className={styles.typeStats}>
-                                  <span className={styles.typeLabel}>Total:</span>
-                                  <span className={styles.typeValue}>{stats.total}</span>
+                            {Object.entries(company.typeBreakdown)
+                              .filter(([typeName]) => ['BIDI MAKER', 'OFFICE STAFF', 'BIDI PACKER'].includes(typeName.toUpperCase()))
+                              .map(([typeName, stats]) => (
+                                <div key={typeName} className={styles.typeCard}>
+                                  <div className={styles.typeTitle}>{typeName}</div>
+                                  <div className={styles.typeStats}>
+                                    <span className={styles.typeLabel}>Total:</span>
+                                    <span className={styles.typeValue}>{stats.total}</span>
+                                  </div>
+                                  <div className={styles.typeStats}>
+                                    <span className={styles.typeLabel}>Active:</span>
+                                    <span className={`${styles.typeValue} ${styles.active}`}>{stats.active}</span>
+                                  </div>
+                                  <div className={styles.typeStats}>
+                                    <span className={styles.typeLabel}>Inactive:</span>
+                                    <span className={`${styles.typeValue} ${styles.inactive}`}>{stats.inactive}</span>
+                                  </div>
                                 </div>
-                                <div className={styles.typeStats}>
-                                  <span className={styles.typeLabel}>Active:</span>
-                                  <span className={`${styles.typeValue} ${styles.active}`}>{stats.active}</span>
-                                </div>
-                                <div className={styles.typeStats}>
-                                  <span className={styles.typeLabel}>Inactive:</span>
-                                  <span className={`${styles.typeValue} ${styles.inactive}`}>{stats.inactive}</span>
-                                </div>
-                              </div>
-                            ))}
+                              ))}
                           </div>
                         ) : (
                           <div style={{ padding: '16px', color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>

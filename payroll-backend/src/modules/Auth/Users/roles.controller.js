@@ -42,6 +42,26 @@ exports.updateRole = async (req, res) => {
             return res.status(404).json({ status: false, message: "Role not found" });
         }
 
+        // If it is a global system role (created_by is null) and the user is an OWNER,
+        // we must not overwrite the global system role. Instead, we fork/retrieve the owner's custom role.
+        if (role.created_by === null && req.user && req.user.role_name === 'OWNER') {
+            let ownerRole = await Role.findOne({
+                where: { name: name, created_by: req.user.id }
+            });
+            if (ownerRole) {
+                await ownerRole.update({ permissions, status });
+                return res.status(200).json({ status: true, message: "Role updated successfully", data: ownerRole });
+            } else {
+                ownerRole = await Role.create({
+                    name: name,
+                    permissions,
+                    status: status !== undefined ? status : true,
+                    created_by: req.user.id
+                });
+                return res.status(200).json({ status: true, message: "Role updated successfully", data: ownerRole });
+            }
+        }
+        
         // Ensure uniqueness for the user
         const existingRole = await Role.findOne({ where: { name, created_by } });
         if (existingRole && existingRole.id !== role.id) {

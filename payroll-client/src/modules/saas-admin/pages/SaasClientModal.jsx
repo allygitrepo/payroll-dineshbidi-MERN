@@ -113,6 +113,18 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
   const [error, setError] = useState('');
 
   const [showPassword, setShowPassword] = useState(false);
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
+
+  const handleToggleChangePassword = () => {
+    if (isEditingPassword) {
+      setIsEditingPassword(false);
+      setFormData(prev => ({ ...prev, password: '' }));
+    } else {
+      setIsEditingPassword(true);
+      const phoneDigits = formData.phone ? formData.phone.toString().slice(-6) : '';
+      setFormData(prev => ({ ...prev, password: phoneDigits }));
+    }
+  };
 
   // Initialize permissions
   useEffect(() => {
@@ -219,9 +231,44 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Login ID *</label>
-                  <input type="text" name="user_id" value={formData.user_id} onChange={handleChange} className={styles.formInput} required disabled={!!editingClient} />
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input 
+                      type="text" 
+                      name="user_id" 
+                      value={formData.user_id} 
+                      onChange={handleChange} 
+                      className={styles.formInput} 
+                      required 
+                      disabled={!!editingClient} 
+                      style={{ flex: 1 }}
+                    />
+                    {editingClient && (
+                      <button
+                        type="button"
+                        onClick={handleToggleChangePassword}
+                        style={{
+                          padding: '8px 16px',
+                          whiteSpace: 'nowrap',
+                          backgroundColor: isEditingPassword ? '#ef4444' : 'var(--primary)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          fontSize: '0.85rem',
+                          height: '38px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'background-color 0.2s'
+                        }}
+                      >
+                        {isEditingPassword ? 'Cancel Change' : 'Change Password'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {!editingClient && (
+                {(!editingClient || isEditingPassword) && (
                   <div className={styles.formGroup}>
                     <label className={styles.formLabel}>Password *</label>
                     <div style={{ position: 'relative' }}>

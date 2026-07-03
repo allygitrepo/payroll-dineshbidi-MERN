@@ -305,12 +305,42 @@ class UsersService {
         const whereClause = { status: true };
         
         if (currentUser) {
-            if (currentUser.company_id) {
-                whereClause.parent_id = {
-                    [Op.in]: [currentUser.id, currentUser.company_id]
-                };
+            const roleName = currentUser.role_name || '';
+            const isOwner = roleName.toUpperCase() === 'OWNER' || roleName.toUpperCase().startsWith('OWNER');
+
+            if (isOwner) {
+                // Fetch all contractor IDs belonging to the owner's selected company
+                let contractorIds = [];
+                if (currentUser.company_id) {
+                    const contractors = await User.sequelize.models.Contractor.findAll({
+                        where: { company_id: currentUser.company_id, status: true },
+                        attributes: ['id']
+                    });
+                    contractorIds = contractors.map(c => c.id);
+                }
+
+                // Retrieve staff users (by parent_id matching owner/company) or contractor users
+                whereClause[Op.or] = [
+                    {
+                        parent_id: currentUser.company_id ? {
+                            [Op.in]: [currentUser.id, currentUser.company_id]
+                        } : currentUser.id
+                    },
+                    {
+                        contractor_id: {
+                            [Op.in]: contractorIds
+                        }
+                    }
+                ];
             } else {
-                whereClause.parent_id = currentUser.id;
+                // Default legacy behavior for other roles
+                if (currentUser.company_id) {
+                    whereClause.parent_id = {
+                        [Op.in]: [currentUser.id, currentUser.company_id]
+                    };
+                } else {
+                    whereClause.parent_id = currentUser.id;
+                }
             }
         }
 
