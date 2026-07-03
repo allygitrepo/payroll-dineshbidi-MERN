@@ -12,7 +12,7 @@ app.use(helmet({
     crossOriginResourcePolicy: false
 }));
 app.use(cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: [process.env.CLIENT_URL, "http://localhost:5173", "https://payroll.allysoftsolutions.com"],
     credentials: true
 }));
 app.use(express.json({ limit: "10mb" }));
