@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './CompanyPage.module.css';
-import { useToast } from '../../../../shared/components';
+import { useToast, SearchableSelect } from '../../../../shared/components';
 
 const ESTB_TYPES = [
   { value: 'PROPRIETORSHIP', label: 'PROPRIETORSHIP' },
@@ -261,20 +261,15 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
             <label className={styles.label}>
               Establishment Type <span className={styles.required}>*</span>
             </label>
-            <select
+            <SearchableSelect
               name="estbType"
               value={formData.estbType}
               onChange={handleChange}
-              onBlur={handleBlur}
-              className={styles.select}
-              required
-            >
-              <option value="" disabled>SELECT</option>
-              {ESTB_TYPES.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            {errors.estbType && <span className={styles.errorText}>{errors.estbType}</span>}
+              options={ESTB_TYPES}
+              placeholder="SELECT ESTABLISHMENT TYPE"
+              required={true}
+              error={errors.estbType}
+            />
           </div>
 
           <div className={`${styles.field} ${styles.fieldEpfo}`}>
@@ -336,20 +331,15 @@ const CompanyForm = ({ company, onSave, onCancel }) => {
             <label className={styles.label}>
               Address <span className={styles.required}>*</span>
             </label>
-            <select
+            <SearchableSelect
               name="address"
               value={formData.address}
               onChange={handleAddressChange}
-              onBlur={handleBlur}
-              className={styles.select}
-              required
-            >
-              <option value="" disabled>SELECT ADDRESS</option>
-              {ADDRESS_TEMPLATES.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            {errors.address && <span className={styles.errorText}>{errors.address}</span>}
+              options={ADDRESS_TEMPLATES}
+              placeholder="SELECT ADDRESS"
+              required={true}
+              error={errors.address}
+            />
           </div>
 
           <div className={`${styles.field} ${styles.fieldPostOffice}`}>

@@ -10,7 +10,7 @@ import {
   getRoles,
   saveRole
 } from '../services/userManagementService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
 
 const UserManagementPage = () => {
   const addToast = useToast();

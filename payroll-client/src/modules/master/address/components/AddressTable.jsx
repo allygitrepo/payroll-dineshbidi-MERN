@@ -165,6 +165,70 @@ const AddressTable = ({ data, searchTerm, onSearchChange, statusFilter, onStatus
         </table>
       </div>
 
+      {/* Mobile Cards View */}
+      <div className={styles.mobileCardsContainer}>
+        {paginatedData.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+            No matching records found.
+          </div>
+        ) : (
+          paginatedData.map((addr, index) => (
+            <div key={addr.id} className={styles.mobileCard} onClick={() => onEdit && onEdit(addr)}>
+              <div className={styles.mobileCardHeader}>
+                <span className={styles.mobileCardIndex}># {startIndex + index + 1}</span>
+                <span style={{
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  backgroundColor: addr.status === 'Active' ? '#dcfce7' : '#fee2e2',
+                  color: addr.status === 'Active' ? '#16a34a' : '#ef4444'
+                }}>
+                  {addr.status}
+                </span>
+              </div>
+              <div className={styles.mobileCardBody}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                  {addr.address}
+                </h4>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Post Office:</span>
+                  <span className={styles.mobileCardValue}>{addr.postOffice || '-'}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>District:</span>
+                  <span className={styles.mobileCardValue}>{addr.district || '-'}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Pincode:</span>
+                  <span className={styles.mobileCardValue}>{addr.pincode || '-'}</span>
+                </div>
+              </div>
+              <div className={styles.mobileCardActions} onClick={(e) => e.stopPropagation()}>
+                {onEdit && (
+                  <button
+                    onClick={() => onEdit(addr)}
+                    title="Edit Address"
+                    className={styles.editBtn}
+                  >
+                    <Edit size={14} />
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    onClick={() => onDelete(addr.id)}
+                    title="Delete Address"
+                    className={styles.deleteBtn}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
       {/* Footer controls: bottom-left limit controls and page links */}
       <div className={styles.tableFooter}>
         <div className={styles.footerLeft}>

@@ -30,7 +30,7 @@ import {
 } from '../services/loanService';
 import { getEmployees } from '../../master/employee/services/employeeService';
 import { getOfficeStaffSalaries } from '../../setup/office-staff-salary/services/officeStaffSalaryService';
-import { useToast } from '../../../shared/components';
+import { useToast, Loader } from '../../../shared/components';
 
 const LoanPage = () => {
   const addToast = useToast();
@@ -268,6 +268,7 @@ const LoanPage = () => {
 
   return (
     <div className={styles.container}>
+      {(loadingEmployees || loadingLoans || submittingPayment) && <Loader fullPage={true} />}
       {/* Left Sidebar: Worker Search */}
       <div className={styles.leftSidebar}>
         <div className={styles.sidebarTitle}>Worker Database</div>

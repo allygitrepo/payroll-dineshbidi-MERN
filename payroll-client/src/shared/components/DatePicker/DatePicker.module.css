@@ -250,6 +250,64 @@
   color: var(--text-primary, #1e293b);
 }
 
+.yearDisplayBtn {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--primary, #27d68a);
+  background: transparent;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.yearDisplayBtn:hover {
+  background-color: var(--bg-main, #f1f5f9);
+  border-color: var(--border, #e2e8f0);
+}
+
+.yearDisplayTitle {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-secondary, #64748b);
+  padding: 4px 0;
+}
+
+.yearsScrollContainer {
+  max-height: 180px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.yearListItem {
+  border: 1px solid var(--border, #e2e8f0);
+  background: transparent;
+  padding: 6px 2px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.yearListItem:hover {
+  border-color: var(--primary, #27d68a);
+  color: var(--primary, #27d68a);
+  background-color: var(--bg-main, #f1f5f9);
+}
+
+.yearListItemActive {
+  background-color: var(--primary, #27d68a) !important;
+  color: #ffffff !important;
+  border-color: var(--primary, #27d68a) !important;
+}
+
 .overlayNav {
   display: flex;
   gap: 4px;

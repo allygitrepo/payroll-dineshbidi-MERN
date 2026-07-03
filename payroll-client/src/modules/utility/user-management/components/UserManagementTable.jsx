@@ -116,6 +116,55 @@ const UserManagementTable = ({ data, searchTerm, onSearchChange, onEdit, onDelet
         </table>
       </div>
 
+      {/* Mobile view cards layout */}
+      <div className={styles.mobileCardsContainer}>
+        {paginatedData.length > 0 ? (
+          paginatedData.map((row, idx) => (
+            <div key={row.id} className={styles.mobileCard}>
+              <div className={styles.mobileCardHeader}>
+                <span className={styles.mobileCardIndex}># {String(startIndex + idx + 1).padStart(2, '0')}</span>
+                <span style={{ fontWeight: '700', color: 'var(--primary)' }}>{row.designation}</span>
+              </div>
+              <div className={styles.mobileCardBody}>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>User Name:</span>
+                  <span className={styles.mobileCardValue}>{row.userName}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>User Id:</span>
+                  <span className={styles.mobileCardValue}>{row.userId}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Password:</span>
+                  <span className={styles.mobileCardValue}>{row.password}</span>
+                </div>
+              </div>
+              <div className={styles.mobileCardActions}>
+                <button
+                  onClick={() => onEdit(row)}
+                  className={styles.iconBtnRound}
+                  title="Edit User"
+                >
+                  <Edit size={16} />
+                </button>
+                <button
+                  onClick={() => onDelete(row.id)}
+                  className={styles.iconBtnRound}
+                  style={{ color: '#EF4444' }}
+                  title="Delete User"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+            No matching user accounts found.
+          </div>
+        )}
+      </div>
+
       {/* Table Footer Navigation */}
       <div className={styles.tableFooter}>
         <div className={styles.footerLeft}>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './ContractorPage.module.css';
-import { useToast, DatePicker } from '../../../../shared/components';
+import { useToast, DatePicker, SearchableSelect } from '../../../../shared/components';
 
 const ContractorForm = ({ contractor, addresses = [], onSave, onCancel }) => {
   const addToast = useToast();
@@ -253,19 +253,15 @@ const ContractorForm = ({ contractor, addresses = [], onSave, onCancel }) => {
             <label className={styles.label}>
               Address <span className={styles.required}>*</span>
             </label>
-            <select
+            <SearchableSelect
               name="address"
               value={formData.address}
               onChange={handleAddressChange}
-              onBlur={handleBlur}
-              className={styles.select}
-            >
-              <option value="">SELECT ADDRESS</option>
-              {addresses.filter(opt => opt.status === 'Active').map((opt) => (
-                <option key={opt.id} value={opt.address}>{opt.address}</option>
-              ))}
-            </select>
-            {errors.address && <span className={styles.errorText}>{errors.address}</span>}
+              options={addresses.filter(opt => opt.status === 'Active').map((opt) => ({ value: opt.address, label: opt.address }))}
+              placeholder="SELECT ADDRESS"
+              required={true}
+              error={errors.address}
+            />
           </div>
 
           {/* Post Office */}

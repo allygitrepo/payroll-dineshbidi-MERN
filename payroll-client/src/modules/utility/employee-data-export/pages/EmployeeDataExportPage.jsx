@@ -405,6 +405,48 @@ const EmployeeDataExportPage = () => {
           </table>
         </div>
 
+        {/* Mobile view cards layout */}
+        <div className={styles.mobileCardsContainer}>
+          {!isLoading && paginatedData.length > 0 ? (
+            paginatedData.map((emp, index) => (
+              <div key={emp.id} className={styles.mobileCard}>
+                <div className={styles.mobileCardHeader}>
+                  <span className={styles.mobileCardIndex}>UAN: {emp.uan}</span>
+                  <span style={{ fontWeight: '700', color: 'var(--primary)' }}>IP: {emp.ipNumber}</span>
+                </div>
+                <div className={styles.mobileCardBody}>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Member Name:</span>
+                    <span className={styles.mobileCardValue} style={{ fontWeight: '600' }}>{emp.memberName}</span>
+                  </div>
+                  {emp.memberId && (
+                    <div className={styles.mobileCardRow}>
+                      <span className={styles.mobileCardLabel}>Member ID:</span>
+                      <span className={styles.mobileCardValue}>{emp.memberId}</span>
+                    </div>
+                  )}
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>DOB / DOJ:</span>
+                    <span className={styles.mobileCardValue}>{formatDate(emp.dob)} / {formatDate(emp.dateOfJoining)}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Gender / Rel:</span>
+                    <span className={styles.mobileCardValue}>{emp.gender} / {emp.relation || 'FATHER'} ({emp.fatherHusbandName})</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Mobile / Email:</span>
+                    <span className={styles.mobileCardValue}>{emp.mobile || emp.mobileNumber || '-'} / {emp.email || emp.emailId || '-'}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : !isLoading ? (
+            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+              No matching records found.
+            </div>
+          ) : null}
+        </div>
+
         {/* Footer controls: Info text, limit control and pagination */}
         <div className={styles.tableFooter}>
           <div className={styles.footerLeft}>

@@ -343,6 +343,29 @@
     .twoColumn {
         grid-template-columns: 1fr;
     }
+
+    .templateRow {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        padding: 16px !important;
+    }
+    
+    .templateInfo {
+        padding-right: 0 !important;
+    }
+    
+    .templatePreview {
+        white-space: normal !important;
+        word-break: break-all !important;
+    }
+
+    .templateActions {
+        justify-content: flex-start !important;
+        width: 100% !important;
+        opacity: 1 !important;
+        margin-top: 4px;
+    }
 }
 
 .previewBox {

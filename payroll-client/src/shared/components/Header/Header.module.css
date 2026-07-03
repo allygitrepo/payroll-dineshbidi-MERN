@@ -136,3 +136,41 @@
   outline: none;
 }
 
+@media (max-width: 768px) {
+  .logoArea {
+    width: 60px !important;
+    padding: 0;
+    border-right: none;
+  }
+  
+  .logoArea img {
+    height: 32px;
+    width: 32px;
+  }
+  
+  .companyDropdownWrapper {
+    margin-right: 4px;
+    padding: 6px 8px;
+  }
+  
+  .companySelect {
+    max-width: 100px;
+    font-size: 0.8rem;
+  }
+  
+  .navRight {
+    padding-right: 8px;
+    gap: 6px;
+  }
+
+  .emailBtn span, .logoutBtn span {
+    display: none;
+  }
+
+  .emailBtn, .logoutBtn {
+    padding: 8px;
+    gap: 0;
+  }
+}
+
+

@@ -185,6 +185,71 @@ const EpfChallanDateTable = ({ data, searchTerm, onSearchChange, onEdit, onDelet
         </table>
       </div>
 
+      {/* Mobile view cards layout */}
+      <div className={styles.mobileCardsContainer}>
+        {paginatedData.length > 0 ? (
+          paginatedData.map((row, idx) => (
+            <div key={row.id} className={styles.mobileCard}>
+              <div className={styles.mobileCardHeader}>
+                <span className={styles.mobileCardIndex}># {String(startIndex + idx + 1).padStart(2, '0')}</span>
+                <span style={{ fontWeight: '700', color: 'var(--primary)' }}>{row.totalAmount}</span>
+              </div>
+              <div className={styles.mobileCardBody}>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>TRRN:</span>
+                  <span className={styles.mobileCardValue}>{row.trrn}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>CRN No:</span>
+                  <span className={styles.mobileCardValue}>{row.crnNo}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Wage Month:</span>
+                  <span className={styles.mobileCardValue}>{row.wageMonth}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Due Date:</span>
+                  <span className={styles.mobileCardValue}>{formatDate(row.dueDate)}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Challan Date:</span>
+                  <span className={styles.mobileCardValue}>{formatDate(row.challanDate)}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Return Date:</span>
+                  <span className={styles.mobileCardValue}>{formatDate(row.returnDate)}</span>
+                </div>
+              </div>
+              <div className={styles.mobileCardActions}>
+                {onEdit && (
+                  <button
+                    onClick={() => onEdit(row)}
+                    className={styles.iconBtnRound}
+                    title="Edit Record"
+                  >
+                    <Edit size={16} />
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    onClick={() => onDelete(row.id)}
+                    className={styles.iconBtnRound}
+                    style={{ color: '#EF4444' }}
+                    title="Delete Record"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        ) : (
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+            No matching records found.
+          </div>
+        )}
+      </div>
+
       {/* Table Footer Navigation */}
       <div className={styles.tableFooter}>
         <div className={styles.footerLeft}>

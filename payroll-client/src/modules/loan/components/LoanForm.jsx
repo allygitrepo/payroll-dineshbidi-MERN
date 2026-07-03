@@ -224,7 +224,7 @@ const LoanForm = ({ employee, onSave, onCancel }) => {
         <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Issue Loan to {employee.name}</h3>
       </div>
       <form onSubmit={handleSubmit} noValidate>
-        <div className={styles.formGrid}>
+        <div className={styles.formGrid} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
           {/* Loan Amount */}
           <div className={styles.field}>
             <label className={styles.label}>

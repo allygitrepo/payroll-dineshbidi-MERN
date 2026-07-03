@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './EmployeePage.module.css';
-import { useToast, DatePicker } from '../../../../shared/components';
+import { useToast, DatePicker, SearchableSelect } from '../../../../shared/components';
 import { Plus, Trash2 } from 'lucide-react';
 import FaceEnroll from './FaceEnroll';
 
@@ -194,6 +194,9 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
     }
     if (name === 'memberName') {
       return !value.trim() ? 'Employee Name is required!' : '';
+    }
+    if (name === 'dob') {
+      return !value ? 'Date of Birth is required!' : '';
     }
     if (name === 'gender') {
       return !value ? 'Gender is required!' : '';
@@ -590,7 +593,7 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
     const tempErrors = {};
     const personalFields = [
-      'uan', 'memberName', 'gender', 'dateOfJoining',
+      'uan', 'memberName', 'gender', 'dateOfJoining', 'dob',
       'address', 'postOffice', 'district', 'pincode'
     ];
 
@@ -728,11 +731,14 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
             </div>
 
             <div className={styles.field}>
-              <label className={styles.label}>Date Of Birth As Per Aadhaar</label>
+              <label className={styles.label}>
+                Date Of Birth As Per Aadhaar <span className={styles.required}>*</span>
+              </label>
               <DatePicker
                 name="dob"
                 value={formData.dob}
                 onChange={handleChange}
+                required={true}
               />
               {errors.dob && <span className={styles.errorText}>{errors.dob}</span>}
             </div>
@@ -758,20 +764,15 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
               <label className={styles.label}>
                 Gender <span className={styles.required}>*</span>
               </label>
-              <select
+              <SearchableSelect
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
-                onBlur={handleBlur}
-                className={styles.select}
-                required
-              >
-                <option value="" disabled>SELECT</option>
-                {GENDERS.map((g) => (
-                  <option key={g} value={g}>{g}</option>
-                ))}
-              </select>
-              {errors.gender && <span className={styles.errorText}>{errors.gender}</span>}
+                options={GENDERS.map(g => ({ value: g, label: g }))}
+                placeholder="SELECT GENDER"
+                required={true}
+                error={errors.gender}
+              />
             </div>
 
             <div className={styles.field}>
@@ -788,32 +789,24 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
             <div className={styles.field}>
               <label className={styles.label}>Relation</label>
-              <select
+              <SearchableSelect
                 name="relation"
                 value={formData.relation}
                 onChange={handleChange}
-                className={styles.select}
-              >
-                <option value="">SELECT RELATION</option>
-                {RELATIONS.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+                options={RELATIONS.map(r => ({ value: r, label: r }))}
+                placeholder="SELECT RELATION"
+              />
             </div>
 
             <div className={styles.field}>
               <label className={styles.label}>Marital Status</label>
-              <select
+              <SearchableSelect
                 name="maritalStatus"
                 value={formData.maritalStatus}
                 onChange={handleChange}
-                className={styles.select}
-              >
-                <option value="">SELECT MARITAL STATUS</option>
-                {MARITAL_STATUSES.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
+                options={MARITAL_STATUSES.map(m => ({ value: m, label: m }))}
+                placeholder="SELECT MARITAL STATUS"
+              />
             </div>
 
             <div className={styles.field}>
@@ -835,17 +828,13 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
             <div className={styles.field}>
               <label className={styles.label}>Qualification</label>
-              <select
+              <SearchableSelect
                 name="qualification"
                 value={formData.qualification}
                 onChange={handleChange}
-                className={styles.select}
-              >
-                <option value="">SELECT QUALIFICATION</option>
-                {QUALIFICATIONS.map((q) => (
-                  <option key={q} value={q}>{q}</option>
-                ))}
-              </select>
+                options={QUALIFICATIONS.map(q => ({ value: q, label: q }))}
+                placeholder="SELECT QUALIFICATION"
+              />
             </div>
 
             <div className={styles.field}>
@@ -864,55 +853,45 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
               <label className={styles.label}>
                 Type of Employee <span className={styles.required}>*</span>
               </label>
-              <select
+              <SearchableSelect
                 name="employeeType"
                 value={formData.employeeType}
                 onChange={handleChange}
-                onBlur={handleBlur}
-                className={styles.select}
-                required
-              >
-                <option value="" disabled>SELECT TYPE OF EMPLOYEE</option>
-                {EMPLOYEE_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-              {errors.employeeType && <span className={styles.errorText}>{errors.employeeType}</span>}
+                options={EMPLOYEE_TYPES.map(t => ({ value: t, label: t }))}
+                placeholder="SELECT TYPE OF EMPLOYEE"
+                required={true}
+                error={errors.employeeType}
+              />
             </div>
 
             <div className={styles.field}>
               <label className={styles.label}>Contractor</label>
-              <select
+              <SearchableSelect
                 name="contractor"
                 value={formData.contractor}
                 onChange={handleChange}
-                className={styles.select}
                 disabled={isContractor}
-              >
-                {!isContractor && <option value="SELF">SELF</option>}
-                {contractors.filter(c => c.status === 'Active').map((c) => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-              </select>
+                options={[
+                  ...(!isContractor ? [{ value: 'SELF', label: 'SELF' }] : []),
+                  ...contractors.filter(c => c.status === 'Active').map(c => ({ value: c.name, label: c.name }))
+                ]}
+                placeholder="SELECT CONTRACTOR"
+              />
             </div>
 
             <div className={styles.field}>
               <label className={styles.label}>
                 Address <span className={styles.required}>*</span>
               </label>
-              <select
+              <SearchableSelect
                 name="address"
                 value={formData.address}
                 onChange={handleAddressChange}
-                onBlur={handleBlur}
-                className={styles.select}
-              >
-                <option value="">SELECT ADDRESS</option>
-                {addresses.filter(opt => opt.status === 'Active').map((opt) => (
-                  <option key={opt.id} value={opt.address}>{opt.address}</option>
-                ))}
-              </select>
-              {errors.address && <span className={styles.errorText}>{errors.address}</span>}
+                options={addresses.filter(opt => opt.status === 'Active').map(opt => ({ value: opt.address, label: opt.address }))}
+                placeholder="SELECT ADDRESS"
+                required={true}
+                error={errors.address}
+              />
             </div>
 
             <div className={styles.field}>
@@ -1053,17 +1032,14 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
             <div className={styles.inlineRow}>
               <div className={styles.inlineField}>
                 <label className={styles.label}>Document Type <span className={styles.required}>*</span></label>
-                <select
+                <SearchableSelect
                   name="documentType"
                   value={kycInput.documentType}
                   onChange={handleKycInputChange}
-                  className={styles.select}
-                >
-                  <option value="">SELECT</option>
-                  {DOC_TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                  options={DOC_TYPES.map((t) => ({ value: t, label: t }))}
+                  placeholder="SELECT DOCUMENT TYPE"
+                  required={true}
+                />
               </div>
 
               <div className={styles.inlineField}>
@@ -1245,17 +1221,13 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
               <div className={styles.field}>
                 <label className={styles.label}>Relation</label>
-                <select
+                <SearchableSelect
                   name="relation"
                   value={nomineeInput.relation}
                   onChange={handleNomineeInputChange}
-                  className={styles.select}
-                >
-                  <option value="">SELECT RELATION</option>
-                  {RELATIONS.map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
+                  options={RELATIONS.map(r => ({ value: r, label: r }))}
+                  placeholder="SELECT RELATION"
+                />
               </div>
 
               <div className={styles.field}>
@@ -1399,17 +1371,13 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
             <div className={styles.inlineRow}>
               <div className={styles.inlineField}>
                 <label className={styles.label}>Relation</label>
-                <select
+                <SearchableSelect
                   name="relation"
                   value={familyInput.relation}
                   onChange={handleFamilyInputChange}
-                  className={styles.select}
-                >
-                  <option value="">SELECT RELATION</option>
-                  {RELATIONS.map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
+                  options={RELATIONS.map(r => ({ value: r, label: r }))}
+                  placeholder="SELECT RELATION"
+                />
               </div>
 
               <div className={styles.inlineField}>

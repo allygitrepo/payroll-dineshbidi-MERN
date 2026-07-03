@@ -8,7 +8,7 @@ import {
   saveResignation,
   deleteResignation
 } from '../services/resignationService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
@@ -23,6 +23,8 @@ const ResignationPage = () => {
   const addToast = useToast();
 
   const [resignations, setResignations] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingResignation, setEditingResignation] = useState(null);
 
@@ -39,10 +41,13 @@ const ResignationPage = () => {
   // Load initial data
   const fetchData = async () => {
     try {
+      setIsLoading(true);
       const data = await getResignations();
       setResignations(data);
     } catch (error) {
       addToast({ type: 'error', message: 'Failed to fetch resignations' });
+    } finally {
+      setIsLoading(false);
     }
   };
 

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import styles from '../components/OfficeStaffEntryPage.module.css';
-import { useToast, MonthYearPicker, Pagination } from '../../../../shared/components';
+import { useToast, MonthYearPicker, Pagination, Loader } from '../../../../shared/components';
 import {
   getOfficeStaffEntry,
   saveOfficeStaffEntry,
@@ -357,6 +357,7 @@ const OfficeStaffEntryPage = () => {
   /* ================================================ */
   return (
     <div className={styles.container}>
+      {loading && <Loader fullPage={true} />}
 
       {/* ---- Header ---- */}
       <div className={styles.headerSection}>
@@ -604,6 +605,57 @@ const OfficeStaffEntryPage = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List */}
+          <div className={styles.mobileCardsContainer}>
+            {paginatedRows.map(row => (
+              <div key={row.employeeId} className={styles.mobileCard}>
+                <div className={styles.mobileCardHeader}>
+                  <div className={styles.empCell}>
+                    <span className={styles.empName}>{row.employeeName}</span>
+                    <span className={styles.empCode}>{row.employeeCode} (A/C: {row.accountNo})</span>
+                  </div>
+                </div>
+                <div className={styles.mobileCardBody}>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Days Worked:</span>
+                    <input type="number" min={0} value={row.daysWorked} onChange={e => handleFieldChange(row.employeeId, 'daysWorked', e.target.value)} className={styles.tableInput} style={{ width: '120px', textAlign: 'right' }} disabled={!canEdit} />
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Addition:</span>
+                    <input type="number" min={0} value={row.addition} onChange={e => handleFieldChange(row.employeeId, 'addition', e.target.value)} className={styles.tableInput} style={{ width: '120px', textAlign: 'right' }} disabled={!canEdit} />
+                  </div>
+                  
+                  {/* Display fields */}
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Leave Paid/Unpaid:</span>
+                    <span className={styles.mobileCardValue}>{row.leaveWithPay} / {row.leaveWithoutPay}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Basic Salary:</span>
+                    <span className={styles.mobileCardValue}>₹{Math.round(row.basicSalary || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  
+                  <div style={{ height: '1px', backgroundColor: 'var(--border)', margin: '8px 0' }} />
+                  
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Gross Wages:</span>
+                    <span className={styles.mobileCardValue}>₹{Math.round(row.gross || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>PF / PT / ESIC:</span>
+                    <span className={styles.mobileCardValue} style={{ color: 'var(--danger)' }}>
+                      ₹{row.pf || 0} / ₹{row.pt || 0} / ₹{row.esic || 0}
+                    </span>
+                  </div>
+                  <div className={styles.mobileCardRow} style={{ fontWeight: '700' }}>
+                    <span className={styles.mobileCardLabel}>Net Pay:</span>
+                    <span className={styles.mobileCardValue} style={{ color: 'var(--primary)' }}>₹{Math.round(row.netWages || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           <Pagination

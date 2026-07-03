@@ -5,7 +5,7 @@ import styles from '../components/ProfessionalTaxPage.module.css';
 import ProfessionalTaxForm from '../components/ProfessionalTaxForm';
 import ProfessionalTaxTable from '../components/ProfessionalTaxTable';
 import { getProfessionalTax, saveProfessionalTax, deleteProfessionalTax } from '../services/professionalTaxService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import { parseExcelDate } from '../../../../shared/utils/dateUtils';
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
@@ -30,6 +30,7 @@ const ProfessionalTaxPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -100,12 +101,15 @@ const ProfessionalTaxPage = () => {
     if (deleteTargetId) {
       const companyId = localStorage.getItem('selectedCompany');
       try {
+        setIsSaving(true);
         const updated = await deleteProfessionalTax(deleteTargetId, companyId);
         setWagesList(updated);
         addToast({ type: 'success', message: 'Professional Tax record deleted successfully!' });
       } catch (err) {
         console.error('Error deleting professional tax:', err);
         addToast({ type: 'error', message: 'Failed to delete professional tax.' });
+      } finally {
+        setIsSaving(false);
       }
     }
     setIsConfirmOpen(false);
@@ -120,6 +124,7 @@ const ProfessionalTaxPage = () => {
   const handleSave = async (wagesData) => {
     const companyId = localStorage.getItem('selectedCompany');
     try {
+      setIsSaving(true);
       const updated = await saveProfessionalTax(wagesData, companyId);
       setWagesList(updated);
       setIsFormOpen(false);
@@ -134,6 +139,8 @@ const ProfessionalTaxPage = () => {
         type: 'error',
         message: err.response?.data?.messageToShow || 'Failed to save professional tax.'
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -254,6 +261,7 @@ const ProfessionalTaxPage = () => {
 
   return (
     <div className={styles.container}>
+      {(loading || isSaving) && <Loader fullPage={true} />}
       
       {/* Header section with page heading and action buttons */}
       <div className={styles.headerSection}>

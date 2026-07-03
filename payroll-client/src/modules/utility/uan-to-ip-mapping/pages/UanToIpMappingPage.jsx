@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Download, Eye, Save } from 'lucide-react';
-import { useToast } from '../../../../shared/components';
+import { useToast, Loader } from '../../../../shared/components';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { bulkUpdateIpMapping } from '../services/uanToIpService';
 import * as XLSX from 'xlsx';
@@ -307,6 +307,42 @@ const UanToIpMappingPage = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile view cards layout */}
+          <div className={styles.mobileCardsContainer}>
+            {previewData.length > 0 ? (
+              previewData.map((row, index) => (
+                <div key={row.id} className={styles.mobileCard}>
+                  <div className={styles.mobileCardHeader}>
+                    <span className={styles.mobileCardIndex}># {String(index + 1).padStart(2, '0')}</span>
+                    <span>
+                      <span className={`${styles.badge} ${row.badgeStyle}`}>
+                        {row.status}
+                      </span>
+                    </span>
+                  </div>
+                  <div className={styles.mobileCardBody}>
+                    <div className={styles.mobileCardRow}>
+                      <span className={styles.mobileCardLabel}>Employee:</span>
+                      <span className={styles.mobileCardValue} style={{ fontWeight: '600' }}>{row.employeeName}</span>
+                    </div>
+                    <div className={styles.mobileCardRow}>
+                      <span className={styles.mobileCardLabel}>UAN:</span>
+                      <span className={styles.mobileCardValue}>{row.uan}</span>
+                    </div>
+                    <div className={styles.mobileCardRow}>
+                      <span className={styles.mobileCardLabel}>IP Number:</span>
+                      <span className={styles.mobileCardValue}>{row.ipNumber}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                No data to preview. Choose a valid mapping file first.
+              </div>
+            )}
           </div>
         </div>
       )}

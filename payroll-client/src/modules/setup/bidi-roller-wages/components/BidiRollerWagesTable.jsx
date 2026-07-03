@@ -118,6 +118,75 @@ const BidiRollerWagesTable = ({ data, searchTerm, onSearchChange, onEdit, onDele
         </table>
       </div>
 
+      {/* Mobile Card Layout for smaller screens */}
+      <div className={styles.mobileCardsContainer}>
+        {paginatedData.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+            No matching records found.
+          </div>
+        ) : (
+          paginatedData.map((item, index) => (
+            <div key={item.id} className={styles.mobileCard} onClick={() => onEdit ? onEdit(item) : null}>
+              <div className={styles.mobileCardHeader}>
+                <span className={styles.mobileCardIndex}># {startIndex + index + 1}</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                  {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                </span>
+              </div>
+              <div className={styles.mobileCardBody}>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Rate 1:</span>
+                  <span className={styles.mobileCardValue}>{item.rate1}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>HRA 1:</span>
+                  <span className={styles.mobileCardValue}>{item.hra1}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Bonus 1:</span>
+                  <span className={styles.mobileCardValue}>{item.bonus1}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Rate 2:</span>
+                  <span className={styles.mobileCardValue}>{item.rate2}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>HRA 2:</span>
+                  <span className={styles.mobileCardValue}>{item.hra2}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Bonus 2:</span>
+                  <span className={styles.mobileCardValue}>{item.bonus2}</span>
+                </div>
+              </div>
+              {(onEdit || onDelete) && (
+                <div className={styles.mobileCardActions} onClick={(e) => e.stopPropagation()}>
+                  {onEdit && (
+                    <button 
+                      onClick={() => onEdit(item)} 
+                      title="Edit Record"
+                      className={styles.editBtn}
+                    >
+                      <Edit size={16} />
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button 
+                      onClick={() => onDelete(item.id)} 
+                      title="Delete Record"
+                      className={styles.deleteBtn}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+
       {/* Footer controls: bottom-left limit controls and right page buttons */}
       <div className={styles.tableFooter}>
         <div className={styles.footerLeft}>

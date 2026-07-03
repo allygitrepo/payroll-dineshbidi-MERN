@@ -427,6 +427,54 @@ const KycExportPage = () => {
               </tbody>
             </table>
           )}
+
+          {/* Mobile view cards layout */}
+          <div className={styles.mobileCardsContainer}>
+            {!isLoading && paginatedData.length > 0 ? (
+              paginatedData.map((row, idx) => (
+                <div key={row.id} className={styles.mobileCard}>
+                  <div className={styles.mobileCardHeader}>
+                    <span className={styles.mobileCardIndex}># {String(startIndex + idx + 1).padStart(2, '0')}</span>
+                    <span style={{ fontWeight: '700', color: 'var(--primary)' }}>{row.typeCode}</span>
+                  </div>
+                  <div className={styles.mobileCardBody}>
+                    <div className={styles.mobileCardRow}>
+                      <span className={styles.mobileCardLabel}>Name:</span>
+                      <span className={styles.mobileCardValue} style={{ fontWeight: '600' }}>{row.employeeName}</span>
+                    </div>
+                    <div className={styles.mobileCardRow}>
+                      <span className={styles.mobileCardLabel}>UAN:</span>
+                      <span className={styles.mobileCardValue}>{row.uan}</span>
+                    </div>
+                    <div className={styles.mobileCardRow}>
+                      <span className={styles.mobileCardLabel}>Doc Number:</span>
+                      <span className={styles.mobileCardValue}>{row.docNumber}</span>
+                    </div>
+                    <div className={styles.mobileCardRow}>
+                      <span className={styles.mobileCardLabel}>Name on Doc:</span>
+                      <span className={styles.mobileCardValue}>{row.nameAsPerDoc}</span>
+                    </div>
+                    {row.ifsc && (
+                      <div className={styles.mobileCardRow}>
+                        <span className={styles.mobileCardLabel}>IFSC:</span>
+                        <span className={styles.mobileCardValue}>{row.ifsc}</span>
+                      </div>
+                    )}
+                    {row.expiryDate && (
+                      <div className={styles.mobileCardRow}>
+                        <span className={styles.mobileCardLabel}>Expiry Date:</span>
+                        <span className={styles.mobileCardValue}>{row.expiryDate}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : !isLoading ? (
+              <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                No KYC export data found for the selected criteria.
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {totalPages > 1 && (

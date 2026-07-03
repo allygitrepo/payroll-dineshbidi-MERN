@@ -457,6 +457,46 @@ const AbsentListPage = () => {
           </table>
         </div>
 
+        {/* Mobile view cards layout */}
+        <div className={styles.mobileCardsContainer}>
+          {paginatedData.length > 0 ? (
+            paginatedData.map((cand, index) => (
+              <div key={cand.id} className={styles.mobileCard}>
+                <div className={styles.mobileCardHeader}>
+                  <span className={styles.mobileCardIndex}># {String(startIndex + index + 1).padStart(2, '0')}</span>
+                  <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{cand.memberName}</span>
+                </div>
+                <div className={styles.mobileCardBody}>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Member ID:</span>
+                    <span className={styles.mobileCardValue}>{cand.memberId}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>UAN:</span>
+                    <span className={styles.mobileCardValue}>{cand.uan}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>DOB:</span>
+                    <span className={styles.mobileCardValue}>{formatDate(cand.dob)}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Type of Employee:</span>
+                    <span className={styles.mobileCardValue}>{cand.employeeType}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Contractor Name:</span>
+                    <span className={styles.mobileCardValue}>{cand.contractor || '-'}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+              No matching records found.
+            </div>
+          )}
+        </div>
+
         {/* Table Footer Controls */}
         <div className={styles.tableFooter}>
           <div className={styles.footerLeft}>

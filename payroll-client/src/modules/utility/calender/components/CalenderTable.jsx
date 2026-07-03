@@ -103,6 +103,65 @@ const CalenderTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete }) =
         </table>
       </div>
 
+      {/* Mobile view cards layout */}
+      <div className={styles.mobileCardsContainer}>
+        {paginatedData.length > 0 ? (
+          paginatedData.map((item, index) => (
+            <div key={item.id} className={styles.mobileCard}>
+              <div className={styles.mobileCardHeader}>
+                <span className={styles.mobileCardIndex}># {String(startIndex + index + 1).padStart(2, '0')}</span>
+                <span style={{ fontWeight: '700', color: 'var(--primary)' }}>{item.holidayType}</span>
+              </div>
+              <div className={styles.mobileCardBody}>
+                {item.holidayType === 'COMPANY' && (
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Date:</span>
+                    <span className={styles.mobileCardValue}>{formatDate(item.holidayDate)}</span>
+                  </div>
+                )}
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Year:</span>
+                  <span className={styles.mobileCardValue}>{item.year || '-'}</span>
+                </div>
+                {item.holidayType === 'WEEKLY' && (
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Week Day:</span>
+                    <span className={styles.mobileCardValue}>{item.weekDay}</span>
+                  </div>
+                )}
+                {item.remark && (
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Remark:</span>
+                    <span className={styles.mobileCardValue}>{item.remark}</span>
+                  </div>
+                )}
+              </div>
+              <div className={styles.mobileCardActions}>
+                <button
+                  onClick={() => onEdit(item)}
+                  className={styles.iconBtnRound}
+                  title="Edit Holiday"
+                >
+                  <Edit size={16} />
+                </button>
+                <button
+                  onClick={() => onDelete(item.id)}
+                  className={styles.iconBtnRound}
+                  style={{ color: '#EF4444' }}
+                  title="Delete Holiday"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+            No matching records found.
+          </div>
+        )}
+      </div>
+
       {/* Footer controls */}
       <div className={styles.tableFooter}>
         <div className={styles.footerLeft}>

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, RotateCcw, Edit, AlertCircle, MessageCircle } from 'lucide-react';
-import { useToast, Pagination } from '../../../../shared/components';
+import { useToast, Pagination, Loader } from '../../../../shared/components';
 import { getMissingDetails } from '../../../master/employee/services/employeeService';
 import { getWhatsAppStatus } from '../../whatsapp/services/whatsappService';
 import WhatsAppBulkSendModal from '../../whatsapp/components/WhatsAppBulkSendModal';
@@ -296,6 +296,55 @@ const MissingInformationPage = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile view cards layout */}
+        <div className={styles.mobileCardsContainer}>
+          {paginatedData.length > 0 ? (
+            paginatedData.map((emp, index) => (
+              <div key={emp.id} className={styles.mobileCard}>
+                <div className={styles.mobileCardHeader}>
+                  <span className={styles.mobileCardIndex}># {String(startIndex + index + 1).padStart(2, '0')}</span>
+                  <span style={{ fontWeight: '700' }}>UAN: {emp.uan || '-'}</span>
+                </div>
+                <div className={styles.mobileCardBody}>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Employee Name:</span>
+                    <span className={styles.mobileCardValue} style={{ fontWeight: '600' }}>{emp.memberName}</span>
+                  </div>
+                  <div className={styles.mobileCardRow} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+                    <span className={styles.mobileCardLabel}>Missing Fields:</span>
+                    <div className={styles.badgeContainer} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {emp.missingFields.map(f => {
+                        const isAuditTarget = appliedFields.includes(f);
+                        return (
+                          <span
+                            key={f}
+                            className={`${styles.badge} ${isAuditTarget ? styles.badgeActive : styles.badgeInactive}`}
+                          >
+                            {f}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.mobileCardActions}>
+                  <button
+                    onClick={() => handleEditClick(emp)}
+                    className={styles.iconBtnRound}
+                    title="Update Employee Details"
+                  >
+                    <Edit size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+              No employees with missing details matching selected criteria.
+            </div>
+          )}
         </div>
 
         {/* Footer controls: Info text, limit control and pagination */}

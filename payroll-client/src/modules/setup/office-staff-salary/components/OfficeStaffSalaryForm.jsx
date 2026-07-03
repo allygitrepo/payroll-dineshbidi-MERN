@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './OfficeStaffSalaryPage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
-import { useToast, DatePicker } from '../../../../shared/components';
+import { useToast, DatePicker, SearchableSelect } from '../../../../shared/components';
 
 const OfficeStaffSalaryForm = ({ wages, onSave, onCancel }) => {
   const addToast = useToast();
@@ -176,20 +176,15 @@ const OfficeStaffSalaryForm = ({ wages, onSave, onCancel }) => {
             <label className={styles.label}>
               Employee Name <span className={styles.required}>*</span>
             </label>
-            <select
+            <SearchableSelect
               name="employeeId"
               value={formData.employeeId}
               onChange={handleChange}
-              onBlur={handleBlur}
-              className={styles.select}
-            >
-              <option value="">SELECT EMPLOYEE</option>
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.memberName}
-                </option>
-              ))}
-            </select>
+              options={employees.map((emp) => ({ value: emp.id, label: emp.memberName }))}
+              placeholder="SELECT EMPLOYEE"
+              required={true}
+              error={errors.employeeId}
+            />
             {errors.employeeId && <span className={styles.errorText}>{errors.employeeId}</span>}
           </div>
 

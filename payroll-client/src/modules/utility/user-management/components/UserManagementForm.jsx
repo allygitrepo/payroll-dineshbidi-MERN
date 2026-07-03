@@ -313,7 +313,7 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
         </div>
       )}
       <form onSubmit={handleSubmit}>
-        <div className={styles.formGrid}>
+        <div className={styles.formGrid} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
           {/* User Name */}
           <div className={styles.field}>
             <label className={styles.label}>
@@ -376,7 +376,7 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
             <label className={styles.label}>
               Designation <span className={styles.required}>*</span>
             </label>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               {isCreatingRole ? (
                 <input
                   type="text"
@@ -386,6 +386,7 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
                   className={styles.input}
                   placeholder="Enter new designation..."
                   onBlur={handleBlur}
+                  style={{ minWidth: '150px', flex: 1 }}
                 />
               ) : (
                 <select
@@ -394,6 +395,7 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
                   onChange={handleChange}
                   className={styles.input}
                   onBlur={handleBlur}
+                  style={{ minWidth: '150px', flex: 1 }}
                 >
                   <option value="" disabled>Select Designation</option>
                   {roles.map(r => (
@@ -408,7 +410,7 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
                   setFormData(prev => ({ ...prev, designation: '', role_id: null }));
                 }}
                 className={styles.saveBtn}
-                style={{ padding: '8px 12px', whiteSpace: 'nowrap', minWidth: '100px' }}
+                style={{ padding: '8px 12px', whiteSpace: 'nowrap', minWidth: '100px', flexShrink: 0 }}
               >
                 {isCreatingRole ? 'Cancel New' : '+ Add New'}
               </button>
@@ -456,67 +458,69 @@ const UserManagementForm = ({ user, roles = [], onSave, onCancel }) => {
                       <span style={{ fontWeight: '600' }}>{group.title}</span>
                     </div>
                     <div className={styles.groupBody}>
-                      <table className={styles.permissionsTable}>
-                        <thead>
-                          <tr>
-                            <th>Module</th>
-                            <th>Read</th>
-                            <th>Create</th>
-                            <th>Edit</th>
-                            <th>Delete</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {group.items.map(item => {
-                            const perms = formData.permissions[item.slug] || {};
-                            return (
-                              <tr key={item.slug}>
-                                <td>
-                                  {item.label}
-                                </td>
-                                <td>
-                                  <input
-                                    type="checkbox"
-                                    checked={!!perms.read}
-                                    onChange={() => handlePermissionChange(item.slug, 'read')}
-                                    className={styles.permissionCheckbox}
-                                  />
-                                </td>
-                                <td>
-                                  {!item.readOnly && (
+                      <div style={{ overflowX: 'auto', width: '100%' }}>
+                        <table className={styles.permissionsTable}>
+                          <thead>
+                            <tr>
+                              <th>Module</th>
+                              <th>Read</th>
+                              <th>Create</th>
+                              <th>Edit</th>
+                              <th>Delete</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.items.map(item => {
+                              const perms = formData.permissions[item.slug] || {};
+                              return (
+                                <tr key={item.slug}>
+                                  <td>
+                                    {item.label}
+                                  </td>
+                                  <td>
                                     <input
                                       type="checkbox"
-                                      checked={!!perms.create}
-                                      onChange={() => handlePermissionChange(item.slug, 'create')}
+                                      checked={!!perms.read}
+                                      onChange={() => handlePermissionChange(item.slug, 'read')}
                                       className={styles.permissionCheckbox}
                                     />
-                                  )}
-                                </td>
-                                <td>
-                                  {!item.readOnly && (
-                                    <input
-                                      type="checkbox"
-                                      checked={!!perms.edit}
-                                      onChange={() => handlePermissionChange(item.slug, 'edit')}
-                                      className={styles.permissionCheckbox}
-                                    />
-                                  )}
-                                </td>
-                                <td>
-                                  {!item.readOnly && (
-                                    <input
-                                      type="checkbox"
-                                      checked={!!perms.delete}
-                                      onChange={() => handlePermissionChange(item.slug, 'delete')}
-                                      className={styles.permissionCheckbox}
-                                    />
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                  </td>
+                                  <td>
+                                    {!item.readOnly && (
+                                      <input
+                                        type="checkbox"
+                                        checked={!!perms.create}
+                                        onChange={() => handlePermissionChange(item.slug, 'create')}
+                                        className={styles.permissionCheckbox}
+                                      />
+                                    )}
+                                  </td>
+                                  <td>
+                                    {!item.readOnly && (
+                                      <input
+                                        type="checkbox"
+                                        checked={!!perms.edit}
+                                        onChange={() => handlePermissionChange(item.slug, 'edit')}
+                                        className={styles.permissionCheckbox}
+                                      />
+                                    )}
+                                  </td>
+                                  <td>
+                                    {!item.readOnly && (
+                                      <input
+                                        type="checkbox"
+                                        checked={!!perms.delete}
+                                        onChange={() => handlePermissionChange(item.slug, 'delete')}
+                                        className={styles.permissionCheckbox}
+                                      />
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 );

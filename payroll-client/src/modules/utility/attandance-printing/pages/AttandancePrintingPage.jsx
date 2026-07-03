@@ -477,6 +477,83 @@ const AttandancePrintingPage = () => {
             </table>
           </div>
 
+          {/* Mobile view cards layout */}
+          <div className={styles.mobileCardsContainer}>
+            {paginatedEmployees.length > 0 ? (
+              paginatedEmployees.map((emp, index) => {
+                const srNo = (currentPage - 1) * rowsPerPage + index + 1;
+                const presentDays = getPresentDaysCount(emp.id);
+
+                return (
+                  <div key={emp.id} className={styles.mobileCard}>
+                    <div className={styles.mobileCardHeader}>
+                      <span className={styles.mobileCardIndex}># {String(srNo).padStart(2, '0')}</span>
+                      <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{emp.memberName}</span>
+                    </div>
+                    <div className={styles.mobileCardBody}>
+                      <div className={styles.mobileCardRow} style={{ fontWeight: '700', marginBottom: '8px' }}>
+                        <span>Total Days Worked:</span>
+                        <span style={{ color: 'var(--primary)', fontSize: '1rem' }}>{presentDays || 0} days</span>
+                      </div>
+                      
+                      {/* Grid of days */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginTop: '8px' }}>
+                        {daysArray.map(dayKey => {
+                          const isSun = isHoliday(dayKey);
+                          const val = attendanceLookup[emp.id]?.[dayKey] || '';
+                          
+                          let bg = '#f1f5f9';
+                          let color = '#475569';
+                          let label = dayKey;
+                          
+                          if (isSun) {
+                            bg = '#EF4444';
+                            color = '#ffffff';
+                            label = `${dayKey} (S)`;
+                          } else if (val === 'P') {
+                            bg = '#10B981';
+                            color = '#ffffff';
+                          } else if (val === 'A') {
+                            bg = '#F59E0B';
+                            color = '#ffffff';
+                          }
+                          
+                          return (
+                            <div 
+                              key={dayKey} 
+                              style={{ 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                padding: '6px 2px', 
+                                borderRadius: '6px', 
+                                backgroundColor: bg, 
+                                color: color,
+                                fontSize: '0.75rem',
+                                fontWeight: '600'
+                              }}
+                              title={`Day ${dayKey}: ${isSun ? 'Sunday' : val || 'Absent'}`}
+                            >
+                              <span>{dayKey}</span>
+                              <span style={{ fontSize: '0.7rem', opacity: 0.9 }}>
+                                {isSun ? 'Sun' : val || '-'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                No employees found matching the search criteria.
+              </div>
+            )}
+          </div>
+
           {/* Footer Info & Pagination */}
           <div className={styles.tableFooter}>
             <div className={styles.footerLeft}>

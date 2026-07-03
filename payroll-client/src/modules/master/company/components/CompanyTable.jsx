@@ -233,6 +233,92 @@ const CompanyTable = ({ data, searchTerm, onSearchChange, selectedStatus, onStat
         </table>
       </div>
 
+      {/* Mobile Cards View */}
+      <div className={styles.mobileCardsContainer}>
+        {paginatedData.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+            No matching records found.
+          </div>
+        ) : (
+          paginatedData.map((company, index) => (
+            <div key={company.id} className={styles.mobileCard} onClick={() => onEdit && onEdit(company)}>
+              <div className={styles.mobileCardHeader}>
+                <span className={styles.mobileCardIndex}># {startIndex + index + 1}</span>
+                <span style={{
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  backgroundColor: company.cstatus ? '#dcfce7' : '#fee2e2',
+                  color: company.cstatus ? '#16a34a' : '#ef4444'
+                }}>
+                  {company.cstatus ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <div className={styles.mobileCardBody}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                  {company.estbName}
+                </h4>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Estb ID:</span>
+                  <span className={styles.mobileCardValue}>{company.estbId}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Estb Type:</span>
+                  <span className={styles.mobileCardValue}>{company.estbType}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>EPFO Office:</span>
+                  <span className={styles.mobileCardValue}>{company.epfoOffice}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>LIN No:</span>
+                  <span className={styles.mobileCardValue}>{company.linNo}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>PAN:</span>
+                  <span className={styles.mobileCardValue}>{company.pan}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Address:</span>
+                  <span className={styles.mobileCardValue}>{company.address}</span>
+                </div>
+              </div>
+              <div className={styles.mobileCardActions} onClick={(e) => e.stopPropagation()}>
+                {onEdit && (
+                  <button 
+                    onClick={() => onEdit(company)} 
+                    title="Edit Company"
+                    className={styles.editBtn}
+                  >
+                    <Edit size={16} />
+                  </button>
+                )}
+                {onDelete && (
+                  <button 
+                    onClick={() => onDelete(company.id)} 
+                    title="Delete Company"
+                    className={styles.deleteBtn}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+                {onSetDefault && (
+                  <button
+                    onClick={() => onSetDefault(company.id)}
+                    title="Set as Default Company"
+                    className={styles.editBtn}
+                    style={{ color: company.id === localStorage.getItem('selectedCompany') ? '#f59e0b' : 'var(--text-secondary)' }}
+                  >
+                    <Star size={16} fill={company.id === localStorage.getItem('selectedCompany') ? '#f59e0b' : 'none'} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
       <div className={styles.tableFooter}>
         <div className={styles.footerLeft}>
           <div className={styles.limitControl}>

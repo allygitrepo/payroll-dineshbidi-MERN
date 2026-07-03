@@ -101,6 +101,65 @@ const LoanTable = ({ loanId }) => {
           </tbody>
         </table>
       </div>
+
+      {/* Mobile view cards layout */}
+      <div className={styles.mobileCardsContainer}>
+        {transactions.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+            No repayment transactions recorded yet for this loan.
+          </div>
+        ) : (
+          transactions.map((tx) => (
+            <div key={tx.id} className={styles.mobileCard}>
+              <div className={styles.mobileCardHeader}>
+                <span className={styles.mobileCardIndex}>
+                  {tx.transactionDate ? new Date(tx.transactionDate).toLocaleString('en-IN', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) : '-'}
+                </span>
+                <span style={{
+                  fontWeight: '700',
+                  fontSize: '0.8rem',
+                  color: tx.type === 'Auto_Deduction' ? 'var(--primary)' : '#4f8cff'
+                }}>
+                  {tx.type === 'Auto_Deduction' ? 'AUTO DEDUCTION' : 'MANUAL PAYMENT'}
+                </span>
+              </div>
+              <div className={styles.mobileCardBody}>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Source:</span>
+                  <span style={{
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    fontSize: '0.75rem',
+                    fontWeight: '700',
+                    backgroundColor: '#f1f5f9',
+                    color: '#475569'
+                  }}>
+                    {tx.paymentSource ? tx.paymentSource.toUpperCase() : '-'}
+                  </span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Amount:</span>
+                  <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
+                    ₹{parseFloat(tx.amount).toFixed(2)}
+                  </span>
+                </div>
+                <div className={styles.mobileCardRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
+                  <span className={styles.mobileCardLabel}>Description:</span>
+                  <span className={styles.mobileCardValue} style={{ textAlign: 'left', fontSize: '0.8rem' }}>
+                    {tx.description || '-'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 };

@@ -6,7 +6,7 @@ import KycForm from '../components/KycForm';
 import { getEmployees, saveEmployee } from '../../employee/services/employeeService';
 import { getAddresses } from '../../address/services/addressService';
 import { getContractors } from '../../contractor/services/contractorService';
-import { useToast } from '../../../../shared/components';
+import { useToast, Loader } from '../../../../shared/components';
 
 const KycUpdatePage = () => {
   const addToast = useToast();
@@ -16,6 +16,8 @@ const KycUpdatePage = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [activeEmployee, setActiveEmployee] = useState(null);
   const [localKycDetails, setLocalKycDetails] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load registered employees, addresses and contractors on mount
   useEffect(() => {
@@ -23,8 +25,10 @@ const KycUpdatePage = () => {
       const companyId = localStorage.getItem('selectedCompany');
       if (!companyId) {
         addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+        setIsLoading(false);
         return;
       }
+      setIsLoading(true);
       try {
         const [loadedEmployees, loadedAddresses, loadedContractors] = await Promise.all([
           getEmployees(companyId),
@@ -37,6 +41,8 @@ const KycUpdatePage = () => {
       } catch (err) {
         console.error('Error fetching initial KYC data:', err);
         addToast({ type: 'error', message: 'Failed to load employee directory.' });
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchInitialData();
@@ -92,6 +98,7 @@ const KycUpdatePage = () => {
     };
 
     const companyId = localStorage.getItem('selectedCompany');
+    setIsSaving(true);
     try {
       const updatedList = await saveEmployee(updatedEmployee, companyId, addresses, contractors);
       setEmployees(updatedList);
@@ -103,6 +110,8 @@ const KycUpdatePage = () => {
         type: 'error',
         message: err.response?.data?.messageToShow || 'Failed to save KYC details.'
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -116,6 +125,7 @@ const KycUpdatePage = () => {
 
   return (
     <div className={styles.container}>
+      {(isLoading || isSaving) && <Loader fullPage={true} />}
       {/* Title Header */}
       <div className={styles.headerSection}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

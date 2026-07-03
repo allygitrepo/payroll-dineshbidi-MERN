@@ -5,7 +5,7 @@ import styles from '../components/AddressPage.module.css';
 import AddressForm from '../components/AddressForm';
 import AddressTable from '../components/AddressTable';
 import { getAddresses, saveAddress, deleteAddress } from '../services/addressService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
@@ -13,6 +13,8 @@ const AddressPage = () => {
   const addToast = useToast();
   const [addresses, setAddresses] = useState([]);
   const [editingAddress, setEditingAddress] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const { canCreate, canEdit, canDelete } = usePermissions('address');
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,14 +35,18 @@ const AddressPage = () => {
       const companyId = localStorage.getItem('selectedCompany');
       if (!companyId) {
         addToast({ type: 'warning', message: 'No company selected! Please select a company on login.' });
+        setIsLoading(false);
         return;
       }
+      setIsLoading(true);
       try {
         const data = await getAddresses(companyId);
         setAddresses(data);
       } catch (err) {
         console.error('Error fetching addresses:', err);
         addToast({ type: 'error', message: 'Failed to load addresses.' });
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchAddresses();
@@ -81,6 +87,7 @@ const AddressPage = () => {
   const handleConfirmDelete = async () => {
     if (deleteTargetId) {
       const companyId = localStorage.getItem('selectedCompany');
+      setIsSaving(true);
       try {
         const updated = await deleteAddress(deleteTargetId, companyId);
         setAddresses(updated);
@@ -88,6 +95,8 @@ const AddressPage = () => {
       } catch (err) {
         console.error('Error deleting address:', err);
         addToast({ type: 'error', message: 'Failed to delete address.' });
+      } finally {
+        setIsSaving(false);
       }
     }
     setIsConfirmOpen(false);
@@ -101,6 +110,7 @@ const AddressPage = () => {
 
   const handleSave = async (addressData) => {
     const companyId = localStorage.getItem('selectedCompany');
+    setIsSaving(true);
     try {
       const updated = await saveAddress(addressData, companyId);
       setAddresses(updated);
@@ -115,6 +125,8 @@ const AddressPage = () => {
         type: 'error',
         message: err.response?.data?.messageToShow || 'Failed to save address.'
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -181,6 +193,7 @@ const AddressPage = () => {
 
     const reader = new FileReader();
     reader.onload = async (evt) => {
+      setIsSaving(true);
       try {
         const bstr = evt.target.result;
         const workbook = XLSX.read(bstr, { type: 'binary' });
@@ -212,6 +225,8 @@ const AddressPage = () => {
       } catch (error) {
         console.error('Error importing Excel:', error);
         addToast({ type: 'error', message: 'Failed to import Excel file.' });
+      } finally {
+        setIsSaving(false);
       }
     };
     reader.readAsBinaryString(file);
@@ -229,6 +244,7 @@ const AddressPage = () => {
 
   return (
     <div className={styles.container} ref={pageTopRef}>
+      {(isLoading || isSaving) && <Loader fullPage={true} />}
       {/* Header section with heading and actions */}
       <div className={styles.headerSection}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

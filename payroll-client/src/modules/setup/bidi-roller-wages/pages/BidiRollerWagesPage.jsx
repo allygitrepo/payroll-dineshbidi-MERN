@@ -5,7 +5,7 @@ import styles from '../components/BidiRollerWagesPage.module.css';
 import BidiRollerWagesForm from '../components/BidiRollerWagesForm';
 import BidiRollerWagesTable from '../components/BidiRollerWagesTable';
 import { getBidiRollerWages, saveBidiRollerWages, deleteBidiRollerWages } from '../services/bidiRollerWagesService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import { parseExcelDate } from '../../../../shared/utils/dateUtils';
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
@@ -30,6 +30,7 @@ const BidiRollerWagesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -100,12 +101,15 @@ const BidiRollerWagesPage = () => {
     if (deleteTargetId) {
       const companyId = localStorage.getItem('selectedCompany');
       try {
+        setIsSaving(true);
         const updated = await deleteBidiRollerWages(deleteTargetId, companyId);
         setWagesList(updated);
         addToast({ type: 'success', message: 'Bidi Roller Wages record deleted successfully!' });
       } catch (err) {
         console.error('Error deleting bidi wages:', err);
         addToast({ type: 'error', message: 'Failed to delete bidi roller wages.' });
+      } finally {
+        setIsSaving(false);
       }
     }
     setIsConfirmOpen(false);
@@ -120,6 +124,7 @@ const BidiRollerWagesPage = () => {
   const handleSave = async (wagesData) => {
     const companyId = localStorage.getItem('selectedCompany');
     try {
+      setIsSaving(true);
       const updated = await saveBidiRollerWages(wagesData, companyId);
       setWagesList(updated);
       setIsFormOpen(false);
@@ -134,6 +139,8 @@ const BidiRollerWagesPage = () => {
         type: 'error',
         message: err.response?.data?.messageToShow || 'Failed to save bidi roller wages.'
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -259,6 +266,7 @@ const BidiRollerWagesPage = () => {
 
   return (
     <div className={styles.container}>
+      {(loading || isSaving) && <Loader fullPage={true} />}
       
       {/* Header section with page heading and action buttons */}
       <div className={styles.headerSection}>

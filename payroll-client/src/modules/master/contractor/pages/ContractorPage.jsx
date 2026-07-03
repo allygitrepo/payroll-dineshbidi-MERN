@@ -7,7 +7,7 @@ import ContractorTable from '../components/ContractorTable';
 import ContractorLoginModal from '../components/ContractorLoginModal';
 import { getContractors, saveContractor, deleteContractor, createContractorLogin, getContractorLogin } from '../services/contractorService';
 import { getAddresses } from '../../address/services/addressService';
-import { useToast, ConfirmModal, Pagination } from '../../../../shared/components';
+import { useToast, ConfirmModal, Pagination, Loader } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import { parseExcelDate } from '../../../../shared/utils/dateUtils';
 import { MessageCircle } from 'lucide-react';
@@ -33,6 +33,7 @@ const ContractorPage = () => {
 
   // Pagination & Loading States
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [totalEntries, setTotalEntries] = useState(0);
@@ -153,6 +154,7 @@ const ContractorPage = () => {
   const handleConfirmDelete = async () => {
     if (deleteTargetId) {
       const companyId = localStorage.getItem('selectedCompany');
+      setIsSaving(true);
       try {
         await deleteContractor(deleteTargetId, companyId);
         fetchContractors();
@@ -160,6 +162,8 @@ const ContractorPage = () => {
       } catch (err) {
         console.error('Error deleting contractor:', err);
         addToast({ type: 'error', message: 'Failed to delete contractor.' });
+      } finally {
+        setIsSaving(false);
       }
     }
     setIsConfirmOpen(false);
@@ -173,6 +177,7 @@ const ContractorPage = () => {
 
   const handleSave = async (contractorData) => {
     const companyId = localStorage.getItem('selectedCompany');
+    setIsSaving(true);
     try {
       await saveContractor(contractorData, companyId, addresses);
       fetchContractors();
@@ -188,6 +193,8 @@ const ContractorPage = () => {
         type: 'error',
         message: err.response?.data?.messageToShow || 'Failed to save contractor.'
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -215,6 +222,7 @@ const ContractorPage = () => {
 
   const handleLoginModalSave = async (credentials) => {
     if (!loginTargetContractor) return;
+    setIsSaving(true);
     try {
       await createContractorLogin(loginTargetContractor.id, credentials);
       addToast({ type: 'success', message: 'Contractor login saved successfully!' });
@@ -228,6 +236,8 @@ const ContractorPage = () => {
         type: 'error',
         message: err.response?.data?.messageToShow || 'Failed to create login.'
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -304,6 +314,7 @@ const ContractorPage = () => {
 
     const reader = new FileReader();
     reader.onload = async (evt) => {
+      setIsSaving(true);
       try {
         const bstr = evt.target.result;
         const workbook = XLSX.read(bstr, { type: 'binary', cellDates: true });
@@ -360,6 +371,8 @@ const ContractorPage = () => {
       } catch (error) {
         console.error('Error importing Excel:', error);
         addToast({ type: 'error', message: 'Failed to import Excel file.' });
+      } finally {
+        setIsSaving(false);
       }
     };
     reader.readAsBinaryString(file);
@@ -380,6 +393,7 @@ const ContractorPage = () => {
 
   return (
     <div className={styles.container} ref={pageTopRef}>
+      {(isLoading || isSaving) && <Loader fullPage={true} />}
       {/* Header section with heading and actions */}
       <div className={styles.headerSection}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -465,11 +479,6 @@ const ContractorPage = () => {
 
       {/* Render table card containing list */}
       <div style={{ position: 'relative' }}>
-        {isLoading && (
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="loader"></div>
-          </div>
-        )}
         <ContractorTable
           data={filteredContractors}
           searchTerm={searchTerm}

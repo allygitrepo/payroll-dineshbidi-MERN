@@ -17,7 +17,7 @@ import {
   Camera,
   Check
 } from 'lucide-react';
-import { useToast, DatePicker, ConfirmModal } from '../../../../shared/components';
+import { useToast, DatePicker, ConfirmModal, Loader, SearchableSelect } from '../../../../shared/components';
 import styles from './AttendanceListPage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import { getCompanyAttendance, approveAttendance, rejectAttendance } from '../../attendanceService';
@@ -274,6 +274,8 @@ const AttendanceListPage = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('All');
   
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const addToast = useToast();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -320,7 +322,16 @@ const AttendanceListPage = () => {
       }
     };
 
-    fetchData();
+    const fetchInitialData = async () => {
+      try {
+        setIsLoading(true);
+        await fetchInitialData();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchInitialData();
     const interval = setInterval(fetchData, 4000); // Polling every 4 seconds for real-time updates
     return () => clearInterval(interval);
   }, []);
@@ -693,6 +704,7 @@ const AttendanceListPage = () => {
 
   const handleApprove = async (id) => {
     try {
+      setIsSaving(true);
       await approveAttendance(id);
       addToast({ type: 'success', message: 'Attendance approved successfully.' });
       const companyId = localStorage.getItem('selectedCompany');
@@ -703,11 +715,14 @@ const AttendanceListPage = () => {
     } catch (err) {
       console.error('Failed to approve attendance:', err);
       addToast({ type: 'error', message: err.message || 'Failed to approve attendance.' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleReject = async (id) => {
     try {
+      setIsSaving(true);
       await rejectAttendance(id);
       addToast({ type: 'info', message: 'Attendance rejected.' });
       const companyId = localStorage.getItem('selectedCompany');
@@ -718,6 +733,8 @@ const AttendanceListPage = () => {
     } catch (err) {
       console.error('Failed to reject attendance:', err);
       addToast({ type: 'error', message: err.message || 'Failed to reject attendance.' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -794,6 +811,7 @@ const AttendanceListPage = () => {
 
   return (
     <div className={styles.pageContainer}>
+      {(isLoading || isSaving) && <Loader fullPage={true} />}
       {/* Main Page Header */}
       <div className={styles.headerSection}>
         <h1 className={styles.pageTitle}>Attendance List</h1>
@@ -866,20 +884,16 @@ const AttendanceListPage = () => {
             </div>
 
             {/* Employee Selector */}
-            <div className={styles.categorySelect}>
+            <div className={styles.categorySelect} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span className={styles.controlLabel}>Employee</span>
-              <select
+              <SearchableSelect
+                name="selectedEmployeeId"
                 value={selectedEmployeeId}
                 onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                style={{ minWidth: '150px' }}
-              >
-                <option value="All">All Employees</option>
-                {employees.map(emp => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.memberName || emp.name} ({emp.uan || 'No UAN'})
-                  </option>
-                ))}
-              </select>
+                options={[{ value: 'All', label: 'All Employees' }, ...employees.map(emp => ({ value: emp.id, label: `${emp.memberName || emp.name} (${emp.uan || 'No UAN'})` }))]}
+                placeholder="All Employees"
+                className={styles.searchableSelectFilter}
+              />
             </div>
 
             {/* Category Selector */}
@@ -1121,6 +1135,117 @@ const AttendanceListPage = () => {
             )}
           </tbody>
         </table>
+      </div>
+      {/* Mobile Card Layout for smaller viewports */}
+      <div className={styles.mobileCardsContainer}>
+        {paginatedRecords.length > 0 ? (
+          paginatedRecords.map((rec, index) => {
+            const srNo = (currentPage - 1) * rowsPerPage + index + 1;
+            const isToday = rec.date === todayStr;
+            const isAbsent = rec.status === 'Absent';
+            
+            // Resolve action by details
+            const actionRole = rec.record?.action_by_role;
+            const actionName = rec.record?.action_by_name;
+            let actionDisplay = '—';
+            if (actionRole) {
+              const upperRole = actionRole.toUpperCase();
+              if (upperRole.startsWith('OWNER')) actionDisplay = 'Owner';
+              else if (upperRole.startsWith('ADMIN')) actionDisplay = 'Admin';
+              else if (upperRole.startsWith('CONTRACTOR')) actionDisplay = 'Contractor';
+              else actionDisplay = `${actionName} (${actionRole})`;
+            }
+
+            return (
+              <div key={rec.id} className={`${styles.mobileCard} ${isToday ? (isAbsent ? styles.highlightAbsentRow : styles.highlightPresentRow) : ''}`}>
+                <div className={styles.mobileCardHeader}>
+                  <span className={styles.mobileCardIndex}># {String(srNo).padStart(2, '0')}</span>
+                  <span>
+                    {rec.status === 'Absent' && <span className={styles.badgeAbsent}>Absent</span>}
+                    {rec.status === 'Present' && <span className={styles.badgePresent}>Present</span>}
+                    {rec.status === 'Pending' && <span className={styles.badgePending}>Pending Approval</span>}
+                  </span>
+                </div>
+                <div className={styles.mobileCardBody}>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Emp Code:</span>
+                    <span className={`${styles.mobileCardValue} ${styles.monoCell}`}>{rec.empCode}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Name:</span>
+                    <span className={`${styles.mobileCardValue} ${styles.boldCell}`}>{rec.name}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Category:</span>
+                    <span className={styles.mobileCardValue}>{rec.category}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Date:</span>
+                    <span className={styles.mobileCardValue}>{formatDateFriendly(rec.date)}</span>
+                  </div>
+                  {rec.record?.sign_in_time && (
+                    <div className={styles.mobileCardRow}>
+                      <span className={styles.mobileCardLabel}>Sign-In:</span>
+                      <span className={styles.mobileCardValue}>{formatTime(rec.record.sign_in_time)}</span>
+                    </div>
+                  )}
+                  {rec.record?.sign_out_time && (
+                    <div className={styles.mobileCardRow}>
+                      <span className={styles.mobileCardLabel}>Sign-Out:</span>
+                      <span className={styles.mobileCardValue}>{formatTime(rec.record.sign_out_time)}</span>
+                    </div>
+                  )}
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Action By:</span>
+                    <span className={styles.mobileCardValue}>{actionDisplay}</span>
+                  </div>
+                </div>
+                <div className={styles.mobileCardActions}>
+                  {canApproveOrReject && rec.status === 'Pending' && (
+                    <>
+                      <button
+                        onClick={() => triggerApproveConfirm(rec.id, rec.name)}
+                        className={styles.iconBtnRound}
+                        style={{ backgroundColor: '#10B981', color: 'white', border: 'none' }}
+                        title="Approve"
+                      >
+                        <Check size={16} />
+                      </button>
+                      <button
+                        onClick={() => triggerRejectConfirm(rec.id, rec.name)}
+                        className={styles.iconBtnRound}
+                        style={{ backgroundColor: '#EF4444', color: 'white', border: 'none' }}
+                        title="Reject"
+                      >
+                        <X size={16} />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    className={`${styles.iconBtnRound} ${styles.locationBtnMobile}`}
+                    onClick={() => openLocationModal(rec)}
+                    disabled={rec.status === 'Absent'}
+                    title={rec.status === 'Absent' ? 'No location scan' : 'View Location'}
+                  >
+                    <MapPin size={16} />
+                  </button>
+                  <button
+                    className={`${styles.iconBtnRound} ${styles.imageBtnMobile}`}
+                    onClick={() => openImageModal(rec)}
+                    disabled={rec.status === 'Absent'}
+                    title={rec.status === 'Absent' ? 'No face capture' : 'View Face Capture'}
+                  >
+                    <Image size={16} />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-secondary)' }}>
+            No attendance records found.
+          </div>
+        )}
       </div>
 
       {/* Pagination Footer */}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Save, X, Settings, List, ShieldAlert, CheckSquare, Play, ChevronDown } from 'lucide-react';
 import styles from './LeaveMasterPage.module.css';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
 import { getEmployees } from '../../../master/employee/services/employeeService';
 import {
   getLeaveTypes,
@@ -151,6 +151,7 @@ const LeaveMasterPage = () => {
     reason: ''
   });
   const [savingAdjustment, setSavingAdjustment] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Delete Confirmation State
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -295,6 +296,7 @@ const LeaveMasterPage = () => {
       return;
     }
 
+    setIsSaving(true);
     try {
       const payload = {
         id: editingType || undefined,
@@ -329,6 +331,8 @@ const LeaveMasterPage = () => {
     } catch (err) {
       console.error('Failed to save leave type:', err);
       addToast({ type: 'error', message: 'Failed to save leave type config.' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -388,6 +392,7 @@ const LeaveMasterPage = () => {
 
   const handleConfirmDelete = async () => {
     if (deleteTargetId && companyId) {
+      setIsSaving(true);
       try {
         await deleteLeaveType(companyId, deleteTargetId);
         addToast({ type: 'success', message: 'Leave Type deleted successfully.' });
@@ -397,6 +402,8 @@ const LeaveMasterPage = () => {
       } catch (err) {
         console.error('Error deleting type:', err);
         addToast({ type: 'error', message: 'Failed to delete leave type.' });
+      } finally {
+        setIsSaving(false);
       }
     }
     setIsConfirmOpen(false);
@@ -463,12 +470,15 @@ const LeaveMasterPage = () => {
     e.preventDefault();
     if (!companyId) return;
 
+    setIsSaving(true);
     try {
       await saveGlobalSettings(companyId, globalSettings);
       addToast({ type: 'success', message: 'Global leave configurations updated!' });
     } catch (err) {
       console.error('Error saving settings:', err);
       addToast({ type: 'error', message: 'Failed to update global configurations.' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -490,8 +500,17 @@ const LeaveMasterPage = () => {
     }
   };
 
+  // Calculate paginatedTypes for card view in Tab 1
+  const totalEntriesTypes = leaveTypes.length;
+  const totalPagesTypes = Math.ceil(totalEntriesTypes / pageSizeTypes);
+  const validCurrentPageTypes = Math.min(currentPageTypes, Math.max(1, totalPagesTypes));
+  const startIndexTypes = (validCurrentPageTypes - 1) * pageSizeTypes;
+  const paginatedTypes = leaveTypes.slice(startIndexTypes, startIndexTypes + pageSizeTypes);
+
+  const showLoader = loading || isSaving || savingPolicy || savingAdjustment || runningAccruals;
   return (
     <div className={styles.container}>
+      {showLoader && <Loader fullPage={true} />}
       {/* Title */}
       <div className={styles.headerSection}>
         <div>
@@ -712,6 +731,66 @@ const LeaveMasterPage = () => {
                   </table>
                 </div>
 
+                {/* Mobile Cards View for Leave Types */}
+                <div className={styles.mobileCardsContainer}>
+                  {paginatedTypes.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+                      No leave types configured.
+                    </div>
+                  ) : (
+                    paginatedTypes.map((row) => (
+                      <div key={row.id} className={styles.mobileCard}>
+                        <div className={styles.mobileCardHeader}>
+                          <span className={styles.codeBadge}>{row.code}</span>
+                          <span style={{
+                            padding: '3px 8px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            backgroundColor: row.is_active ? '#dcfce7' : '#fee2e2',
+                            color: row.is_active ? '#16a34a' : '#ef4444'
+                          }}>
+                            {row.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <div className={styles.mobileCardBody}>
+                          <h4 style={{ margin: '0 0 6px 0', fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                            {row.name}
+                          </h4>
+                          <div className={styles.mobileCardRow}>
+                            <span className={styles.mobileCardLabel}>Type:</span>
+                            <span className={`${styles.typeBadge} ${row.is_paid ? styles.paidBadge : styles.unpaidBadge}`}>
+                              {row.is_paid ? 'Paid' : 'Unpaid'}
+                            </span>
+                          </div>
+                          <div className={styles.mobileCardRow}>
+                            <span className={styles.mobileCardLabel}>Requirements:</span>
+                            <span className={styles.mobileCardValue} style={{ fontSize: '0.8rem' }}>
+                              {[
+                                row.half_day_allowed && 'Half-Day',
+                                row.requires_supporting_document && 'Attachments',
+                                row.requires_approval && 'Approval'
+                              ].filter(Boolean).join(' • ') || 'None'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className={styles.mobileCardActions} onClick={(e) => e.stopPropagation()}>
+                          {canEdit && (
+                            <button onClick={() => handleEditClick(row)} className={styles.editBtn} title="Edit Leave Type">
+                              <Edit2 size={13} />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button onClick={() => handleDeleteClick(row.id)} className={styles.deleteBtn} title="Delete Leave Type">
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
                 {/* Pagination Controls (matching Employee table exactly) */}
                 <div className={styles.tableFooter}>
                   <div className={styles.footerLeft}>
@@ -915,6 +994,92 @@ const LeaveMasterPage = () => {
                               })()}
                             </tbody>
                           </table>
+                        </div>
+
+                        {/* Mobile Cards View for Policies Matrix */}
+                        <div className={styles.mobileCardsContainer}>
+                          {(() => {
+                            const totalEntries = activeRow.policies.length;
+                            const totalPages = Math.ceil(totalEntries / pageSizePolicies);
+                            const validCurrentPage = Math.min(currentPagePolicies, Math.max(1, totalPages));
+                            const startIndex = (validCurrentPage - 1) * pageSizePolicies;
+                            const endIndex = Math.min(validCurrentPage * pageSizePolicies, totalEntries);
+                            
+                            const paginatedPolicies = activeRow.policies.slice(startIndex, endIndex);
+
+                            if (paginatedPolicies.length === 0) {
+                              return (
+                                <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+                                  No policies configured.
+                                </div>
+                              );
+                            }
+
+                            return paginatedPolicies.map((p) => (
+                              <div key={p.leave_type_id} className={styles.mobileCard}>
+                                <div className={styles.mobileCardHeader}>
+                                  <span className={styles.codeBadge}>{p.leave_code}</span>
+                                  <strong style={{ color: 'var(--text-primary)' }}>{p.leave_name}</strong>
+                                </div>
+                                <div className={styles.mobileCardBody}>
+                                  <div className={styles.mobileCardRow}>
+                                    <span className={styles.mobileCardLabel}>Yearly Allocation:</span>
+                                    <input
+                                      type="number"
+                                      step="0.5"
+                                      min="0"
+                                      value={p.policy.yearly_allocation}
+                                      onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'yearly_allocation', e.target.value)}
+                                      className={styles.matrixInput}
+                                      style={{ width: '90px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                                    />
+                                  </div>
+                                  <div className={styles.mobileCardRow}>
+                                    <span className={styles.mobileCardLabel}>Accrual Enabled?</span>
+                                    <input
+                                      type="checkbox"
+                                      checked={p.policy.monthly_accrual_enabled}
+                                      onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'monthly_accrual_enabled', e.target.checked)}
+                                    />
+                                  </div>
+                                  <div className={styles.mobileCardRow}>
+                                    <span className={styles.mobileCardLabel}>Accrual / Month:</span>
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      min="0"
+                                      disabled={!p.policy.monthly_accrual_enabled}
+                                      value={p.policy.monthly_accrual_amount}
+                                      onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'monthly_accrual_amount', e.target.value)}
+                                      className={styles.matrixInput}
+                                      style={{ width: '90px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                                    />
+                                  </div>
+                                  <div className={styles.mobileCardRow}>
+                                    <span className={styles.mobileCardLabel}>Carry Forward?</span>
+                                    <input
+                                      type="checkbox"
+                                      checked={p.policy.carry_forward_allowed}
+                                      onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'carry_forward_allowed', e.target.checked)}
+                                    />
+                                  </div>
+                                  <div className={styles.mobileCardRow}>
+                                    <span className={styles.mobileCardLabel}>Max CF Limit:</span>
+                                    <input
+                                      type="number"
+                                      step="0.5"
+                                      min="0"
+                                      disabled={!p.policy.carry_forward_allowed}
+                                      value={p.policy.max_carry_forward}
+                                      onChange={(e) => handlePolicyChange(activeRow.employee_type_id, p.leave_type_id, 'max_carry_forward', e.target.value)}
+                                      className={styles.matrixInput}
+                                      style={{ width: '90px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ));
+                          })()}
                         </div>
 
                         {/* Policies Pagination Controls */}

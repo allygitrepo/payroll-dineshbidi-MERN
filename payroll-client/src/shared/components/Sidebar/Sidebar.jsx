@@ -215,9 +215,15 @@ const getActiveMenuAndSubMenu = (pathname) => {
   return { activeMenu, activeSubMenu };
 };
 
-const Sidebar = ({ sidebarCollapsed }) => {
+const Sidebar = ({ sidebarCollapsed, setSidebarCollapsed }) => {
   const location = useLocation();
   const { activeMenu, activeSubMenu } = getActiveMenuAndSubMenu(location.pathname);
+
+  const handleLinkClick = () => {
+    if (setSidebarCollapsed && window.innerWidth < 768) {
+      setSidebarCollapsed(true);
+    }
+  };
 
   const [expandedMenus, setExpandedMenus] = useState({});
   const [expandedSubMenus, setExpandedSubMenus] = useState({});
@@ -342,6 +348,7 @@ const Sidebar = ({ sidebarCollapsed }) => {
                 <RouterLink
                   to={itemPath}
                   className={`${styles.sidebarItem} ${isActive ? styles.activeItem : ''}`}
+                  onClick={handleLinkClick}
                 >
                   <IconComp size={18} className={styles.sidebarIcon} />
                   <span className={styles.sidebarText}>{item.name}</span>
@@ -387,6 +394,7 @@ const Sidebar = ({ sidebarCollapsed }) => {
                           <RouterLink
                             to={subPath}
                             className={`${styles.subItem} ${isSubActive ? styles.activeSubItem : ''}`}
+                            onClick={handleLinkClick}
                           >
                             <SubIcon size={16} className={styles.subIcon} />
                             <span>{sub.name}</span>
@@ -407,6 +415,7 @@ const Sidebar = ({ sidebarCollapsed }) => {
                                   key={nested.name}
                                   to={nestedPath}
                                   className={`${styles.nestedItem} ${isNestedActive ? styles.activeNestedItem : ''} ${styles.formNestedItem}`}
+                                  onClick={handleLinkClick}
                                 >
                                   <NestedIcon size={14} className={styles.nestedIcon} />
                                   <span>{nested.name}</span>

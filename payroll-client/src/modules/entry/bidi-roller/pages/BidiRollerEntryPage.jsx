@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import styles from './BidiRollerEntryPage.module.css';
-import { useToast, MonthYearPicker, Pagination } from '../../../../shared/components';
+import { useToast, MonthYearPicker, Pagination, Loader } from '../../../../shared/components';
 import { getContractors } from '../../../master/contractor/services/contractorService';
 import { getBidiRollerEntry, saveBidiRollerEntry, recalculateBidiRollerRow } from '../services/bidiRollerEntryService';
 import { getAttendanceSummary } from '../../../attendance/attendanceService';
@@ -411,6 +411,7 @@ const BidiRollerEntryPage = () => {
   /* ================================================ */
   return (
     <div className={styles.container}>
+      {loading && <Loader fullPage={true} />}
 
       {/* ---- Header ---- */}
       <div className={styles.headerSection}>
@@ -714,6 +715,60 @@ const BidiRollerEntryPage = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List */}
+          <div className={styles.mobileCardsContainer}>
+            {paginatedRows.map(row => (
+              <div key={row.employeeId} className={styles.mobileCard}>
+                <div className={styles.mobileCardHeader}>
+                  <div className={styles.empCell}>
+                    <span className={styles.empName}>{row.employeeName}</span>
+                    <span className={styles.empCode}>{row.employeeCode} (A/C: {row.accountNo})</span>
+                  </div>
+                </div>
+                <div className={styles.mobileCardBody}>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Unit-1 Worked:</span>
+                    <input type="text" value={row.unit1} onChange={e => handleFieldChange(row.employeeId, 'unit1', e.target.value)} className={styles.tableInput} style={{ width: '120px', textAlign: 'right' }} disabled={!canEdit} />
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Unit-2 Worked:</span>
+                    <input type="text" value={row.unit2} onChange={e => handleFieldChange(row.employeeId, 'unit2', e.target.value)} className={styles.tableInput} style={{ width: '120px', textAlign: 'right' }} disabled={!canEdit} />
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Days Worked:</span>
+                    <input type="text" value={row.daysWorked} onChange={e => handleFieldChange(row.employeeId, 'daysWorked', e.target.value)} className={styles.tableInput} style={{ width: '120px', textAlign: 'right', backgroundColor: '#f0f4f8' }} disabled={!canEdit} />
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Addition:</span>
+                    <input type="text" value={row.addition} onChange={e => handleFieldChange(row.employeeId, 'addition', e.target.value)} className={styles.tableInput} style={{ width: '120px', textAlign: 'right' }} disabled={!canEdit} />
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Leave With Pay:</span>
+                    <input type="text" value={row.leaveWithPay} onChange={e => handleFieldChange(row.employeeId, 'leaveWithPay', e.target.value)} className={styles.tableInput} style={{ width: '120px', textAlign: 'right' }} disabled={!canEdit} />
+                  </div>
+                  
+                  {/* Totals & calculations */}
+                  <div style={{ height: '1px', backgroundColor: 'var(--border)', margin: '8px 0' }} />
+                  
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Gross Wages:</span>
+                    <span className={styles.mobileCardValue}>₹{Math.round(row.gross || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>PF / PT / ESIC:</span>
+                    <span className={styles.mobileCardValue} style={{ color: 'var(--danger)' }}>
+                      ₹{row.pf || 0} / ₹{row.pt || 0} / ₹{row.esic || 0}
+                    </span>
+                  </div>
+                  <div className={styles.mobileCardRow} style={{ fontWeight: '700' }}>
+                    <span className={styles.mobileCardLabel}>Net Pay:</span>
+                    <span className={styles.mobileCardValue} style={{ color: 'var(--primary)' }}>₹{Math.round(row.netWages || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           <Pagination

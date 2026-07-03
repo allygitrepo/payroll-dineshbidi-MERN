@@ -800,6 +800,7 @@
     height: calc(100vh - 70px);
     z-index: 100;
     box-shadow: 10px 0 30px rgba(0, 0, 0, 0.05);
+    transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
   
   .sidebar:not(.collapsed) {
@@ -816,8 +817,6 @@
   }
 }
 
-
-
 .leftChevron {
   color: var(--primary);
   margin-right: 8px;
@@ -828,3 +827,24 @@
 .leftChevronExpanded {
   transform: rotate(90deg);
 }
+
+.mobileBackdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobileBackdrop {
+    display: block;
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    z-index: 90;
+    transition: opacity 0.25s ease;
+  }
+}
+
+
+

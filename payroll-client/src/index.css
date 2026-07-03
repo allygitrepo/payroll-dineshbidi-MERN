@@ -88,3 +88,20 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #C1C5D0 transparent;
 }
+
+/* Global Responsive Utilities */
+.responsive-table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+}
+
+.responsive-table-container table {
+  min-width: 800px; /* Ensure table fields have enough space and scroll instead of compressing */
+  width: 100%;
+}
+

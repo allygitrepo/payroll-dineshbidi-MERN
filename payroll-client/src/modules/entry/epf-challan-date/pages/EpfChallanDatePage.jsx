@@ -11,7 +11,7 @@ import {
   deleteEpfChallan,
   saveBulkEpfChallans
 } from '../services/epfChallanDateService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 const formatDate = (dateStr) => {
@@ -29,6 +29,8 @@ const EpfChallanDatePage = () => {
   const { canCreate, canEdit, canDelete } = usePermissions('epf-challan-date');
 
   const [challans, setChallans] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingChallan, setEditingChallan] = useState(null);
 
@@ -49,10 +51,13 @@ const EpfChallanDatePage = () => {
   // Load initial data
   const fetchData = async () => {
     try {
+      setIsLoading(true);
       const data = await getEpfChallans();
       setChallans(data);
     } catch (error) {
       addToast({ type: 'error', message: 'Failed to fetch EPF Challans' });
+    } finally {
+      setIsLoading(false);
     }
   };
 

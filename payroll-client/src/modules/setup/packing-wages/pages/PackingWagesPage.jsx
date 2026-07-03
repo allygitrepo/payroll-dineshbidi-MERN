@@ -5,7 +5,7 @@ import styles from '../components/PackingWagesPage.module.css';
 import PackingWagesForm from '../components/PackingWagesForm';
 import PackingWagesTable from '../components/PackingWagesTable';
 import { getPackingWages, savePackingWages, deletePackingWages } from '../services/packingWagesService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import { parseExcelDate } from '../../../../shared/utils/dateUtils';
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
@@ -30,6 +30,7 @@ const PackingWagesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -100,12 +101,15 @@ const PackingWagesPage = () => {
     if (deleteTargetId) {
       const companyId = localStorage.getItem('selectedCompany');
       try {
+        setIsSaving(true);
         const updated = await deletePackingWages(deleteTargetId, companyId);
         setWagesList(updated);
         addToast({ type: 'success', message: 'Packing Wages record deleted successfully!' });
       } catch (err) {
         console.error('Error deleting packing wages:', err);
         addToast({ type: 'error', message: 'Failed to delete packing wages.' });
+      } finally {
+        setIsSaving(false);
       }
     }
     setIsConfirmOpen(false);
@@ -120,6 +124,7 @@ const PackingWagesPage = () => {
   const handleSave = async (wagesData) => {
     const companyId = localStorage.getItem('selectedCompany');
     try {
+      setIsSaving(true);
       const updated = await savePackingWages(wagesData, companyId);
       setWagesList(updated);
       setIsFormOpen(false);
@@ -134,6 +139,8 @@ const PackingWagesPage = () => {
         type: 'error',
         message: err.response?.data?.messageToShow || 'Failed to save packing wages.'
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -258,6 +265,7 @@ const PackingWagesPage = () => {
 
   return (
     <div className={styles.container}>
+      {(loading || isSaving) && <Loader fullPage={true} />}
       
       {/* Header section with page heading and action buttons */}
       <div className={styles.headerSection}>

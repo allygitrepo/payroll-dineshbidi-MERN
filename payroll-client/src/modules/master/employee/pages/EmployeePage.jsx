@@ -7,7 +7,7 @@ import EmployeeTable from '../components/EmployeeTable';
 import { getEmployees, saveEmployee, deleteEmployee, toggleAbryStatus } from '../services/employeeService';
 import { getAddresses } from '../../address/services/addressService';
 import { getContractors } from '../../contractor/services/contractorService';
-import { useToast, ConfirmModal, Pagination } from '../../../../shared/components';
+import { useToast, ConfirmModal, Pagination, Loader } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import WhatsAppBulkSendModal from '../../../utility/whatsapp/components/WhatsAppBulkSendModal';
 import { getWhatsAppStatus } from '../../../utility/whatsapp/services/whatsappService';
@@ -36,6 +36,7 @@ const EmployeePage = () => {
 
   // Pagination & Loading States
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [totalEntries, setTotalEntries] = useState(0);
@@ -194,6 +195,7 @@ const EmployeePage = () => {
   const handleConfirmDelete = async () => {
     if (deleteTargetId) {
       const companyId = localStorage.getItem('selectedCompany');
+      setIsSaving(true);
       try {
         await deleteEmployee(deleteTargetId, companyId);
         fetchEmployees();
@@ -201,6 +203,8 @@ const EmployeePage = () => {
       } catch (err) {
         console.error('Error deleting employee:', err);
         addToast({ type: 'error', message: 'Failed to delete employee.' });
+      } finally {
+        setIsSaving(false);
       }
     }
     setIsConfirmOpen(false);
@@ -214,6 +218,7 @@ const EmployeePage = () => {
 
   const handleSave = async (employeeData) => {
     const companyId = localStorage.getItem('selectedCompany');
+    setIsSaving(true);
     try {
       await saveEmployee(employeeData, companyId, addresses, contractors);
       fetchEmployees();
@@ -229,6 +234,8 @@ const EmployeePage = () => {
         type: 'error',
         message: err.response?.data?.messageToShow || err.message || 'Failed to save employee.'
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -237,6 +244,7 @@ const EmployeePage = () => {
     if (!employee) return;
 
     const companyId = localStorage.getItem('selectedCompany');
+    setIsSaving(true);
     try {
       const updatedEmployees = await toggleAbryStatus(employeeId, employee.abryApplicable, companyId);
       setEmployees(updatedEmployees);
@@ -250,6 +258,8 @@ const EmployeePage = () => {
         type: 'error',
         message: 'Failed to toggle ABRY status.'
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -288,6 +298,7 @@ const EmployeePage = () => {
 
   return (
     <div className={styles.container} ref={pageTopRef}>
+      {(isLoading || isSaving) && <Loader fullPage={true} />}
       {/* Header section with heading and actions */}
       <div className={styles.headerSection}>
         <h1 className={styles.title}>Employee</h1>
@@ -394,8 +405,8 @@ const EmployeePage = () => {
 
         {/* Pagination controls directly mimicking MissingInformationPage */}
         {!isFormOpen && totalEntries > 0 && (
-          <div className={styles.tableFooter} style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--card-bg)' }}>
-            <div className={styles.footerLeft} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className={styles.tableFooter} style={{ padding: '16px 24px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--card-bg)' }}>
+            <div className={styles.footerLeft}>
               <div className={styles.limitControl} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <select
                   value={pageSize}

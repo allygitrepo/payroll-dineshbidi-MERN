@@ -4,7 +4,7 @@ import styles from '../components/CompanyPage.module.css';
 import CompanyForm from '../components/CompanyForm';
 import CompanyTable from '../components/CompanyTable';
 import { getCompanies, saveCompany, deleteCompany } from '../services/companyService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import authService from '../../../auth/services/authService';
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
@@ -14,6 +14,8 @@ const CompanyPage = () => {
   const [companies, setCompanies] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   const { canCreate, canEdit, canDelete } = usePermissions('company');
   
@@ -29,12 +31,15 @@ const CompanyPage = () => {
   // Load initial data
   useEffect(() => {
     const fetchCompanies = async () => {
+      setIsLoading(true);
       try {
         const data = await getCompanies();
         setCompanies(data);
       } catch (err) {
         console.error('Error fetching companies:', err);
         addToast({ type: 'error', message: 'Failed to load companies.' });
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchCompanies();
@@ -83,6 +88,7 @@ const CompanyPage = () => {
 
   const handleConfirmDelete = async () => {
     if (deleteTargetId) {
+      setIsSaving(true);
       try {
         const updated = await deleteCompany(deleteTargetId);
         setCompanies(updated);
@@ -90,6 +96,8 @@ const CompanyPage = () => {
       } catch (err) {
         console.error('Error deleting company:', err);
         addToast({ type: 'error', message: 'Failed to delete company.' });
+      } finally {
+        setIsSaving(false);
       }
     }
     setIsConfirmOpen(false);
@@ -102,6 +110,7 @@ const CompanyPage = () => {
   };
 
   const handleSave = async (companyData) => {
+    setIsSaving(true);
     try {
       const isNew = !companyData.id;
       const updated = await saveCompany(companyData);
@@ -138,6 +147,8 @@ const CompanyPage = () => {
         type: 'error',
         message: err.response?.data?.messageToShow || 'Failed to save company.'
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -147,6 +158,7 @@ const CompanyPage = () => {
   };
 
   const handleSetDefault = async (companyId) => {
+    setIsSaving(true);
     try {
       const res = await authService.selectCompany(companyId);
       if (res.status || res.success) {
@@ -158,6 +170,8 @@ const CompanyPage = () => {
     } catch (err) {
       console.error('Failed to set default company', err);
       addToast({ type: 'error', message: 'Failed to set default company.' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -208,6 +222,7 @@ const CompanyPage = () => {
 
   return (
     <div className={styles.container} ref={pageTopRef}>
+      {(isLoading || isSaving) && <Loader fullPage={true} />}
       
       {/* Header section with heading and actions */}
       <div className={styles.headerSection}>

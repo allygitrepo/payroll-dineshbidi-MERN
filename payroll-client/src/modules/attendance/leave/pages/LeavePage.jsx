@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Check, X, FileCheck, Calendar, Users, AlertCircle, FileClock, Download, Copy, File, Printer, ArrowLeft, Ban, Plus, ChevronDown, Upload } from 'lucide-react';
 import styles from './LeavePage.module.css';
 import { getEmployees } from '../../../master/employee/services/employeeService';
-import { useToast, ConfirmModal, DatePicker } from '../../../../shared/components';
+import { useToast, ConfirmModal, DatePicker, Loader } from '../../../../shared/components';
 import {
   getLeaveRequests,
   createLeaveRequest,
@@ -42,6 +42,8 @@ const LeavePage = () => {
   const canApproveOrReject = isAdmin || isContractor;
 
   const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [search, setSearch] = useState('');
@@ -120,6 +122,7 @@ const LeavePage = () => {
   const loadInitialData = async () => {
     if (!companyId) return;
     try {
+      setLoading(true);
       const empData = await getEmployees(companyId);
       setEmployees(empData);
 
@@ -134,6 +137,8 @@ const LeavePage = () => {
     } catch (err) {
       console.error('Failed to load leave requests info:', err);
       addToast({ type: 'error', message: 'Failed to load leave records.' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -302,6 +307,7 @@ const LeavePage = () => {
   // Approve API Caller
   const approveRequest = async (id) => {
     try {
+      setIsSaving(true);
       const updated = await approveLeaveRequest(id);
       setLeaveRequests((prev) =>
         prev.map((req) => (req.id === id ? updated : req))
@@ -314,12 +320,15 @@ const LeavePage = () => {
     } catch (err) {
       console.error('Error approving request:', err);
       addToast({ type: 'error', message: err.message || 'Failed to approve request.' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   // Reject API Caller
   const rejectRequest = async (id) => {
     try {
+      setIsSaving(true);
       const updated = await rejectLeaveRequest(id);
       setLeaveRequests((prev) =>
         prev.map((req) => (req.id === id ? updated : req))
@@ -332,12 +341,15 @@ const LeavePage = () => {
     } catch (err) {
       console.error('Error rejecting request:', err);
       addToast({ type: 'error', message: err.message || 'Failed to reject request.' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   // Cancel API Caller
   const cancelRequest = async (id) => {
     try {
+      setIsSaving(true);
       const updated = await cancelLeaveRequest(id);
       setLeaveRequests((prev) =>
         prev.map((req) => (req.id === id ? updated : req))
@@ -350,6 +362,8 @@ const LeavePage = () => {
     } catch (err) {
       console.error('Error cancelling request:', err);
       addToast({ type: 'error', message: err.message || 'Failed to cancel request.' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -954,6 +968,124 @@ const LeavePage = () => {
                 </tbody>
               </table>
             </div>
+            {/* Mobile Card Layout for smaller screens */}
+            <div className={styles.mobileCardsContainer}>
+              {paginatedRequests.length > 0 ? (
+                paginatedRequests.map((row) => {
+                  // Resolve Action By details
+                  const actionRole = row.actionByRole;
+                  const actionName = row.actionByName;
+                  let actionDisplay = '—';
+                  if (actionRole) {
+                    const upperRole = actionRole.toUpperCase();
+                    if (upperRole.startsWith('OWNER')) actionDisplay = 'Owner';
+                    else if (upperRole.startsWith('ADMIN')) actionDisplay = 'Admin';
+                    else if (upperRole.startsWith('CONTRACTOR')) actionDisplay = 'Contractor';
+                    else actionDisplay = `${actionName} (${actionRole})`;
+                  }
+
+                  return (
+                    <div key={row.id} className={styles.mobileCard}>
+                      <div className={styles.mobileCardHeader}>
+                        <span className={styles.mobileCardIndex}>
+                          {row.employeeName.charAt(0).toUpperCase()}
+                        </span>
+                        <span>
+                          <span className={`${styles.statusBadge} ${
+                            row.status === 'Approved' ? styles.statusApproved :
+                            row.status === 'Submitted' ? styles.statusPending :
+                            row.status === 'Cancelled' ? styles.statusCancelled : styles.statusRejected
+                          }`}>
+                            {row.status === 'Submitted' ? 'Pending' : row.status}
+                          </span>
+                        </span>
+                      </div>
+                      <div className={styles.mobileCardBody}>
+                        <div className={styles.mobileCardRow}>
+                          <span className={styles.mobileCardLabel}>Employee:</span>
+                          <span className={styles.mobileCardValue}>
+                            <strong>{row.employeeName}</strong>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>UAN: {row.uan} • {row.category}</div>
+                          </span>
+                        </div>
+                        <div className={styles.mobileCardRow}>
+                          <span className={styles.mobileCardLabel}>Leave Type:</span>
+                          <span className={styles.mobileCardValue}>{row.leaveType} ({row.leaveCode})</span>
+                        </div>
+                        <div className={styles.mobileCardRow}>
+                          <span className={styles.mobileCardLabel}>Duration:</span>
+                          <span className={styles.mobileCardValue}>{formatDateToDMY(row.fromDate)} to {formatDateToDMY(row.toDate)}</span>
+                        </div>
+                        <div className={styles.mobileCardRow}>
+                          <span className={styles.mobileCardLabel}>Days Count:</span>
+                          <span className={styles.mobileCardValue}>{row.numberOfDays} Days</span>
+                        </div>
+                        <div className={styles.mobileCardRow}>
+                          <span className={styles.mobileCardLabel}>Reason:</span>
+                          <span className={styles.mobileCardValue}>
+                            {row.reason}
+                            {row.attachmentPath && (
+                              <div style={{ marginTop: '4px' }}>
+                                <a
+                                  href={getPhotoUrl(row.attachmentPath)}
+                                  download={`attachment_${row.id}`}
+                                  style={{ color: 'var(--primary)', fontWeight: 600, textDecoration: 'underline' }}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  View Document
+                                </a>
+                              </div>
+                            )}
+                          </span>
+                        </div>
+                        <div className={styles.mobileCardRow}>
+                          <span className={styles.mobileCardLabel}>Action By:</span>
+                          <span className={styles.mobileCardValue}>{actionDisplay}</span>
+                        </div>
+                      </div>
+                      <div className={styles.mobileCardActions}>
+                        {canApproveOrReject && row.status === 'Submitted' && (
+                          <>
+                            <button
+                              onClick={() => approveRequest(row.id)}
+                              className={styles.iconBtnRound}
+                              style={{ backgroundColor: '#10B981', color: 'white', border: 'none' }}
+                              title="Approve"
+                            >
+                              <Check size={16} />
+                            </button>
+                            <button
+                              onClick={() => rejectRequest(row.id)}
+                              className={styles.iconBtnRound}
+                              style={{ backgroundColor: '#EF4444', color: 'white', border: 'none' }}
+                              title="Reject"
+                            >
+                              <X size={16} />
+                            </button>
+                          </>
+                        )}
+                        {canApproveOrReject && row.status === 'Approved' && (
+                          <button
+                            onClick={() => cancelRequest(row.id)}
+                            className={styles.iconBtnRound}
+                            style={{ backgroundColor: '#F59E0B', color: 'white', border: 'none' }}
+                            title="Cancel Request"
+                          >
+                            <Ban size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-secondary)' }}>
+                  No leave requests found.
+                </div>
+              )}
+            </div>
+
 
             {/* Table Footer / Pagination */}
             <div className={styles.tableFooter}>

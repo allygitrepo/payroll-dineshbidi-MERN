@@ -133,6 +133,111 @@ const ChallanSetupTable = ({ data, searchTerm, onSearchChange, onEdit, onDelete 
         </table>
       </div>
 
+      {/* Mobile Card Layout for smaller screens */}
+      <div className={styles.mobileCardsContainer}>
+        {paginatedData.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+            No matching records found.
+          </div>
+        ) : (
+          paginatedData.map((item, index) => (
+            <div key={item.id} className={styles.mobileCard} onClick={() => onEdit ? onEdit(item) : null}>
+              <div className={styles.mobileCardHeader}>
+                <span className={styles.mobileCardIndex}># {startIndex + index + 1}</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                  {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                </span>
+              </div>
+              <div className={styles.mobileCardBody}>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Salary Limit:</span>
+                  <span className={styles.mobileCardValue}>{item.salaryLimit}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>EDLI Wages:</span>
+                  <span className={styles.mobileCardValue}>{item.edliWages}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>A/c 1 EE Male:</span>
+                  <span className={styles.mobileCardValue}>{item.accNo1EEMale}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>A/c 1 EE Female:</span>
+                  <span className={styles.mobileCardValue}>{item.accNo1EEFemale}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>A/c 1 ER:</span>
+                  <span className={styles.mobileCardValue}>{item.accNo1ER}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>A/c 2:</span>
+                  <span className={styles.mobileCardValue}>{item.accNo2}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>A/c 10:</span>
+                  <span className={styles.mobileCardValue}>{item.accNo10}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>A/c 21:</span>
+                  <span className={styles.mobileCardValue}>{item.accNo21}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>A/c 22:</span>
+                  <span className={styles.mobileCardValue}>{item.accNo22}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>A/c 2 Min:</span>
+                  <span className={styles.mobileCardValue}>{item.accNo2Min}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>A/c 22 Min:</span>
+                  <span className={styles.mobileCardValue}>{item.accNo22Min}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>PMRPY:</span>
+                  <span className={styles.mobileCardValue}>{item.pmrpy}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>ESIC Wages:</span>
+                  <span className={styles.mobileCardValue}>{item.esicWages}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Employee Share (%):</span>
+                  <span className={styles.mobileCardValue}>{item.employeeShare}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Employer Share:</span>
+                  <span className={styles.mobileCardValue}>{item.employerShare}</span>
+                </div>
+              </div>
+              {(onEdit || onDelete) && (
+                <div className={styles.mobileCardActions} onClick={(e) => e.stopPropagation()}>
+                  {onEdit && (
+                    <button 
+                      onClick={() => onEdit(item)} 
+                      title="Edit Record"
+                      className={styles.editBtn}
+                    >
+                      <Edit size={16} />
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button 
+                      onClick={() => onDelete(item.id)} 
+                      title="Delete Record"
+                      className={styles.deleteBtn}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+
       {/* Footer controls */}
       <div className={styles.tableFooter}>
         <div className={styles.footerLeft}>

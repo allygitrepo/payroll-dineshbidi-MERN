@@ -5,7 +5,7 @@ import styles from '../components/OfficeStaffSalaryPage.module.css';
 import OfficeStaffSalaryForm from '../components/OfficeStaffSalaryForm';
 import OfficeStaffSalaryTable from '../components/OfficeStaffSalaryTable';
 import { getOfficeStaffSalaries, saveOfficeStaffSalary, deleteOfficeStaffSalary } from '../services/officeStaffSalaryService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import { parseExcelDate } from '../../../../shared/utils/dateUtils';
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
@@ -30,6 +30,7 @@ const OfficeStaffSalaryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -100,12 +101,15 @@ const OfficeStaffSalaryPage = () => {
     if (deleteTargetId) {
       const companyId = localStorage.getItem('selectedCompany');
       try {
+        setIsSaving(true);
         const updated = await deleteOfficeStaffSalary(deleteTargetId, companyId);
         setWagesList(updated);
         addToast({ type: 'success', message: 'Office Staff Salary record deleted successfully!' });
       } catch (err) {
         console.error('Error deleting office staff salary:', err);
         addToast({ type: 'error', message: 'Failed to delete office staff salary.' });
+      } finally {
+        setIsSaving(false);
       }
     }
     setIsConfirmOpen(false);
@@ -120,6 +124,7 @@ const OfficeStaffSalaryPage = () => {
   const handleSave = async (wagesData) => {
     const companyId = localStorage.getItem('selectedCompany');
     try {
+      setIsSaving(true);
       const updated = await saveOfficeStaffSalary(wagesData, companyId);
       setWagesList(updated);
       setIsFormOpen(false);
@@ -134,6 +139,8 @@ const OfficeStaffSalaryPage = () => {
         type: 'error',
         message: err.response?.data?.messageToShow || 'Failed to save office staff salary.'
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -257,6 +264,7 @@ const OfficeStaffSalaryPage = () => {
 
   return (
     <div className={styles.container}>
+      {(loading || isSaving) && <Loader fullPage={true} />}
       
       {/* Header section with page heading and action buttons */}
       <div className={styles.headerSection}>

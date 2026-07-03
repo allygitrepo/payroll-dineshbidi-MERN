@@ -4,7 +4,7 @@ import styles from '../components/ChallanSetupPage.module.css';
 import ChallanSetupForm from '../components/ChallanSetupForm';
 import ChallanSetupTable from '../components/ChallanSetupTable';
 import { getChallanSetup, saveChallanSetup, deleteChallanSetup } from '../services/challanSetupService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
@@ -26,6 +26,7 @@ const ChallanSetupPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -92,12 +93,15 @@ const ChallanSetupPage = () => {
     if (deleteTargetId) {
       const companyId = localStorage.getItem('selectedCompany');
       try {
+        setIsSaving(true);
         const updated = await deleteChallanSetup(deleteTargetId, companyId);
         setChallanList(updated);
         addToast({ type: 'success', message: 'Challan Setup record deleted successfully!' });
       } catch (err) {
         console.error('Error deleting challan setup:', err);
         addToast({ type: 'error', message: 'Failed to delete challan setup.' });
+      } finally {
+        setIsSaving(false);
       }
     }
     setIsConfirmOpen(false);
@@ -177,6 +181,7 @@ const ChallanSetupPage = () => {
 
   return (
     <div className={styles.container}>
+      {(loading || isSaving) && <Loader fullPage={true} />}
 
       {/* Header section with page heading and action buttons */}
       <div className={styles.headerSection}>

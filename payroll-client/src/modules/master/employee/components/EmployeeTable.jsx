@@ -113,7 +113,7 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
         <table className={styles.table}>
           <thead>
             <tr>
-              <th style={{ width: '100px', textAlign: 'center' }}>Action</th>
+              <th style={{ width: '140px', textAlign: 'center' }}>Action</th>
               <th onClick={() => handleSort('abryApplicable')} style={{ width: '140px', textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>ABRY Applicable? {renderSortIcon('abryApplicable')}</div>
               </th>
@@ -211,7 +211,7 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
                   onClick={() => canEdit ? onEdit(employee) : null}
                   style={{ cursor: canEdit ? 'pointer' : 'default' }}
                 >
-                  <td onClick={(e) => e.stopPropagation()}>
+                  <td onClick={(e) => e.stopPropagation()} style={{ paddingLeft: '16px', paddingRight: '16px' }}>
                     <div className={styles.actionCell}>
                       {canEdit && (
                         <button
@@ -333,6 +333,121 @@ const EmployeeTable = ({ data, searchTerm, onSearchChange, selectedType, onTypeF
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Cards View */}
+      <div className={styles.mobileCardsContainer}>
+        {paginatedData.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+            No matching records found.
+          </div>
+        ) : (
+          paginatedData.map((employee, index) => (
+            <div key={employee.id} className={styles.mobileCard} onClick={() => canEdit ? onEdit(employee) : null}>
+              <div className={styles.mobileCardHeader}>
+                <span className={styles.mobileCardIndex}># {index + 1}</span>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <span style={{
+                    backgroundColor: employee.status ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: employee.status ? '#10B981' : '#EF4444',
+                    padding: '3px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.7rem',
+                    fontWeight: '600'
+                  }}>
+                    {employee.status ? 'Active' : 'Inactive'}
+                  </span>
+                  <span style={{
+                    backgroundColor: employee.faceDescriptorPath ? 'rgba(39, 214, 138, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: employee.faceDescriptorPath ? 'var(--primary)' : '#EF4444',
+                    padding: '3px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.7rem',
+                    fontWeight: '600'
+                  }}>
+                    {employee.faceDescriptorPath ? 'Enrolled' : 'No Face'}
+                  </span>
+                </div>
+              </div>
+              <div className={styles.mobileCardBody}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                  {employee.memberName}
+                </h4>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>UAN:</span>
+                  <span className={styles.mobileCardValue}>{employee.uan || '-'}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Member ID:</span>
+                  <span className={styles.mobileCardValue}>{employee.memberId || '-'}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>IP Number:</span>
+                  <span className={styles.mobileCardValue}>{employee.ipNumber || '-'}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Employee Type:</span>
+                  <span className={styles.mobileCardValue}>{employee.employeeType || '-'}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Contractor:</span>
+                  <span className={styles.mobileCardValue}>{employee.contractor || '-'}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Mobile:</span>
+                  <span className={styles.mobileCardValue}>{employee.mobile || '-'}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>DOB / DOJ:</span>
+                  <span className={styles.mobileCardValue}>
+                    {formatDate(employee.dob)} / {formatDate(employee.dateOfJoining)}
+                  </span>
+                </div>
+                <div className={styles.mobileCardRow} onClick={(e) => e.stopPropagation()}>
+                  <span className={styles.mobileCardLabel}>ABRY Applicable?</span>
+                  <input
+                    type="checkbox"
+                    checked={employee.abryApplicable || false}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      onToggleAbry && onToggleAbry(employee.id);
+                    }}
+                    className={styles.checkbox}
+                  />
+                </div>
+              </div>
+              <div className={styles.mobileCardActions} onClick={(e) => e.stopPropagation()}>
+                {canEdit && (
+                  <button 
+                    onClick={() => onEdit(employee)} 
+                    title="Edit Employee"
+                    className={styles.editBtn}
+                  >
+                    <Edit size={14} />
+                  </button>
+                )}
+                {onRegisterFace && (
+                  <button
+                    onClick={() => onRegisterFace(employee)}
+                    title={employee.faceDescriptorPath ? "Re-Register Face Biometrics" : "Register Face Biometrics"}
+                    className={employee.faceDescriptorPath ? `${styles.faceBtn} ${styles.registered}` : `${styles.faceBtn} ${styles.notRegistered}`}
+                  >
+                    <Smile size={14} />
+                  </button>
+                )}
+                {canDelete && (
+                  <button 
+                    onClick={() => onDelete(employee.id)} 
+                    title="Delete Employee"
+                    className={styles.deleteBtn}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

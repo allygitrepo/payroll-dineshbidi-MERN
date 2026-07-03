@@ -392,6 +392,49 @@ const NotesPage = () => {
           </table>
         </div>
 
+        {/* Mobile view cards layout */}
+        <div className={styles.mobileCardsContainer}>
+          {paginatedData.length > 0 ? (
+            paginatedData.map((note, index) => (
+              <div key={note.id} className={styles.mobileCard}>
+                <div className={styles.mobileCardHeader}>
+                  <span className={styles.mobileCardIndex}># {String(startIndex + index + 1).padStart(2, '0')}</span>
+                  <span style={{ fontWeight: '700', color: 'var(--text-secondary)' }}>{formatDate(note.date)}</span>
+                </div>
+                <div className={styles.mobileCardBody}>
+                  <div className={styles.mobileCardRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
+                    <span className={styles.mobileCardLabel}>Note Content:</span>
+                    <span className={styles.mobileCardValue} style={{ textAlign: 'left', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
+                      {note.content}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.mobileCardActions}>
+                  <button
+                    onClick={() => handleEditClick(note)}
+                    className={styles.iconBtnRound}
+                    title="Edit Note"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(note.id)}
+                    className={styles.iconBtnRound}
+                    style={{ color: '#EF4444' }}
+                    title="Delete Note"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+              No matching records found.
+            </div>
+          )}
+        </div>
+
         {/* Table Footer Controls */}
         <div className={styles.tableFooter}>
           <div className={styles.footerLeft}>

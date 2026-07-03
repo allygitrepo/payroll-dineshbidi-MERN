@@ -177,6 +177,50 @@ const ResignationTable = ({
         </table>
       </div>
 
+      {/* Mobile view cards layout */}
+      <div className={styles.mobileCardsContainer}>
+        {paginatedData.length > 0 ? (
+          paginatedData.map((row) => (
+            <div key={row.id} className={styles.mobileCard}>
+              <div className={styles.mobileCardHeader}>
+                <span className={styles.mobileCardIndex}>Account: {row.accountNo}</span>
+              </div>
+              <div className={styles.mobileCardBody}>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Date of Leaving:</span>
+                  <span className={styles.mobileCardValue}>{formatDate(row.dateOfLeaving)}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Reason:</span>
+                  <span className={styles.mobileCardValue} style={{ textAlign: 'right', maxWidth: '60%' }}>{row.reasonOfLeaving}</span>
+                </div>
+              </div>
+              <div className={styles.mobileCardActions}>
+                <button
+                  onClick={() => onEdit(row)}
+                  className={styles.iconBtnRound}
+                  title="Edit Record"
+                >
+                  <Edit size={16} />
+                </button>
+                <button
+                  onClick={() => onDelete(row.id)}
+                  className={styles.iconBtnRound}
+                  style={{ color: '#EF4444' }}
+                  title="Delete Record"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+            No matching resignation records found.
+          </div>
+        )}
+      </div>
+
       {/* Table Footer Navigation */}
       <div className={styles.tableFooter}>
         <div className={styles.footerLeft}>

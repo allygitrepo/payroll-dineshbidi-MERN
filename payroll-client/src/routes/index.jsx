@@ -12,9 +12,15 @@ import SaasClientManagementPage from '../modules/saas-admin/pages/SaasClientMana
 import SaasCoAdminsPage from '../modules/saas-admin/pages/SaasCoAdminsPage';
 import SaasEmployeeReportPage from '../modules/saas-admin/pages/SaasEmployeeReportPage';
 
+
+
 export const router = createBrowserRouter([
   {
     path: '/',
+    element: <Navigate to="/login" replace />
+  },
+  {
+    path: '/login',
     element: <LoginPage />
   },
   {

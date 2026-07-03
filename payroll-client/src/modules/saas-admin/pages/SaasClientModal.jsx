@@ -208,7 +208,7 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
 
   return (
     <div className={styles.modalOverlay}>
-      <div className={styles.modalContent} style={{ maxWidth: '1000px', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className={styles.modalContent} style={{ maxWidth: '1000px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
         <div className={styles.modalHeader} style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 10, padding: '16px 20px', margin: '-20px -20px 20px -20px' }}>
           <h3 className={styles.modalTitle}>
             {editingClient ? 'Edit Client & Master Profile' : 'Add New Client & Master Profile'}
@@ -224,14 +224,14 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
             {/* User Details */}
             <section>
               <h4 style={{ marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', color: 'var(--primary)' }}>1. Client Admin Credentials</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Admin Name *</label>
                   <input type="text" name="user_name" value={formData.user_name} onChange={handleChange} className={styles.formInput} required />
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Login ID *</label>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <input 
                       type="text" 
                       name="user_id" 
@@ -240,7 +240,7 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
                       className={styles.formInput} 
                       required 
                       disabled={!!editingClient} 
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, minWidth: '160px' }}
                     />
                     {editingClient && (
                       <button
@@ -302,7 +302,7 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
             <section>
               <h4 style={{ marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', color: 'var(--primary)' }}>2. Company Master Profile</h4>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Company Name *</label>
                   <input type="text" name="company_name" value={formData.company_name} onChange={handleChange} className={styles.formInput} required />
@@ -322,7 +322,7 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>PAN *</label>
                   <input type="text" name="pan" value={formData.pan} onChange={handleChange} className={styles.formInput} maxLength="10" required />
@@ -337,7 +337,7 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>EPFO Office *</label>
                   <input type="text" name="epfo_office" value={formData.epfo_office} onChange={handleChange} className={styles.formInput} required />
@@ -353,7 +353,7 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
               </div>
 
               <h5 style={{ marginTop: '24px', marginBottom: '12px', color: '#475569' }}>Contact & Address</h5>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Address Line *</label>
                   <input type="text" name="address_line" value={formData.address_line} onChange={handleChange} className={styles.formInput} required />
@@ -368,7 +368,7 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Pincode *</label>
                   <input type="text" name="pincode" value={formData.pincode} onChange={handleChange} className={styles.formInput} required />

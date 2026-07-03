@@ -244,6 +244,112 @@ const ContractorTable = ({
           </tbody>
         </table>
       </div>
+
+      {/* Mobile Cards View */}
+      <div className={styles.mobileCardsContainer}>
+        {paginatedData.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+            No matching records found.
+          </div>
+        ) : (
+          paginatedData.map((contractor, index) => (
+            <div key={contractor.id} className={styles.mobileCard} onClick={() => canEdit ? onEdit(contractor) : null}>
+              <div className={styles.mobileCardHeader}>
+                <span className={styles.mobileCardIndex}># {index + 1}</span>
+                <span style={{
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  backgroundColor: contractor.status === 'Active' ? '#dcfce7' : '#fee2e2',
+                  color: contractor.status === 'Active' ? '#16a34a' : '#ef4444'
+                }}>
+                  {contractor.status}
+                </span>
+              </div>
+              <div className={styles.mobileCardBody}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                  {contractor.name}
+                </h4>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Contractor Code:</span>
+                  <span className={styles.mobileCardValue}>{contractor.ccode}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Address:</span>
+                  <span className={styles.mobileCardValue}>
+                    {[contractor.address, contractor.postOffice, contractor.district, contractor.pincode].filter(Boolean).join(', ')}
+                  </span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>PF Code:</span>
+                  <span className={styles.mobileCardValue}>{contractor.pfCode || '-'}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>DOJ:</span>
+                  <span className={styles.mobileCardValue}>{formatDate(contractor.dateOfJoining)}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>PAN / Aadhaar:</span>
+                  <span className={styles.mobileCardValue}>
+                    {contractor.pan || '-'} / {contractor.aadhaar || '-'}
+                  </span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>GST No:</span>
+                  <span className={styles.mobileCardValue}>{contractor.gstNo || '-'}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Bank Details:</span>
+                  <span className={styles.mobileCardValue}>
+                    {contractor.bankName ? `${contractor.bankName} (${contractor.bankAccount || '-'})` : '-'}
+                  </span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>IFSC:</span>
+                  <span className={styles.mobileCardValue}>{contractor.ifsc || '-'}</span>
+                </div>
+              </div>
+              <div className={styles.mobileCardActions} onClick={(e) => e.stopPropagation()}>
+                {canEdit && (
+                  <button
+                    onClick={() => onEdit(contractor)}
+                    title="Edit Contractor"
+                    className={styles.editBtn}
+                  >
+                    <Edit size={14} />
+                  </button>
+                )}
+                
+                {canEdit && (
+                  <button
+                    onClick={() => onCreateLogin(contractor)}
+                    title={contractor.hasLogin ? "Update Login" : "Create Login"}
+                    className={styles.editBtn}
+                    style={{
+                      color: contractor.hasLogin ? 'white' : '#0ea5e9',
+                      border: contractor.hasLogin ? 'none' : '1px solid #bae6fd',
+                      backgroundColor: contractor.hasLogin ? '#16a34a' : '#f0f9ff'
+                    }}
+                  >
+                    <Key size={14} />
+                  </button>
+                )}
+
+                {canDelete && (
+                  <button
+                    onClick={() => onDelete(contractor.id)}
+                    title="Delete Contractor"
+                    className={styles.deleteBtn}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 };

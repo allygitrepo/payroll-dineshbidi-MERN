@@ -228,7 +228,7 @@ const DatePicker = ({
       {/* Calendar Popup Panel */}
       {isOpen && !disabled && (
         <div className={styles.popup}>
-          {pickerMode === 'calendar' ? (
+          {pickerMode === 'calendar' && (
             <>
               {/* Calendar View Header */}
               <div className={styles.headerRow}>
@@ -297,7 +297,9 @@ const DatePicker = ({
                 </button>
               </div>
             </>
-          ) : (
+          )}
+
+          {pickerMode === 'monthYear' && (
             /* Month & Year Selection Grid Sheet */
             <div className={styles.monthYearOverlay}>
               <div className={styles.overlayHeader}>
@@ -309,7 +311,14 @@ const DatePicker = ({
                 >
                   <ChevronLeft size={16} />
                 </button>
-                <span className={styles.yearDisplay}>{overlayYear}</span>
+                <button
+                  type="button"
+                  className={styles.yearDisplayBtn}
+                  onClick={() => setPickerMode('yearList')}
+                  title="Click to select year"
+                >
+                  {overlayYear}
+                </button>
                 <button
                   type="button"
                   className={styles.navBtn}
@@ -336,6 +345,42 @@ const DatePicker = ({
                 })}
               </div>
 
+              <button
+                type="button"
+                className={styles.backToCalBtn}
+                onClick={() => setPickerMode('calendar')}
+              >
+                Back to Calendar
+              </button>
+            </div>
+          )}
+
+          {pickerMode === 'yearList' && (
+            /* Custom Scrollable Years Grid Sheet */
+            <div className={styles.monthYearOverlay}>
+              <div className={styles.overlayHeader}>
+                <span className={styles.yearDisplayTitle}>Select Year</span>
+              </div>
+              <div className={styles.yearsScrollContainer}>
+                {Array.from({ length: 110 }, (_, i) => new Date().getFullYear() - 90 + i).map(yr => {
+                  const isSelected = yr === overlayYear;
+                  return (
+                    <button
+                      key={yr}
+                      type="button"
+                      className={`${styles.yearListItem} ${isSelected ? styles.yearListItemActive : ''}`}
+                      onClick={() => {
+                        setOverlayYear(yr);
+                        setViewYear(yr);
+                        setPickerMode('monthYear');
+                      }}
+                      ref={isSelected ? (el) => el?.scrollIntoView({ block: 'center' }) : null}
+                    >
+                      {yr}
+                    </button>
+                  );
+                })}
+              </div>
               <button
                 type="button"
                 className={styles.backToCalBtn}
