@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './KycUpdatePage.module.css';
+import { SearchableSelect } from '../../../../shared/components';
 
 const KycSearch = ({ employees, selectedEmployeeId, onSelectEmployee, onSearch, onReset }) => {
   const [error, setError] = useState('');
@@ -13,6 +14,11 @@ const KycSearch = ({ employees, selectedEmployeeId, onSelectEmployee, onSearch, 
 
   // Find current selected employee details
   const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
+
+  const employeeOptions = employees.map(emp => ({
+    value: emp.id,
+    label: emp.memberName
+  }));
 
   const handleSelectChange = (e) => {
     const val = e.target.value;
@@ -48,24 +54,15 @@ const KycSearch = ({ employees, selectedEmployeeId, onSelectEmployee, onSearch, 
             <label className={styles.label}>
               Name (as Per Aadhar) <span className={styles.required}>*</span>
             </label>
-            <select
+            <SearchableSelect
+              name="employee"
               value={selectedEmployeeId}
               onChange={handleSelectChange}
-              onBlur={() => {
-                if (!selectedEmployeeId) {
-                  setError('Please select an employee first!');
-                }
-              }}
-              className={styles.select}
-            >
-              <option value="">SELECT EMPLOYEE</option>
-              {employees.map(emp => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.memberName}
-                </option>
-              ))}
-            </select>
-            {error && <span className={styles.errorText}>{error}</span>}
+              options={employeeOptions}
+              placeholder="SELECT EMPLOYEE"
+              required={true}
+              error={error}
+            />
           </div>
 
           {/* UAN input */}

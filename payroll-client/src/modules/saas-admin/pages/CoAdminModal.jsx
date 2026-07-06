@@ -39,7 +39,7 @@ const CoAdminModal = ({ isOpen, onClose, onSuccess }) => {
 
   return (
     <div className={styles.modalOverlay}>
-      <div className={styles.modalContent} style={{ maxWidth: '500px' }}>
+      <div className={styles.modalContent} style={{ maxWidth: '500px', width: '95%' }}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Create System Co-Admin</h3>
           <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>

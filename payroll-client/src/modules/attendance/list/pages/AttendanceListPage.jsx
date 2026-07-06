@@ -325,7 +325,7 @@ const AttendanceListPage = () => {
     const fetchInitialData = async () => {
       try {
         setIsLoading(true);
-        await fetchInitialData();
+        await fetchData();
       } finally {
         setIsLoading(false);
       }

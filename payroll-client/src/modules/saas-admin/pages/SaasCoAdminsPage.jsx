@@ -137,7 +137,7 @@ const SaasCoAdminsPage = () => {
                     <td>{new Date(admin.createdAt).toLocaleDateString()}</td>
                     <td>
                       <div className={styles.actionButtons}>
-                        <button className={`${styles.actionBtn} ${styles.deleteBtn}`} title="Delete Admin">
+                        <button className={`${styles.actionBtn} ${styles.deleteBtn}`} title="Delete Admin" onClick={() => alert("Delete functionality pending")}>
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -147,6 +147,60 @@ const SaasCoAdminsPage = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className={styles.mobileCardsContainer}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading...</div>
+          ) : filteredAdmins.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b', backgroundColor: 'var(--card-bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              No Co-Admins found.
+            </div>
+          ) : (
+            currentAdmins.map((admin, index) => (
+              <div key={admin.id} className={styles.mobileCard}>
+                <div className={styles.mobileCardHeader}>
+                  <span className={styles.mobileCardIndex}>#{startIndex + index + 1}</span>
+                  <span style={{
+                    padding: '4px 8px',
+                    borderRadius: '20px',
+                    fontSize: '11px',
+                    fontWeight: '500',
+                    background: admin.status ? '#dcfce7' : '#fee2e2',
+                    color: admin.status ? '#16a34a' : '#ef4444'
+                  }}>
+                    {admin.status ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div className={styles.mobileCardBody}>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Admin Name</span>
+                    <span className={styles.mobileCardValue} style={{ fontWeight: '500', color: '#0f172a' }}>{admin.user_name}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Login ID</span>
+                    <span className={styles.mobileCardValue}>{admin.user_id}</span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Access Level</span>
+                    <span className={styles.mobileCardValue}>
+                      <span style={{ background: '#fef3c7', color: '#d97706', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>FULL ACCESS</span>
+                    </span>
+                  </div>
+                  <div className={styles.mobileCardRow}>
+                    <span className={styles.mobileCardLabel}>Joined Date</span>
+                    <span className={styles.mobileCardValue}>{new Date(admin.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div className={styles.mobileCardActions}>
+                  <button className={`${styles.actionBtn} ${styles.deleteBtn}`} title="Delete Admin" onClick={() => alert("Delete functionality pending")}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderTop: '1px solid var(--border)' }}>

@@ -62,3 +62,25 @@
 .chartCard { background: white; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
 .chartTitle { font-size: 1.1rem; font-weight: 600; color: #1e293b; margin: 0 0 20px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; }
 
+/* Responsive Overview styles */
+@media (max-width: 1024px) {
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .statCard {
+    padding: 16px;
+    gap: 16px;
+  }
+  .chartCard {
+    padding: 16px;
+  }
+}
+

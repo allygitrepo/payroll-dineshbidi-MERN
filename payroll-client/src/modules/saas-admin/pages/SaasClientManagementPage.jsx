@@ -149,6 +149,56 @@ const SaasClientManagementPage = () => {
           </table>
         </div>
 
+        {/* Mobile Card View */}
+        <div className={styles.mobileCardsContainer}>
+          {currentClients.map((client, index) => (
+            <div key={client.id} className={styles.mobileCard}>
+              <div className={styles.mobileCardHeader}>
+                <span className={styles.mobileCardIndex}>#{startIndex + index + 1}</span>
+                <span style={{ 
+                  color: client.status ? 'var(--primary)' : 'var(--text-muted)', 
+                  fontWeight: '600',
+                  fontSize: '0.85rem' 
+                }}>
+                  {client.status ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <div className={styles.mobileCardBody}>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Client Name</span>
+                  <span className={styles.mobileCardValue} style={{ fontWeight: 500 }}>{client.user_name}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Login ID</span>
+                  <span className={styles.mobileCardValue}>{client.user_id}</span>
+                </div>
+                <div className={styles.mobileCardRow}>
+                  <span className={styles.mobileCardLabel}>Primary Company</span>
+                  <span className={styles.mobileCardValue}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Building2 size={12} color="#64748b" />
+                      {client.company_name || 'Not Setup Yet'}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <div className={styles.mobileCardActions}>
+                <button className={styles.editBtn} onClick={() => handleEdit(client)} title="Edit Client">
+                  <Edit2 size={14} />
+                </button>
+                <button className={styles.deleteBtn} onClick={() => handleDelete(client.id)} title="Delete Client">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+          {filteredClients.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', backgroundColor: 'var(--card-bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              No clients found.
+            </div>
+          )}
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             Showing {totalEntries > 0 ? startIndex + 1 : 0} to {endIndex} of {totalEntries} entries

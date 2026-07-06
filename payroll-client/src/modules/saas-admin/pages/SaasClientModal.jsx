@@ -224,7 +224,7 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
             {/* User Details */}
             <section>
               <h4 style={{ marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', color: 'var(--primary)' }}>1. Client Admin Credentials</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Admin Name *</label>
                   <input type="text" name="user_name" value={formData.user_name} onChange={handleChange} className={styles.formInput} required />
@@ -302,7 +302,7 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
             <section>
               <h4 style={{ marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', color: 'var(--primary)' }}>2. Company Master Profile</h4>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Company Name *</label>
                   <input type="text" name="company_name" value={formData.company_name} onChange={handleChange} className={styles.formInput} required />
@@ -322,7 +322,7 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>PAN *</label>
                   <input type="text" name="pan" value={formData.pan} onChange={handleChange} className={styles.formInput} maxLength="10" required />
@@ -337,7 +337,7 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>EPFO Office *</label>
                   <input type="text" name="epfo_office" value={formData.epfo_office} onChange={handleChange} className={styles.formInput} required />
@@ -416,8 +416,8 @@ const SaasClientModal = ({ isOpen, onClose, editingClient, onSuccess }) => {
                         />
                         <span style={{ fontWeight: '600' }}>{group.title}</span>
                       </div>
-                      <div className={styles.groupBody}>
-                        <table className={styles.permissionsTable}>
+                      <div className={styles.groupBody} style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch' }}>
+                        <table className={styles.permissionsTable} style={{ minWidth: '450px' }}>
                           <thead>
                             <tr>
                               <th>Module</th>

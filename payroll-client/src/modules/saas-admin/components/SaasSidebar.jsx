@@ -10,8 +10,14 @@ const menuItems = [
   { name: 'Employee Stats', icon: BarChart, path: '/saas-dashboard/employee-stats' }
 ];
 
-const SaasSidebar = ({ sidebarCollapsed }) => {
+const SaasSidebar = ({ sidebarCollapsed, setSidebarCollapsed }) => {
   const location = useLocation();
+
+  const handleLinkClick = () => {
+    if (setSidebarCollapsed && window.innerWidth < 768) {
+      setSidebarCollapsed(true);
+    }
+  };
 
   return (
     <aside className={`${styles.sidebar} ${sidebarCollapsed ? styles.collapsed : ''}`}>
@@ -26,6 +32,7 @@ const SaasSidebar = ({ sidebarCollapsed }) => {
               <RouterLink
                 to={item.path}
                 className={`${styles.sidebarItem} ${isActive ? styles.activeItem : ''}`}
+                onClick={handleLinkClick}
               >
                 <IconComp size={18} className={styles.sidebarIcon} />
                 <span className={styles.sidebarText}>{item.name}</span>
