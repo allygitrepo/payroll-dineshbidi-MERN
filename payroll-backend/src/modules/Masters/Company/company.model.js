@@ -111,4 +111,21 @@ const Company = sequelize.define(
     }
 );
 
+Company.afterCreate(async (company, options) => {
+    try {
+        const WhatsAppTemplate = require("../../Setup/WhatsApp/whatsappTemplate.model");
+        const templateContent = `Hello {{name}},\nYour login ID and password are as follows for \nCompany name: {{company_name}}\nUrl: payroll.allysoftsolutions.com\nUsername: {{username}}\nPassword: {{password}}`;
+        
+        await WhatsAppTemplate.create({
+            company_id: company.id,
+            name: 'Contractor Login Credentials',
+            content: templateContent,
+            status: true
+        }, { transaction: options.transaction });
+        console.log(`Default WhatsApp template automatically created for company ${company.company_name}`);
+    } catch (err) {
+        console.error("Failed to auto-create default WhatsApp template for company:", err);
+    }
+});
+
 module.exports = Company;
