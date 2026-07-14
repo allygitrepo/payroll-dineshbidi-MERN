@@ -3,6 +3,7 @@ import CalenderPage from '../calender/pages/CalenderPage';
 import UserManagementPage from '../user-management/pages/UserManagementPage';
 import WhatsAppGatewayPage from '../whatsapp/pages/WhatsAppGatewayPage';
 import EmployeeDataImportPage from '../employee-data-import/pages/EmployeeDataImportPage';
+import ContractorDataImportPage from '../contractor-data-import/pages/ContractorDataImportPage';
 import EmployeeDataExportPage from '../employee-data-export/pages/EmployeeDataExportPage';
 import KycExportPage from '../kyc-export/pages/KycExportPage';
 import AttandancePrintingPage from '../attandance-printing/pages/AttandancePrintingPage';
@@ -22,6 +23,8 @@ const UtilityPage = ({ activeSubMenu }) => {
       return <WhatsAppGatewayPage />;
     case 'Employee Data Import':
       return <EmployeeDataImportPage />;
+    case 'Contractor Data Import':
+      return <ContractorDataImportPage />;
     case 'Employee Data Export':
       return <EmployeeDataExportPage />;
     case 'KYC Export':

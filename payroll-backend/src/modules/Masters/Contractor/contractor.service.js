@@ -223,7 +223,7 @@ class ContractorService {
                 {
                     model: User,
                     as: "user_account",
-                    attributes: ["id", "status"],
+                    attributes: ["id", "status", "user_id"],
                     required: false
                 }
             ],

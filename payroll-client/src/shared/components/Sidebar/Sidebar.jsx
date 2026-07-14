@@ -138,6 +138,7 @@ export const menuItems = [
       { name: 'User Management', icon: UserCog },
       { name: 'WhatsApp Gateway', icon: WhatsAppIcon },
       { name: 'Employee Data Import', icon: FileUp },
+      { name: 'Contractor Data Import', icon: FileUp },
       { name: 'Employee Data Export', icon: FileDown },
       { name: 'KYC Export', icon: Fingerprint },
       { name: 'Attandance Printing', icon: Printer },

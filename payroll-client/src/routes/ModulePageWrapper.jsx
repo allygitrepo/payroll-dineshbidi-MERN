@@ -59,6 +59,7 @@ const slugToSubmenuMap = {
   'user-management': 'User Management',
   'whatsapp-gateway': 'WhatsApp Gateway',
   'employee-data-import': 'Employee Data Import',
+  'contractor-data-import': 'Contractor Data Import',
   'employee-data-export': 'Employee Data Export',
   'kyc-export': 'KYC Export',
   'attandance-printing': 'Attandance Printing',

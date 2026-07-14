@@ -8,7 +8,7 @@ import { menuItems, nameToSlug } from '../../../shared/components/Sidebar/Sideba
 const READ_ONLY_SLUGS = [
   'dashboard', 'face-attendance-self', 'ecr-report', 'esic-report', 'pmrpy-report', 
   'pf-challan-yearly', 'esic-challan-yearly', 'epf-challan', 'pf-summary', 'payment-advice', 
-  'bonus-sheet', 'gratuity-calculation', 'employee-data-import', 
+  'bonus-sheet', 'gratuity-calculation', 'employee-data-import', 'contractor-data-import',
   'employee-data-export', 'kyc-export', 'attendance-printing', 
   'missing-information', 'delete-month-entry', 'backup', 'restore', 
   '3-month-absent-list', '58-years-of-age', 'excel-to-text', 'whatsapp-gateway',
