@@ -23,7 +23,7 @@ const LoanTransaction = sequelize.define(
             type: DataTypes.UUID,
             allowNull: false,
             references: {
-                model: "Employees",
+                model: "employees",
                 key: "id",
             },
             onDelete: "CASCADE",
