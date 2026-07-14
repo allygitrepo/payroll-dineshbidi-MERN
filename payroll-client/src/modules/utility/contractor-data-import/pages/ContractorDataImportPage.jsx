@@ -339,11 +339,12 @@ const ContractorDataImportPage = () => {
           });
 
           if (savedContractor) {
-            const isNewEntry = !c.id;
+            const hasExplicitPassword = !!c.passwordVal;
+            const shouldSendWhatsapp = (c.sendToWhatsappVal === 'YES' || c.sendToWhatsappVal === 'TRUE' || c.sendToWhatsappVal === '1') && hasExplicitPassword;
             await createContractorLogin(savedContractor.id, {
               username: c.loginIdVal,
               password: c.passwordVal || 'Pass1234!',
-              sendWhatsapp: isNewEntry && (c.sendToWhatsappVal === 'YES' || c.sendToWhatsappVal === 'TRUE' || c.sendToWhatsappVal === '1')
+              sendWhatsapp: shouldSendWhatsapp
             });
           }
         }
