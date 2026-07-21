@@ -24,7 +24,7 @@ exports.exportDatabase = async (req, res) => {
         // Run mysqldump
         await mysqldump({
             connection: {
-                host: process.env.DB_HOST || 'localhost',
+                host: process.env.DB_HOST || '127.0.0.1',
                 user: process.env.DB_USER,
                 password: process.env.DB_PASSWORD,
                 database: dbName,

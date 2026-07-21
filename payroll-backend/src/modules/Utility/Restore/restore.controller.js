@@ -70,7 +70,7 @@ exports.executeRestore = async (req, res) => {
 
         // Establish raw mysql2 connection with multipleStatements allowed to execute dump safely
         const connection = await mysql.createConnection({
-            host: process.env.DB_HOST || 'localhost',
+            host: process.env.DB_HOST || '127.0.0.1',
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
             database: process.env.DB_NAME,

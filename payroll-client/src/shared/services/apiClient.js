@@ -2,7 +2,7 @@ import axios from 'axios';
 import { API_ENDPOINTS } from './endpoints';
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/payroll/v1/',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

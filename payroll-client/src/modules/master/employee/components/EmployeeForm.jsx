@@ -324,8 +324,8 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
   const getPhotoUrl = (path) => {
     if (!path) return '';
     if (path.startsWith('data:')) return path;
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/payroll/v1/';
-    const host = baseUrl.replace('/payroll/v1/', '');
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const host = baseUrl ? baseUrl.replace('/payroll/v1/', '') : '';
     const cleanPath = path.startsWith('/') ? path.slice(1) : path;
     return `${host}/payroll/${cleanPath}`;
   };

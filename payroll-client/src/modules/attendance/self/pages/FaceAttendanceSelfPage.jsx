@@ -9,8 +9,8 @@ const getPhotoUrl = (photoPath) => {
   if (!photoPath) return null;
   if (photoPath.startsWith('data:image')) return photoPath;
 
-  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/payroll/v1/';
-  const cleanBase = apiBase.replace(/\/v1\/?$/, '/');
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+  const cleanBase = apiBase ? apiBase.replace(/\/v1\/?$/, '/') : '';
   return `${cleanBase}${photoPath}`;
 };
 

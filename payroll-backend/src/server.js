@@ -12,7 +12,6 @@ connectDB().then(async () => {
     
     app.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
-        console.log(`http://localhost:${PORT}/payroll/v1/test`);
     });
 });
 // Trigger nodemon restart after db and ignore config updates
