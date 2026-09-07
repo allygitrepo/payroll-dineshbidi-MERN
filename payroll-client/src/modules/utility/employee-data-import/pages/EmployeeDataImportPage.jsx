@@ -169,14 +169,17 @@ const EmployeeDataImportPage = () => {
         const totalRows = jsonData.length;
         if (totalRows === 0) throw new Error("Excel file is empty");
 
+        const normalize = (value) =>
+          String(value ?? "")
+            .trim()
+            .replace(/\s+/g, " ")
+            .toLowerCase();
+
         const contractorsList = await getContractors(companyId);
         const addressesList = await getAddresses(companyId);
-        const defaultAddressId = addressesList.length > 0 ? addressesList[0].id : null;
-
         const existingEmployees = await getEmployees(companyId);
 
         const missingContractorsMap = new Map();
-        const missingAddressesMap = new Map();
         const summary = { added: [], updated: [], failed: [] };
 
         for (let i = 0; i < totalRows; i++) {
@@ -192,30 +195,30 @@ const EmployeeDataImportPage = () => {
           if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             email = ''; // Clear invalid email to prevent validation failure
           }
-          const contractorName = String(row['Contractor Name'] || 'SELF').trim().toUpperCase();
-          const addressStr = String(row['Address'] || '').trim().toUpperCase();
+          const contractorName = String(row['Contractor Name'] || 'SELF').trim();
+          const addressName = String(row['Address'] || '').trim();
 
           if (!uan || uan.length !== 12 || !memberName || !dob || !doj) {
             summary.failed.push({ rowNumber: i + 2, name: memberName || 'Unknown', reason: "Missing required fields or invalid date (Name, 12-digit UAN, DOB, DOJ)." });
             continue;
           }
 
-          if (addressStr) {
-            const match = addressesList.find(a => String(a.address).trim().toUpperCase() === addressStr);
-            if (!match && !missingAddressesMap.has(addressStr)) {
-              missingAddressesMap.set(addressStr, {
-                address: addressStr,
-                postOffice: String(row['Post Office'] || 'UNKNOWN').trim().toUpperCase(),
-                district: String(row['District'] || 'UNKNOWN').trim().toUpperCase(),
-                pincode: String(row['Pincode'] || '000000').trim()
-              });
+          let matchedAddress = null;
+          let addressId = null;
+
+          if (addressName) {
+            matchedAddress = addressesList.find(a => normalize(a.address || a.address_name) === normalize(addressName));
+            if (!matchedAddress) {
+              summary.failed.push({ rowNumber: i + 2, name: memberName, reason: `Address "${addressName}" was not found for this company.` });
+              continue;
             }
+            addressId = matchedAddress.id || matchedAddress.address_id;
           }
 
-          if (contractorName !== 'SELF') {
-            const match = contractorsList.find(c => String(c.name).trim().toUpperCase() === contractorName);
-            if (!match && !missingContractorsMap.has(contractorName)) {
-              missingContractorsMap.set(contractorName, addressStr);
+          if (contractorName.toUpperCase() !== 'SELF') {
+            const match = contractorsList.find(c => normalize(c.name) === normalize(contractorName));
+            if (!match && !missingContractorsMap.has(contractorName.toUpperCase())) {
+              missingContractorsMap.set(contractorName.toUpperCase(), addressName);
             }
           }
 
@@ -250,15 +253,15 @@ const EmployeeDataImportPage = () => {
             aadhaarCard: aadhar,
             nationality: String(row['Nationality'] || 'INDIAN'),
             pmrpy: (row['PMRPY'] || 'NO').toUpperCase(),
-            address_id: defaultAddressId,
+            address: addressName,
+            address_id: addressId,
             status: (String(row['Status'] || '1').trim() === '0' || String(row['Status'] || '').trim().toUpperCase() === 'INACTIVE') ? 'Inactive' : 'Active',
             kycDetails: [
               { documentType: 'PAN', documentNumber: row['PAN'] || '' },
               { documentType: 'BANK PASSBOOK', documentNumber: row['Bank Account Number'] || '', ifsc: row['Bank IFSC'] || '' }
             ].filter(k => k.documentNumber),
             nomineeDetails: [],
-            familyDetails: [],
-            addressStr
+            familyDetails: []
           };
 
           const existingMatch = existingEmployees.find(emp => emp.uan === uan);
@@ -283,7 +286,7 @@ const EmployeeDataImportPage = () => {
             if (safeStr(employeeObj.email) !== safeStr(existingMatch.email)) changes.push('Email Id');
             if (safeStr(employeeObj.aadhaarCard) !== safeStr(existingMatch.aadhaarCard)) changes.push('Aadhaar Number');
             if (safeStr(employeeObj.pmrpy) !== safeStr(existingMatch.pmrpy)) changes.push('PMRPY');
-            if (safeStr(employeeObj.addressStr) !== safeStr(existingMatch.address)) changes.push('Address');
+            if (safeStr(employeeObj.address) !== safeStr(existingMatch.address)) changes.push('Address');
             
             employeeObj.changedColumns = changes;
             summary.updated.push(employeeObj);
@@ -295,7 +298,6 @@ const EmployeeDataImportPage = () => {
         setAnalysisSummary({ 
           ...summary, 
           missingContractors: Array.from(missingContractorsMap.entries()),
-          missingAddresses: Array.from(missingAddressesMap.values()),
           contractorsList, 
           addressesList, 
           companyId 
@@ -322,59 +324,29 @@ const EmployeeDataImportPage = () => {
       return;
     }
 
+    const normalize = (value) =>
+      String(value ?? "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLowerCase();
+
     let processed = 0;
     let failCount = 0;
     const failedReasons = [];
     const { companyId } = analysisSummary;
-    let addressesList = analysisSummary.addressesList;
+    let addressesList = await getAddresses(companyId);
     let contractorsList = analysisSummary.contractorsList;
 
-    // 1. Create a default address if the database is completely empty and no missing addresses are parsed
-    if (addressesList.length === 0 && (!analysisSummary.missingAddresses || analysisSummary.missingAddresses.length === 0)) {
-      try {
-        await saveAddress({
-          address: 'COMPANY HEADQUARTERS',
-          postOffice: 'UNKNOWN',
-          district: 'UNKNOWN',
-          pincode: '000000',
-          status: 'Active'
-        }, companyId);
-        addressesList = await getAddresses(companyId);
-      } catch (e) {
-        console.error("Failed to create fallback address", e);
-      }
-    }
-
-    // 2. Auto-create missing addresses with real Excel details
-    if (analysisSummary.missingAddresses && analysisSummary.missingAddresses.length > 0) {
-      for (const addr of analysisSummary.missingAddresses) {
-        try {
-          await saveAddress({
-            address: addr.address,
-            postOffice: addr.postOffice,
-            district: addr.district,
-            pincode: addr.pincode,
-            status: 'Active'
-          }, companyId);
-        } catch (e) {
-          console.error("Failed to auto-create address", addr.address, e);
-        }
-      }
-      addressesList = await getAddresses(companyId);
-    }
-
-    // 3. Auto-create missing contractors linked to their corresponding address
+    // Auto-create missing contractors linked to their corresponding address
     if (analysisSummary.missingContractors && analysisSummary.missingContractors.length > 0) {
       for (const [cName, addressStr] of analysisSummary.missingContractors) {
-        // Find corresponding address ID from newly created list
         let contractorAddressId = null;
         if (addressStr) {
-          const matchedAddr = addressesList.find(a => String(a.address).trim().toUpperCase() === addressStr.trim().toUpperCase());
-          contractorAddressId = matchedAddr?.id || null;
+          const matchedAddr = addressesList.find(a => normalize(a.address || a.address_name) === normalize(addressStr));
+          contractorAddressId = matchedAddr?.id || matchedAddr?.address_id || null;
         }
-        // Fallback to first available address if null
         if (!contractorAddressId && addressesList.length > 0) {
-          contractorAddressId = addressesList[0].id;
+          contractorAddressId = addressesList[0].id || addressesList[0].address_id;
         }
 
         try {
@@ -393,27 +365,37 @@ const EmployeeDataImportPage = () => {
       contractorsList = await getContractors(companyId);
     }
 
-    const defaultAddressId = addressesList.length > 0 ? addressesList[0].id : null;
     const processList = [...analysisSummary.added, ...analysisSummary.updated];
 
     for (const emp of processList) {
-      if (emp.addressStr) {
-        const matchedAddress = addressesList.find(a => String(a.address).trim().toUpperCase() === emp.addressStr.trim().toUpperCase());
-        if (matchedAddress) {
-          emp.address_id = matchedAddress.id;
-        } else {
-          emp.address_id = defaultAddressId;
+      const excelAddressName = String(emp.address || '').trim();
+      let matchedAddress = null;
+      let addressId = null;
+
+      if (excelAddressName) {
+        matchedAddress = addressesList.find(a => normalize(a.address || a.address_name) === normalize(excelAddressName));
+        if (!matchedAddress) {
+          console.error(`Row ${emp.rowNumber}: Address "${excelAddressName}" was not found for this company.`);
+          failCount++;
+          failedReasons.push(`Row ${emp.rowNumber} (${emp.memberName}): Address "${excelAddressName}" was not found for this company.`);
+          processed++;
+          setProgress(Math.round((processed / totalToProcess) * 100));
+          continue;
         }
-      } else {
-        emp.address_id = defaultAddressId;
+        addressId = matchedAddress.id || matchedAddress.address_id;
       }
+
+      console.log("Excel Address Name:", excelAddressName || "(Optional/Empty)");
+      console.log("Available Address Names:", addressesList.map(a => a.address || a.address_name));
+      emp.address = excelAddressName;
+      emp.address_id = addressId;
 
       try {
         await saveEmployee(emp, companyId, addressesList, contractorsList);
       } catch (err) {
         console.error("Failed to save employee", emp, JSON.stringify(err?.response?.data || err?.message));
         failCount++;
-        failedReasons.push(`${emp.memberName}: ${err?.response?.data?.messageToShow || err?.response?.data?.message || err.message}`);
+        failedReasons.push(`Row ${emp.rowNumber} (${emp.memberName}): ${err?.response?.data?.messageToShow || err?.response?.data?.message || err.message}`);
       }
       processed++;
       setProgress(Math.round((processed / totalToProcess) * 100));
@@ -425,16 +407,17 @@ const EmployeeDataImportPage = () => {
     setPreviewData({ columns: [], rows: [] });
     if (fileInputRef.current) fileInputRef.current.value = '';
 
+    const successCount = processed - failCount;
     if (failCount > 0) {
       addToast({
         type: 'error',
-        message: `Import finished with errors. Saved ${processed - failCount}. Failed ${failCount} (Check console for details).`
+        message: `Import finished. Successfully imported: ${successCount}. Failed: ${failCount}`
       });
       console.warn("Backend Import Failures:", failedReasons);
     } else {
       addToast({
         type: 'success',
-        message: `Import complete! Processed ${processed} entries successfully.`
+        message: `Import complete! Successfully imported: ${successCount} entries.`
       });
     }
   };

@@ -17,8 +17,8 @@ const connectDB = async () => {
         //     await db.LeaveType.sync();
         // }
 
-        // await db.sequelize.sync({ alter: true });
-        // console.log("Database models synchronized successfully");
+        await db.sequelize.sync({ alter: true });
+        console.log("Database models synchronized successfully");
     } catch (err) {
         console.log("DB connection failed");
         console.log(err.message);
