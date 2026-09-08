@@ -35,14 +35,39 @@ const LoginPage = () => {
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    // Show the install prompt
-    deferredPrompt.prompt();
-    // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
-    // We've used the prompt, and can't use it again, throw it away
-    setDeferredPrompt(null);
+    // Check if app is already running in PWA standalone mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if (isStandalone) {
+      addToast({
+        type: 'info',
+        message: 'The Payroll App is already installed and running in Desktop/Mobile App mode!',
+      });
+      return;
+    }
+
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User choice on install prompt: ${outcome}`);
+        setDeferredPrompt(null);
+      } catch (err) {
+        console.error('Install prompt error:', err);
+      }
+    } else {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      if (userAgent.includes('iphone') || userAgent.includes('ipad')) {
+        addToast({
+          type: 'info',
+          message: 'To install on iOS: Tap the Share button in Safari and select "Add to Home Screen".',
+        });
+      } else {
+        addToast({
+          type: 'info',
+          message: 'To install: Click the Install icon (⊕) in your browser address bar or browser menu.',
+        });
+      }
+    }
   };
 
   const validate = () => {
@@ -182,13 +207,11 @@ const LoginPage = () => {
           </div> 
           </div>*/}
 
-          {deferredPrompt && (
-            <div className={styles.installBtnContainer}>
-              <Button type="button" variant="outline" onClick={handleInstallClick} style={{ width: '100%', borderColor: 'var(--primary)', color: 'var(--primary)' }}>
-                Install Desktop/Mobile App
-              </Button>
-            </div>
-          )}
+          <div className={styles.installBtnContainer}>
+            <Button type="button" variant="primary" onClick={handleInstallClick}>
+              Install Desktop/Mobile App
+            </Button>
+          </div>
         </div>
 
       </div>

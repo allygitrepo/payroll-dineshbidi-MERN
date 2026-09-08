@@ -1,9 +1,6 @@
 .btn {
   width: 100%;
   padding: 12px 24px;
-  background-color: var(--primary);
-  color: var(--card-bg);
-  border: none;
   border-radius: 999px;
   /* Pill shape */
   font-size: 1rem;
@@ -13,13 +10,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.btnPrimary {
+  background-color: var(--primary);
+  color: #ffffff;
+  border: none;
   box-shadow: 0 4px 10px rgba(50, 179, 162, 0.15);
 }
 
-.btn:hover {
+.btnPrimary:hover {
   background-color: var(--primary-hover);
   transform: translateY(-1px);
   box-shadow: 0 6px 14px rgba(50, 179, 162, 0.25);
+}
+
+.btnOutline {
+  background-color: transparent;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+  box-shadow: none;
+}
+
+.btnOutline:hover {
+  background-color: rgba(39, 214, 138, 0.1);
+  transform: translateY(-1px);
 }
 
 .btn:active {

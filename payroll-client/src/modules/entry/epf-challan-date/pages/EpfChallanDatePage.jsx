@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, UploadCloud } from 'lucide-react';
+import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import styles from '../components/EpfChallanDatePage.module.css';
 import EpfChallanDateForm from '../components/EpfChallanDateForm';
@@ -152,6 +152,66 @@ const EpfChallanDatePage = () => {
     XLSX.writeFile(wb, "EPF_Challan_Template.xlsx");
   };
 
+  const parseExcelDate = (dateVal) => {
+    if (!dateVal) return null;
+    if (dateVal instanceof Date) {
+      return !isNaN(dateVal) ? dateVal.toISOString() : null;
+    }
+    if (typeof dateVal === 'number') {
+      const date = new Date((dateVal - (25567 + 2)) * 86400 * 1000);
+      return !isNaN(date) ? date.toISOString() : null;
+    }
+    if (typeof dateVal === 'string') {
+      const str = dateVal.trim();
+      if (!str) return null;
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str) || str.includes('T')) {
+        const date = new Date(str);
+        return !isNaN(date) ? date.toISOString() : null;
+      }
+
+      const parts = str.split(/[-/]/);
+      if (parts.length === 3) {
+        let p1 = parseInt(parts[0], 10);
+        let p2 = parseInt(parts[1], 10);
+        let p3 = parseInt(parts[2], 10);
+
+        if (p1 > 1000) {
+          const date = new Date(p1, p2 - 1, p3);
+          return !isNaN(date) ? date.toISOString() : null;
+        } else {
+          if (p3 < 100) p3 += 2000;
+          const date = new Date(p3, p2 - 1, p1);
+          return !isNaN(date) ? date.toISOString() : null;
+        }
+      }
+      const date = new Date(str);
+      return !isNaN(date) ? date.toISOString() : null;
+    }
+    return null;
+  };
+
+  const formatWageMonth = (rawVal) => {
+    if (!rawVal) return '';
+    const str = String(rawVal).trim();
+    if (/^\d{1,2}\/\d{4}$/.test(str)) {
+      const [m, y] = str.split('/');
+      return `${m.padStart(2, '0')}/${y}`;
+    }
+    if (/^\d{4}-\d{1,2}$/.test(str)) {
+      const [y, m] = str.split('-');
+      return `${m.padStart(2, '0')}/${y}`;
+    }
+    const parsedDate = parseExcelDate(rawVal);
+    if (parsedDate) {
+      const d = new Date(parsedDate);
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const y = d.getFullYear();
+      return `${m}/${y}`;
+    }
+    return str;
+  };
+
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -160,80 +220,107 @@ const EpfChallanDatePage = () => {
     reader.onload = (evt) => {
       try {
         const data = new Uint8Array(evt.target.result);
-        const wb = XLSX.read(data, { type: 'array' });
+        const wb = XLSX.read(data, { type: 'array', cellDates: true });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const sheetData = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-        if (sheetData.length <= 1) {
+        const rawSheetRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+        if (!rawSheetRows || rawSheetRows.length === 0) {
           addToast({ type: 'error', message: 'The uploaded file is empty or missing data rows.' });
           return;
         }
 
-        const headers = sheetData[0];
-        const rows = sheetData.slice(1).filter(row => row.length > 0);
+        // Find header row dynamically (searching for key column titles)
+        let headerRowIndex = rawSheetRows.findIndex(row => 
+          Array.isArray(row) && row.some(cell => {
+            const str = String(cell || '').toLowerCase();
+            return str.includes('trrn') || str.includes('crn') || str.includes('wage') || str.includes('challan') || str.includes('a/c');
+          })
+        );
 
-        const parseExcelDate = (dateVal) => {
-          if (!dateVal) return null;
-          if (dateVal instanceof Date) {
-            if (!isNaN(dateVal)) return dateVal.toISOString();
-            return null;
-          }
-          if (typeof dateVal === 'number') {
-            const date = new Date((dateVal - (25567 + 2)) * 86400 * 1000);
-            if (!isNaN(date)) return date.toISOString();
-            return null;
-          }
-          if (typeof dateVal === 'string') {
-            const parts = dateVal.split(/[-/]/);
-            if (parts.length === 3) {
-              const p1 = parseInt(parts[0], 10);
-              const p2 = parseInt(parts[1], 10) - 1;
-              let p3 = parseInt(parts[2], 10);
+        if (headerRowIndex === -1) {
+          headerRowIndex = 0;
+        }
 
-              if (p1 <= 31) {
-                if (p3 < 100) p3 += 2000;
-                const date = new Date(p3, p2, p1);
-                if (!isNaN(date)) return date.toISOString();
-              }
-            }
-            const date = new Date(dateVal);
-            if (!isNaN(date)) return date.toISOString();
-          }
-          return null;
+        const headers = rawSheetRows[headerRowIndex].map(h => String(h || '').trim());
+        const dataRows = rawSheetRows.slice(headerRowIndex + 1).filter(row => 
+          Array.isArray(row) && row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '')
+        );
+
+        if (dataRows.length === 0) {
+          addToast({ type: 'error', message: 'No valid data rows found in the uploaded file.' });
+          return;
+        }
+
+        const findColIdx = (patterns) => {
+          return headers.findIndex(h => {
+            const str = h.toLowerCase().replace(/\s+/g, '');
+            return patterns.some(p => p(str, h));
+          });
         };
 
-        const mappedData = rows.map(row => {
-          // Map array row to object using header indices
-          const trrnIdx = headers.findIndex(h => h && h.toString().includes('TRRN'));
-          const crnIdx = headers.findIndex(h => h && h.toString().includes('CRN'));
-          const wageMonthIdx = headers.findIndex(h => h && h.toString().includes('Wage Month'));
-          const dueDateIdx = headers.findIndex(h => h && h.toString().includes('Due Date'));
-          const challanDateIdx = headers.findIndex(h => h && h.toString().includes('Challan Date'));
-          const ac1eeIdx = headers.findIndex(h => h && h.toString().includes('A/C 1 (EE)'));
-          const ac1erIdx = headers.findIndex(h => h && h.toString().includes('A/C 1 (ER)'));
-          const ac2Idx = headers.findIndex(h => h && h.toString().includes('A/C 2') && !h.toString().includes('21') && !h.toString().includes('22'));
-          const ac10Idx = headers.findIndex(h => h && h.toString().includes('A/C 10'));
-          const ac21Idx = headers.findIndex(h => h && h.toString().includes('A/C 21'));
-          const ac22Idx = headers.findIndex(h => h && h.toString().includes('A/C 22'));
-          const totalAmountIdx = headers.findIndex(h => h && h.toString().includes('Total Amount'));
-          const returnDateIdx = headers.findIndex(h => h && h.toString().includes('Return Date'));
+        const trrnIdx = findColIdx([s => s.includes('trrn'), s => s.includes('ttrn')]);
+        const crnIdx = findColIdx([s => s.includes('crn')]);
+        const wageMonthIdx = findColIdx([s => s.includes('wage') || s.includes('wagemonth'), s => s.includes('month') && !s.includes('due') && !s.includes('challan') && !s.includes('return')]);
+        const dueDateIdx = findColIdx([s => s.includes('due')]);
+        const challanDateIdx = findColIdx([s => s.includes('challan')]);
+        const returnDateIdx = findColIdx([s => s.includes('return')]);
 
-          return {
-            trrn: trrnIdx !== -1 ? String(row[trrnIdx] || '') : '',
-            crnNo: crnIdx !== -1 ? String(row[crnIdx] || '') : '',
-            wageMonth: wageMonthIdx !== -1 ? String(row[wageMonthIdx] || '') : '',
+        const ac1eeIdx = findColIdx([
+          s => (s.includes('1') || s.includes('ac1') || s.includes('a/c1')) && (s.includes('ee') || s.includes('employee')),
+          s => s.includes('ac1ee') || s.includes('a/c1ee')
+        ]);
+
+        const ac1erIdx = findColIdx([
+          s => (s.includes('1') || s.includes('ac1') || s.includes('a/c1')) && (s.includes('er') || s.includes('employer')),
+          s => s.includes('ac1er') || s.includes('a/c1er')
+        ]);
+
+        const ac2Idx = findColIdx([
+          s => (s.includes('2') || s.includes('ac2') || s.includes('a/c2') || s.includes('02')) && !s.includes('21') && !s.includes('22') && !s.includes('ee') && !s.includes('er')
+        ]);
+
+        const ac10Idx = findColIdx([
+          s => s.includes('10') || s.includes('ac10') || s.includes('a/c10') || s.includes('eps')
+        ]);
+
+        const ac21Idx = findColIdx([
+          s => s.includes('21') || s.includes('ac21') || s.includes('a/c21') || s.includes('edli')
+        ]);
+
+        const ac22Idx = findColIdx([
+          s => s.includes('22') || s.includes('ac22') || s.includes('a/c22')
+        ]);
+
+        const totalAmountIdx = findColIdx([
+          s => s.includes('total') || s.includes('amount') || s.includes('grandtotal')
+        ]);
+
+        const mappedData = dataRows.map(row => {
+          const rawWageMonth = wageMonthIdx !== -1 ? row[wageMonthIdx] : '';
+
+          const item = {
+            trrn: trrnIdx !== -1 ? String(row[trrnIdx] || '').trim() : '',
+            crnNo: crnIdx !== -1 ? String(row[crnIdx] || '').trim() : '',
+            wageMonth: formatWageMonth(rawWageMonth),
             dueDate: dueDateIdx !== -1 ? parseExcelDate(row[dueDateIdx]) : null,
             challanDate: challanDateIdx !== -1 ? parseExcelDate(row[challanDateIdx]) : null,
-            ac1EE: ac1eeIdx !== -1 ? Number(row[ac1eeIdx] || 0) : 0,
-            ac1ER: ac1erIdx !== -1 ? Number(row[ac1erIdx] || 0) : 0,
-            ac2: ac2Idx !== -1 ? Number(row[ac2Idx] || 0) : 0,
-            ac10: ac10Idx !== -1 ? Number(row[ac10Idx] || 0) : 0,
-            ac21: ac21Idx !== -1 ? Number(row[ac21Idx] || 0) : 0,
-            ac22: ac22Idx !== -1 ? Number(row[ac22Idx] || 0) : 0,
-            totalAmount: totalAmountIdx !== -1 ? Number(row[totalAmountIdx] || 0) : 0,
+            ac1EE: ac1eeIdx !== -1 ? (parseFloat(row[ac1eeIdx]) || 0) : 0,
+            ac1ER: ac1erIdx !== -1 ? (parseFloat(row[ac1erIdx]) || 0) : 0,
+            ac2: ac2Idx !== -1 ? (parseFloat(row[ac2Idx]) || 0) : 0,
+            ac10: ac10Idx !== -1 ? (parseFloat(row[ac10Idx]) || 0) : 0,
+            ac21: ac21Idx !== -1 ? (parseFloat(row[ac21Idx]) || 0) : 0,
+            ac22: ac22Idx !== -1 ? (parseFloat(row[ac22Idx]) || 0) : 0,
+            totalAmount: totalAmountIdx !== -1 ? (parseFloat(row[totalAmountIdx]) || 0) : 0,
             returnDate: returnDateIdx !== -1 ? parseExcelDate(row[returnDateIdx]) : null,
           };
+
+          if (!item.totalAmount) {
+            item.totalAmount = item.ac1EE + item.ac1ER + item.ac2 + item.ac10 + item.ac21 + item.ac22;
+          }
+
+          return item;
         });
 
         setBulkData(mappedData);
@@ -243,7 +330,7 @@ const EpfChallanDatePage = () => {
         addToast({ type: 'error', message: 'Failed to read file. Please ensure it is in the correct format (XLSX, XLS, or CSV).' });
       }
       if (fileInputRef.current) {
-        fileInputRef.current.value = ''; // Reset file input
+        fileInputRef.current.value = '';
       }
     };
     reader.readAsArrayBuffer(file);
@@ -251,13 +338,18 @@ const EpfChallanDatePage = () => {
 
   const handleConfirmBulkUpload = async () => {
     try {
-      await saveBulkEpfChallans(bulkData);
-      addToast({ type: 'success', message: `${bulkData.length} records uploaded successfully!` });
+      setIsLoading(true);
+      const response = await saveBulkEpfChallans(bulkData);
+      addToast({ type: 'success', message: response?.message || `${bulkData.length} records uploaded successfully!` });
       setIsPreviewOpen(false);
       setBulkData([]);
-      fetchData(); // Reload from server
+      fetchData();
     } catch (error) {
-      addToast({ type: 'error', message: 'Failed to bulk upload records. Check validation errors.' });
+      console.error('Bulk upload error:', error);
+      const errMsg = error.response?.data?.message || 'Failed to bulk upload records. Check validation errors.';
+      addToast({ type: 'error', message: errMsg });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -319,22 +411,23 @@ const EpfChallanDatePage = () => {
               <Plus size={18} /> EPF Challan Date
             </button>
           )}
-          <div className={styles.dropdownContainer} ref={dropdownRef}>
-            {/* <button 
+          <input
+            type="file"
+            accept=".xlsx, .xls, .csv"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleFileUpload}
+          />
+          {canCreate && (
+            <button
               className={styles.uploadBtn}
               onClick={() => fileInputRef.current && fileInputRef.current.click()}
-              title="Upload Excel"
+              title="Upload Excel for Data Entry"
             >
-              <UploadCloud size={18} /> Bulk Upload
-            </button> */}
-            <input
-              type="file"
-              accept=".xlsx, .xls, .csv"
-              ref={fileInputRef}
-              style={{ display: 'none' }}
-              onChange={handleFileUpload}
-            />
-
+              <Upload size={18} /> Upload Excel
+            </button>
+          )}
+          <div className={styles.dropdownContainer} ref={dropdownRef}>
             <button
               className={styles.downloadBtn}
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}

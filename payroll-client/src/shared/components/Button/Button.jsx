@@ -7,14 +7,19 @@ const Button = ({
   type = 'button',
   disabled = false,
   className = '',
+  variant = 'primary',
+  style,
   ...props
 }) => {
+  const variantClass = variant === 'outline' ? styles.btnOutline : styles.btnPrimary;
+
   return (
     <button
       type={type}
-      className={`${styles.btn} ${className}`}
+      className={`${styles.btn} ${variantClass} ${className}`}
       disabled={disabled}
       onClick={onClick}
+      style={style}
       {...props}
     >
       {children}

@@ -22,23 +22,23 @@ const mapToFrontend = (data) => {
 
 // Helper to map frontend to backend
 const mapToBackend = (data) => {
-  const company_id = localStorage.getItem('company_id'); // Assuming company_id is available in localStorage or we let backend resolve from JWT
+  const company_id = localStorage.getItem('selectedCompany') || localStorage.getItem('company_id');
   return {
-    id: data.id,
-    ttrn: data.trrn,
-    crn_no: data.crnNo,
+    id: data.id || undefined,
+    ttrn: data.trrn || null,
+    crn_no: data.crnNo || null,
     wage_month: data.wageMonth,
     due_date: data.dueDate || null,
     challan_date: data.challanDate || null,
-    ac1ee: data.ac1EE,
-    ac1er: data.ac1ER,
-    ac2: data.ac2,
-    ac10: data.ac10,
-    ac21: data.ac21,
-    ac22: data.ac22,
-    total_amount: data.totalAmount,
+    ac1ee: Number(data.ac1EE) || 0,
+    ac1er: Number(data.ac1ER) || 0,
+    ac2: Number(data.ac2) || 0,
+    ac10: Number(data.ac10) || 0,
+    ac21: Number(data.ac21) || 0,
+    ac22: Number(data.ac22) || 0,
+    total_amount: Number(data.totalAmount) || 0,
     return_date: data.returnDate || null,
-    company_id: company_id || null // Usually extracted from JWT by the backend
+    company_id: company_id || null
   };
 };
 

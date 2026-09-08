@@ -191,6 +191,10 @@
   object-fit: contain;
 }
 
+.installBtnContainer {
+  display: none;
+}
+
 /* Responsive adjust */
 @media (max-width: 960px) {
   .card {
@@ -243,6 +247,7 @@
   }
 
   .installBtnContainer {
+    display: block;
     margin-top: 15px;
     width: 100%;
   }

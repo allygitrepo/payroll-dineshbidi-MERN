@@ -55,7 +55,7 @@ const OfficeStaffEntryPage = () => {
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState(null);
 
-  const { canCreate, canEdit } = usePermissions('office-staff-entry');
+  const { canCreate, canEdit } = usePermissions('office-staff');
 
   // Pagination & Search
   const [currentPage, setCurrentPage] = useState(1);
@@ -546,7 +546,7 @@ const OfficeStaffEntryPage = () => {
                       <input
                         type="number"
                         min={0}
-                        value={row.daysWorked}
+                        value={row.daysWorked ?? ''}
                         onChange={e => handleFieldChange(row.employeeId, 'daysWorked', e.target.value)}
                         className={styles.tableInput}
                         disabled={!canEdit}
@@ -564,7 +564,7 @@ const OfficeStaffEntryPage = () => {
                       <input
                         type="number"
                         min={0}
-                        value={row.addition}
+                        value={row.addition ?? ''}
                         onChange={e => handleFieldChange(row.employeeId, 'addition', e.target.value)}
                         className={styles.tableInput}
                         disabled={!canEdit}
@@ -620,11 +620,11 @@ const OfficeStaffEntryPage = () => {
                 <div className={styles.mobileCardBody}>
                   <div className={styles.mobileCardRow}>
                     <span className={styles.mobileCardLabel}>Days Worked:</span>
-                    <input type="number" min={0} value={row.daysWorked} onChange={e => handleFieldChange(row.employeeId, 'daysWorked', e.target.value)} className={styles.tableInput} style={{ width: '120px', textAlign: 'right' }} disabled={!canEdit} />
+                    <input type="number" min={0} value={row.daysWorked ?? ''} onChange={e => handleFieldChange(row.employeeId, 'daysWorked', e.target.value)} className={styles.tableInput} style={{ width: '120px', textAlign: 'right' }} disabled={!canEdit} />
                   </div>
                   <div className={styles.mobileCardRow}>
                     <span className={styles.mobileCardLabel}>Addition:</span>
-                    <input type="number" min={0} value={row.addition} onChange={e => handleFieldChange(row.employeeId, 'addition', e.target.value)} className={styles.tableInput} style={{ width: '120px', textAlign: 'right' }} disabled={!canEdit} />
+                    <input type="number" min={0} value={row.addition ?? ''} onChange={e => handleFieldChange(row.employeeId, 'addition', e.target.value)} className={styles.tableInput} style={{ width: '120px', textAlign: 'right' }} disabled={!canEdit} />
                   </div>
                   
                   {/* Display fields */}
