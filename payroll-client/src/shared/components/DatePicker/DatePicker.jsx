@@ -56,18 +56,30 @@ const DatePicker = ({
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
 
-  // Picker mode: 'calendar' or 'monthYear'
+  // Picker mode: 'calendar', 'monthYear', or 'years'
   const [pickerMode, setPickerMode] = useState('calendar');
   const [overlayYear, setOverlayYear] = useState(new Date().getFullYear());
+  const [yearRangeStart, setYearRangeStart] = useState(() => Math.floor(new Date().getFullYear() / 12) * 12);
+
+  // Generate wide list of years (1930 to 2060) for direct dropdown jumping
+  const ALL_YEARS = useMemo(() => {
+    const list = [];
+    for (let y = 1930; y <= 2060; y++) {
+      list.push(y);
+    }
+    return list;
+  }, []);
 
   // Initialize view state based on value when calendar opens or value changes
   useEffect(() => {
     if (value) {
       const parts = value.split('-');
       if (parts.length === 3) {
-        setViewYear(parseInt(parts[0], 10));
+        const y = parseInt(parts[0], 10);
+        setViewYear(y);
         setViewMonth(parseInt(parts[1], 10) - 1);
-        setOverlayYear(parseInt(parts[0], 10));
+        setOverlayYear(y);
+        setYearRangeStart(Math.floor(y / 12) * 12);
       }
     }
   }, [value, isOpen]);
@@ -196,6 +208,7 @@ const DatePicker = ({
   const togglePickerMode = (e) => {
     e.stopPropagation();
     setOverlayYear(viewYear);
+    setYearRangeStart(Math.floor(viewYear / 12) * 12);
     setPickerMode(prev => prev === 'calendar' ? 'monthYear' : 'calendar');
   };
 
@@ -297,62 +310,164 @@ const DatePicker = ({
                 </button>
               </div>
             </>
-          )}
+          ) : pickerMode === 'monthYear' ? (
+          /* Month & Year Selection Grid Sheet */
+          <div className={styles.monthYearOverlay}>
+            <div className={styles.overlayHeader}>
+              <button
+                type="button"
+                className={styles.navBtn}
+                onClick={() => {
+                  const ny = overlayYear - 1;
+                  setOverlayYear(ny);
+                  setYearRangeStart(Math.floor(ny / 12) * 12);
+                }}
+                title="Previous Year"
+              >
+                <ChevronLeft size={16} />
+              </button>
 
-          {pickerMode === 'monthYear' && (
-            /* Month & Year Selection Grid Sheet */
-            <div className={styles.monthYearOverlay}>
-              <div className={styles.overlayHeader}>
-                <button
-                  type="button"
-                  className={styles.navBtn}
-                  onClick={() => setOverlayYear(y => y - 1)}
-                  title="Previous Year"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  type="button"
-                  className={styles.yearDisplayBtn}
-                  onClick={() => setPickerMode('yearList')}
-                  title="Click to select year"
-                >
-                  {overlayYear}
-                </button>
-                <button
-                  type="button"
-                  className={styles.navBtn}
-                  onClick={() => setOverlayYear(y => y + 1)}
-                  title="Next Year"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-
-              <div className={styles.monthsGrid}>
-                {MONTH_NAMES.map((mName, mIdx) => {
-                  const isSelected = viewMonth === mIdx && viewYear === overlayYear;
-                  return (
-                    <button
-                      key={mName}
-                      type="button"
-                      onClick={() => handleSelectMonthYear(mIdx, overlayYear)}
-                      className={`${styles.monthSelectBtn} ${isSelected ? styles.monthSelectSelected : ''}`}
-                    >
-                      {mName.substring(0, 3)}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* Year display is interactive - clicking it opens the full Year Grid */}
+              <button
+                type="button"
+                className={styles.yearDisplayBtn}
+                onClick={() => {
+                  setYearRangeStart(Math.floor(overlayYear / 12) * 12);
+                  setPickerMode('years');
+                }}
+                title="Click to view all years"
+              >
+                <span>{overlayYear}</span>
+                <ChevronDown size={14} />
+              </button>
 
               <button
                 type="button"
+                className={styles.navBtn}
+                onClick={() => {
+                  const ny = overlayYear + 1;
+                  setOverlayYear(ny);
+                  setYearRangeStart(Math.floor(ny / 12) * 12);
+                }}
+                title="Next Year"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            <div className={styles.monthsGrid}>
+              {MONTH_NAMES.map((mName, mIdx) => {
+                const isSelected = viewMonth === mIdx && viewYear === overlayYear;
+                return (
+                  <button
+                    key={mName}
+                    type="button"
+                    onClick={() => handleSelectMonthYear(mIdx, overlayYear)}
+                    className={`${styles.monthSelectBtn} ${isSelected ? styles.monthSelectSelected : ''}`}
+                  >
+                    {mName.substring(0, 3)}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              className={styles.backToCalBtn}
+              onClick={() => setPickerMode('calendar')}
+            >
+              Back to Calendar
+            </button>
+          </div>
+          ) : (
+          /* All Years Selection Grid & Fast Dropdown Sheet */
+          <div className={styles.monthYearOverlay}>
+            <div className={styles.overlayHeader}>
+              <button
+                type="button"
+                className={styles.navBtn}
+                onClick={() => setYearRangeStart(r => r - 12)}
+                title="Previous 12 Years"
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              <span className={styles.yearDisplay}>
+                {yearRangeStart} - {yearRangeStart + 11}
+              </span>
+
+              <button
+                type="button"
+                className={styles.navBtn}
+                onClick={() => setYearRangeStart(r => r + 12)}
+                title="Next 12 Years"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            {/* Direct Jump Dropdown */}
+            <div className={styles.quickYearRow}>
+              <span className={styles.quickYearLabel}>Jump to Year:</span>
+              <select
+                className={styles.quickYearSelect}
+                value={overlayYear}
+                onChange={(e) => {
+                  const selectedYear = Number(e.target.value);
+                  setOverlayYear(selectedYear);
+                  setViewYear(selectedYear);
+                  setYearRangeStart(Math.floor(selectedYear / 12) * 12);
+                  setPickerMode('monthYear');
+                }}
+              >
+                {ALL_YEARS.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 12-Year Grid */}
+            <div className={styles.yearsGrid}>
+              {Array.from({ length: 12 }, (_, i) => yearRangeStart + i).map((y) => {
+                const isSelected = overlayYear === y;
+                return (
+                  <button
+                    key={y}
+                    type="button"
+                    onClick={() => {
+                      setOverlayYear(y);
+                      setViewYear(y);
+                      setPickerMode('monthYear');
+                    }}
+                    className={`${styles.yearSelectBtn} ${isSelected ? styles.yearSelectSelected : ''}`}
+                  >
+                    {y}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+              <button
+                type="button"
                 className={styles.backToCalBtn}
+                style={{ flex: 1 }}
+                onClick={() => setPickerMode('monthYear')}
+              >
+                Back to Months
+              </button>
+              <button
+                type="button"
+                className={styles.backToCalBtn}
+                style={{ flex: 1 }}
                 onClick={() => setPickerMode('calendar')}
               >
                 Back to Calendar
               </button>
             </div>
+          </div>
           )}
 
           {pickerMode === 'yearList' && (
@@ -389,6 +504,95 @@ const DatePicker = ({
                 Back to Calendar
               </button>
             </div>
+          ) : (
+          /* All Years Selection Grid & Fast Dropdown Sheet */
+          <div className={styles.monthYearOverlay}>
+            <div className={styles.overlayHeader}>
+              <button
+                type="button"
+                className={styles.navBtn}
+                onClick={() => setYearRangeStart(r => r - 12)}
+                title="Previous 12 Years"
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              <span className={styles.yearDisplay}>
+                {yearRangeStart} - {yearRangeStart + 11}
+              </span>
+
+              <button
+                type="button"
+                className={styles.navBtn}
+                onClick={() => setYearRangeStart(r => r + 12)}
+                title="Next 12 Years"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            {/* Direct Jump Dropdown */}
+            <div className={styles.quickYearRow}>
+              <span className={styles.quickYearLabel}>Jump to Year:</span>
+              <select
+                className={styles.quickYearSelect}
+                value={overlayYear}
+                onChange={(e) => {
+                  const selectedYear = Number(e.target.value);
+                  setOverlayYear(selectedYear);
+                  setViewYear(selectedYear);
+                  setYearRangeStart(Math.floor(selectedYear / 12) * 12);
+                  setPickerMode('monthYear');
+                }}
+              >
+                {ALL_YEARS.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 12-Year Grid */}
+            <div className={styles.yearsGrid}>
+              {Array.from({ length: 12 }, (_, i) => yearRangeStart + i).map((y) => {
+                const isSelected = overlayYear === y;
+                return (
+                  <button
+                    key={y}
+                    type="button"
+                    onClick={() => {
+                      setOverlayYear(y);
+                      setViewYear(y);
+                      setPickerMode('monthYear');
+                    }}
+                    className={`${styles.yearSelectBtn} ${isSelected ? styles.yearSelectSelected : ''}`}
+                  >
+                    {y}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+              <button
+                type="button"
+                className={styles.backToCalBtn}
+                style={{ flex: 1 }}
+                onClick={() => setPickerMode('monthYear')}
+              >
+                Back to Months
+              </button>
+              <button
+                type="button"
+                className={styles.backToCalBtn}
+                style={{ flex: 1 }}
+                onClick={() => setPickerMode('calendar')}
+              >
+                Back to Calendar
+              </button>
+            </div>
+          </div>
           )}
         </div>
       )}

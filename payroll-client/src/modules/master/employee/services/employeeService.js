@@ -106,30 +106,39 @@ const mapToFrontend = (e) => {
   };
 };
 
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
-  const safeStr = (str) => (str || '').toString().trim().toLowerCase();
+  const normalize = (value) =>
+    String(value ?? "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
 
-  const matchingAddress = addresses.find(a => safeStr(a.address) === safeStr(e.address));
-  const addressId = matchingAddress?.id || e.address_id || e.address;
+  let matchingAddress = null;
+  if (e.address) {
+    matchingAddress = addresses.find(a => normalize(a.address || a.address_name) === normalize(e.address));
+  }
+  if (!matchingAddress && e.address_id && uuidRegex.test(e.address_id)) {
+    matchingAddress = addresses.find(a => a.id === e.address_id || a.address_id === e.address_id);
+  }
 
-  // DEBUGGING: Remove this later
-  console.log("--- DEBUG ADDRESS MAPPING ---");
-  console.log("Input e.address:", e.address);
-  console.log("Input e.address_id:", e.address_id);
-  console.log("Available Addresses:", addresses);
-  console.log("Matching Address found:", matchingAddress);
-  console.log("Final Address ID resolved:", addressId);
+  // Only use addressId if it belongs to an address in this company's list
+  const addressId = matchingAddress?.id || matchingAddress?.address_id || null;
 
-  // Ensure addressId is a valid UUID format before sending
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (addressId && !uuidRegex.test(addressId)) {
+  console.log("Excel Address Name:", e.address);
+  console.log("Available Address Names:", addresses.map(a => a.address || a.address_name));
+  console.log("Matched Address:", matchingAddress);
+  console.log("Resolved Address ID:", addressId);
+
+  if (e.address && String(e.address).trim() !== '' && (!addressId || !uuidRegex.test(addressId))) {
     console.error("FATAL: Resolved addressId is not a valid UUID!", addressId);
-    throw new Error(`Frontend Validation Failed: Could not resolve Address ID. Got: ${addressId}. Please select the Address from the dropdown again.`);
+    throw new Error(`Address "${e.address || ''}" was not found for this company.`);
   }
 
   let contractorId = null;
   if (e.contractor && e.contractor !== 'SELF') {
-    const matchingContractor = contractors.find(c => safeStr(c.name) === safeStr(e.contractor));
+    const matchingContractor = contractors.find(c => normalize(c.name) === normalize(e.contractor));
     contractorId = matchingContractor?.id || e.contractor_id || null;
     if (contractorId && !uuidRegex.test(contractorId)) {
       contractorId = null;
@@ -157,8 +166,8 @@ const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
   }));
 
   const nomineesPayload = (e.nomineeDetails || e.nominees || []).map(n => {
-    const nAddress = addresses.find(a => safeStr(a.address) === safeStr(n.address));
-    const nAddressId = nAddress?.id || n.address_id || n.address;
+    const nAddress = addresses.find(a => normalize(a.address || a.address_name) === normalize(n.address));
+    const nAddressId = nAddress?.id || n.address_id || (uuidRegex.test(n.address) ? n.address : null);
 
     if (nAddressId && !uuidRegex.test(nAddressId)) {
       console.error("FATAL: Resolved Nominee Address ID is not a valid UUID!", nAddressId);
@@ -185,7 +194,7 @@ const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
     return 'Other';
   };
 
-  return {
+  const payload = {
     company_id: companyId,
     address_id: addressId,
     contractor_id: contractorId,
@@ -215,6 +224,10 @@ const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
     nominees: nomineesPayload,
     family_members: familyMembersPayload
   };
+
+  console.log("Employee Import Payload:", payload);
+
+  return payload;
 };
 
 export const getEmployees = async (companyId, params = {}) => {
@@ -275,39 +288,33 @@ export const getMissingDetails = async (companyId, fields) => {
 };
 
 export const saveEmployee = async (employee, companyId, addresses = [], contractors = []) => {
-  const safeStr = (str) => (str || '').toString().trim().toLowerCase();
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!addresses || addresses.length === 0) {
+    const { getAddresses } = await import('../../address/services/addressService');
+    addresses = await getAddresses(companyId);
+  }
+  if (!contractors || contractors.length === 0) {
+    const { getContractors } = await import('../../contractor/services/contractorService');
+    contractors = await getContractors(companyId);
+  }
 
-  const resolveOrCreateAddress = async (addressStr, postOffice, district, pincode) => {
+  const normalize = (value) =>
+    String(value ?? "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+
+  const resolveOrCreateAddress = async (addressStr) => {
     if (!addressStr) return null;
     if (uuidRegex.test(addressStr)) return addressStr;
-    const matchingAddress = addresses.find(a => safeStr(a.address) === safeStr(addressStr));
-    if (matchingAddress) return matchingAddress.id;
-
-    try {
-      const res = await apiClient.post('addresses', {
-        company_id: companyId,
-        address: addressStr.toUpperCase(),
-        post_office: (postOffice || 'UNKNOWN').toUpperCase(),
-        district: (district || 'UNKNOWN').toUpperCase(),
-        pincode: pincode || '000000',
-        status: true
-      });
-      if (res.data?.data?.id) {
-        // Push to local list to avoid creating duplicates in the same run
-        addresses.push(res.data.data);
-        return res.data.data.id;
-      }
-    } catch (e) {
-      console.error("Failed to auto-create address", e);
-    }
-    return addressStr;
+    const matchingAddress = addresses.find(a => normalize(a.address || a.address_name) === normalize(addressStr));
+    if (matchingAddress) return matchingAddress.id || matchingAddress.address_id;
+    return null;
   };
 
   const resolveOrCreateContractor = async (contractorStr, addrId) => {
-    if (!contractorStr || safeStr(contractorStr) === 'self') return null;
+    if (!contractorStr || normalize(contractorStr) === 'self') return null;
     if (uuidRegex.test(contractorStr)) return contractorStr;
-    const matchingContractor = contractors.find(c => safeStr(c.name) === safeStr(contractorStr));
+    const matchingContractor = contractors.find(c => normalize(c.name) === normalize(contractorStr));
     if (matchingContractor) return matchingContractor.id;
 
     try {
@@ -333,7 +340,7 @@ export const saveEmployee = async (employee, companyId, addresses = [], contract
   // Pre-resolve or auto-create related entities
   employee.address_id = await resolveOrCreateAddress(employee.address || employee.address_id, employee.postOffice, employee.district, employee.pincode);
 
-  if (employee.contractor && safeStr(employee.contractor) !== 'self') {
+  if (employee.contractor && normalize(employee.contractor) !== 'self') {
     employee.contractor_id = await resolveOrCreateContractor(employee.contractor, employee.address_id);
   }
 

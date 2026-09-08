@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Briefcase, CalendarDays, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import styles from '../components/ContractorPage.module.css';
@@ -16,6 +17,7 @@ import { getWhatsAppStatus } from '../../../utility/whatsapp/services/whatsappSe
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 const ContractorPage = () => {
+  const navigate = useNavigate();
   const addToast = useToast();
   const [contractors, setContractors] = useState([]);
   const [addresses, setAddresses] = useState([]);
@@ -274,13 +276,13 @@ const ContractorPage = () => {
     if (type === 'Excel' || type === 'Excel Template') {
       const isTemplate = type === 'Excel Template';
       const aoa = [
-        ['ID (Do Not Modify)', 'Code', 'Name', 'Address', 'Post Office', 'District', 'Pincode', 'PF Code', 'Date of Joining', 'PAN', 'Aadhaar', 'GST No', 'Bank Account', 'Bank Name', 'IFSC', 'Status']
+        ['ID (Do Not Modify)', 'Code', 'Name', 'Address', 'Post Office', 'District', 'Pincode', 'PF Code', 'Date of Joining', 'PAN', 'Aadhaar', 'GST No', 'Bank Account', 'Bank Name', 'IFSC', 'Status', 'WhatsApp Number', 'Login ID', 'Password', 'Send to WhatsApp']
       ];
 
       if (!isTemplate) {
         filteredContractors.forEach(c => {
           aoa.push([
-            c.id, c.ccode, c.name, c.address, c.postOffice, c.district, c.pincode, c.pfCode, c.dateOfJoining, c.pan, c.aadhaar, c.gstNo, c.bankAccount, c.bankName, c.ifsc, c.status
+            c.id, c.ccode, c.name, c.address, c.postOffice, c.district, c.pincode, c.pfCode, c.dateOfJoining, c.pan, c.aadhaar, c.gstNo, c.bankAccount, c.bankName, c.ifsc, c.status, c.whatsappNumber || '', c.loginId || '', '', 'NO'
           ]);
         });
       }
@@ -357,17 +359,38 @@ const ContractorPage = () => {
             bankAccount: safeVal(row['Bank Account']),
             bankName: safeVal(row['Bank Name']),
             ifsc: safeVal(row['IFSC']),
+            whatsappNumber: safeVal(row['WhatsApp Number'] || row['whatsapp_number'] || row['whatsappNumber'] || row['WhatsApp'] || row['whatsapp'] || ''),
             status: (row['Status'] === 1 || String(row['Status']).toLowerCase() === 'active' || String(row['Status']).toLowerCase() === 'true') ? 'Active' : 'Inactive'
           };
           if (!contractorData.name) continue;
 
-          await saveContractor(contractorData, companyId, addresses);
+          const updatedList = await saveContractor(contractorData, companyId, addresses);
           successCount++;
+
+          const loginIdVal = safeVal(row['Login ID'] || row['Login id'] || row['login id'] || row['Username'] || row['username'] || '');
+          const passwordVal = safeVal(row['Password'] || row['password'] || '');
+          const sendToWhatsappVal = safeVal(row['Send to WhatsApp'] || row['Send to whatsapp'] || row['send to whatsapp'] || 'NO').toUpperCase();
+
+          if (loginIdVal) {
+            const savedContractor = updatedList.find(c => {
+              if (contractorData.ccode && c.ccode) {
+                return String(c.ccode).trim().toLowerCase() === String(contractorData.ccode).trim().toLowerCase();
+              }
+              return String(c.name).trim().toLowerCase() === String(contractorData.name).trim().toLowerCase();
+            });
+
+            if (savedContractor) {
+              await createContractorLogin(savedContractor.id, {
+                username: loginIdVal,
+                password: passwordVal || undefined,
+                sendWhatsapp: sendToWhatsappVal === 'YES' || sendToWhatsappVal === 'TRUE' || sendToWhatsappVal === '1'
+              });
+            }
+          }
         }
 
         addToast({ type: 'success', message: `Successfully uploaded ${successCount} contractors.` });
-        const updated = await getContractors(companyId);
-        setContractors(updated);
+        fetchContractors();
       } catch (error) {
         console.error('Error importing Excel:', error);
         addToast({ type: 'error', message: 'Failed to import Excel file.' });
@@ -383,7 +406,7 @@ const ContractorPage = () => {
     const text = filteredContractors
       .map(
         (c) =>
-          `${c.ccode}\t${c.name}\t${c.address}\t${c.postOffice}\t${c.district}\t${c.pincode}\t${c.pfCode}\t${c.dateOfJoining}\t${c.pan}\t${c.aadhaar}\t${c.gstNo}\t${c.bankAccount}\t${c.bankName}\t${c.ifsc}\t${c.status}`
+          `${c.ccode}\t${c.name}\t${c.address}\t${c.postOffice}\t${c.district}\t${c.pincode}\t${c.pfCode}\t${c.dateOfJoining}\t${c.pan}\t${c.aadhaar}\t${c.gstNo}\t${c.bankAccount}\t${c.bankName}\t${c.ifsc}\t${c.status}\t${c.whatsappNumber || ''}\t${c.loginId || ''}\t\tNO`
       )
       .join('\n');
     navigator.clipboard.writeText(text);
@@ -418,7 +441,7 @@ const ContractorPage = () => {
           <button
             className={styles.downloadBtn}
             style={{ backgroundColor: 'var(--success-color, #10b981)' }}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => navigate('/utility/contractor-data-import')}
           >
             <Upload size={18} /> Upload Excel
           </button>

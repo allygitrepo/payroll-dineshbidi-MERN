@@ -2,14 +2,43 @@ import React, { useState, useRef } from 'react';
 import { FileUp, FileSpreadsheet, Download, Loader2, X, CheckCircle2 } from 'lucide-react';
 import { useToast } from '../../../../shared/components';
 import * as XLSX from 'xlsx';
-import { saveEmployee, getEmployees } from '../../../master/employee/services/employeeService';
-import { getContractors, saveContractor } from '../../../master/contractor/services/contractorService';
+import { getContractors, saveContractor, createContractorLogin } from '../../../master/contractor/services/contractorService';
 import { getAddresses, saveAddress } from '../../../master/address/services/addressService';
-import styles from '../components/EmployeeDataImportPage.module.css';
+import styles from '../components/ContractorDataImportPage.module.css';
 
+const parseExcelDate = (excelVal) => {
+  if (!excelVal) return '';
+  if (excelVal instanceof Date) {
+    return excelVal.toISOString().split('T')[0];
+  }
+  const str = String(excelVal).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
+  }
+  const parts = str.split(/[\/\-]/);
+  if (parts.length === 3) {
+    let year = parts[2];
+    if (year.length === 2) {
+      year = parseInt(year, 10) > 30 ? '19' + year : '20' + year;
+    }
+    if (year.length === 4) {
+      // Check for DD/MM/YYYY
+      const parsedStr = `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      if (!isNaN(new Date(parsedStr).getTime())) {
+        return parsedStr;
+      }
+    }
+  }
+  if (!isNaN(str) && Number(str) > 20000) {
+    const date = new Date(Math.round((Number(str) - 25569) * 86400 * 1000));
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0];
+    }
+  }
+  return '';
+};
 
-
-const EmployeeDataImportPage = () => {
+const ContractorDataImportPage = () => {
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -124,44 +153,7 @@ const EmployeeDataImportPage = () => {
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, dateNF: 'yyyy-mm-dd' });
-
-        const parseDate = (d) => {
-          if (!d) return '';
-          const str = String(d).trim();
-          
-          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-            if (!isNaN(new Date(str).getTime())) return str;
-            return '';
-          }
-
-          let parsedStr = str;
-          const parts = str.split(/[\/\-]/);
-          if (parts.length === 3) {
-            let year = parts[2];
-            if (year.length === 2) {
-              year = parseInt(year, 10) > 30 ? '19' + year : '20' + year;
-            }
-            if (year.length === 4) {
-              parsedStr = `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-              if (/^\d{4}-\d{2}-\d{2}$/.test(parsedStr)) {
-                if (!isNaN(new Date(parsedStr).getTime())) return parsedStr;
-                // Try swapping day and month for MM/DD/YYYY formats
-                const swappedStr = `${year}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-                if (!isNaN(new Date(swappedStr).getTime())) return swappedStr;
-              }
-            }
-          }
-          
-          // Excel serial date check
-          if (!isNaN(str) && Number(str) > 20000) {
-            const date = new Date(Math.round((Number(str) - 25569) * 86400 * 1000));
-            if (!isNaN(date.getTime())) {
-              return date.toISOString().split('T')[0];
-            }
-          }
-          return ''; // Return empty string for invalid dates to trigger required error
-        };
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false });
 
         const companyId = localStorage.getItem('selectedCompany');
         if (!companyId) throw new Error("No active company context. Please select a company first.");
@@ -169,138 +161,109 @@ const EmployeeDataImportPage = () => {
         const totalRows = jsonData.length;
         if (totalRows === 0) throw new Error("Excel file is empty");
 
-        const normalize = (value) =>
-          String(value ?? "")
-            .trim()
-            .replace(/\s+/g, " ")
-            .toLowerCase();
-
-        const contractorsList = await getContractors(companyId);
+        const existingContractors = await getContractors(companyId);
         const addressesList = await getAddresses(companyId);
-        const existingEmployees = await getEmployees(companyId);
 
-        const missingContractorsMap = new Map();
+        const missingAddressesMap = new Map();
         const summary = { added: [], updated: [], failed: [] };
 
         for (let i = 0; i < totalRows; i++) {
           const row = jsonData[i];
-          const uan = String(row['Universal Account Number'] || '').replace(/\D/g, '');
-          const memberName = String(row['Member Name'] || '');
-          const dob = parseDate(row['Date Of Birth']);
-          const doj = parseDate(row['Date Of Joining']);
-          let ipNumber = String(row['IP Number'] || '').replace(/\D/g, '');
-          const aadhar = String(row['Aadhaar Number'] || '').replace(/\D/g, '');
-          let mobile = String(row['Mobile Number'] || '').replace(/\D/g, '');
-          let email = String(row['Email Id'] || row['Email'] || '').trim().toUpperCase();
-          if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            email = ''; // Clear invalid email to prevent validation failure
-          }
-          const contractorName = String(row['Contractor Name'] || 'SELF').trim();
-          const addressName = String(row['Address'] || '').trim();
 
-          if (!uan || uan.length !== 12 || !memberName || !dob || !doj) {
-            summary.failed.push({ rowNumber: i + 2, name: memberName || 'Unknown', reason: "Missing required fields or invalid date (Name, 12-digit UAN, DOB, DOJ)." });
-            continue;
-          }
-
-          let matchedAddress = null;
-          let addressId = null;
-
-          if (addressName) {
-            matchedAddress = addressesList.find(a => normalize(a.address || a.address_name) === normalize(addressName));
-            if (!matchedAddress) {
-              summary.failed.push({ rowNumber: i + 2, name: memberName, reason: `Address "${addressName}" was not found for this company.` });
-              continue;
-            }
-            addressId = matchedAddress.id || matchedAddress.address_id;
-          }
-
-          if (contractorName.toUpperCase() !== 'SELF') {
-            const match = contractorsList.find(c => normalize(c.name) === normalize(contractorName));
-            if (!match && !missingContractorsMap.has(contractorName.toUpperCase())) {
-              missingContractorsMap.set(contractorName.toUpperCase(), addressName);
-            }
-          }
-
-          if (aadhar && aadhar.length !== 12) {
-            summary.failed.push({ rowNumber: i + 2, name: memberName, reason: "Aadhaar Number must be exactly 12 digits." });
-            continue;
-          }
-          
-          if (mobile && (mobile.length < 10 || mobile.length > 15)) {
-            mobile = ''; // Clear invalid optional field
-          }
-          if (ipNumber && (ipNumber.length < 10 || ipNumber.length > 20)) {
-            ipNumber = ''; // Clear invalid optional field
-          }
-
-          const employeeObj = {
-            rowNumber: i + 2,
-            memberName,
-            uan,
-            ipNumber: ipNumber,
-            memberId: String(row['Previous Member Id'] || ''),
-            contractor: String(row['Contractor Name'] || 'SELF'),
-            employeeType: String(row['Type Of Employee'] || 'BIDI MAKER'),
-            gender: String(row['Gender'] || 'MALE').toUpperCase(),
-            dob,
-            dateOfJoining: doj,
-            fatherHusbandName: String(row['Father/Husband Name'] || ''),
-            relation: String(row['Relationship'] || ''),
-            maritalStatus: String(row['Marital Status'] || 'SINGLE'),
-            mobile: mobile,
-            email: email || '',
-            aadhaarCard: aadhar,
-            nationality: String(row['Nationality'] || 'INDIAN'),
-            pmrpy: (row['PMRPY'] || 'NO').toUpperCase(),
-            address: addressName,
-            address_id: addressId,
-            status: (String(row['Status'] || '1').trim() === '0' || String(row['Status'] || '').trim().toUpperCase() === 'INACTIVE') ? 'Inactive' : 'Active',
-            kycDetails: [
-              { documentType: 'PAN', documentNumber: row['PAN'] || '' },
-              { documentType: 'BANK PASSBOOK', documentNumber: row['Bank Account Number'] || '', ifsc: row['Bank IFSC'] || '' }
-            ].filter(k => k.documentNumber),
-            nomineeDetails: [],
-            familyDetails: []
+          const safeVal = (val) => {
+            const str = val ? String(val).trim() : '';
+            if (str.toUpperCase() === 'NA' || str.toUpperCase() === 'N/A' || str === '-') return '';
+            return str;
           };
 
-          const existingMatch = existingEmployees.find(emp => emp.uan === uan);
+          const name = safeVal(row['Name']);
+          if (!name) {
+            summary.failed.push({ rowNumber: i + 2, name: 'Unknown', reason: "Missing required field: Name." });
+            continue;
+          }
+
+          const addressStr = safeVal(row['Address']).toUpperCase();
+          if (addressStr) {
+            const match = addressesList.find(a => String(a.address).trim().toUpperCase() === addressStr);
+            if (!match && !missingAddressesMap.has(addressStr)) {
+              missingAddressesMap.set(addressStr, {
+                address: addressStr,
+                postOffice: safeVal(row['Post Office'] || 'UNKNOWN').toUpperCase(),
+                district: safeVal(row['District'] || 'UNKNOWN').toUpperCase(),
+                pincode: safeVal(row['Pincode'] || '000000')
+              });
+            }
+          }
+
+          const contractorObj = {
+            rowNumber: i + 2,
+            ccode: row['Code'] ? String(row['Code']) : '',
+            name,
+            address: addressStr,
+            postOffice: safeVal(row['Post Office']),
+            district: safeVal(row['District']),
+            pincode: safeVal(row['Pincode']),
+            pfCode: safeVal(row['PF Code']),
+            dateOfJoining: parseExcelDate(row['Date of Joining']),
+            pan: safeVal(row['PAN']),
+            aadhaar: safeVal(row['Aadhaar']),
+            gstNo: safeVal(row['GST No']),
+            bankAccount: safeVal(row['Bank Account']),
+            bankName: safeVal(row['Bank Name']),
+            ifsc: safeVal(row['IFSC']),
+            whatsappNumber: safeVal(row['WhatsApp Number'] || row['whatsapp_number'] || row['whatsappNumber'] || row['WhatsApp'] || row['whatsapp'] || ''),
+            status: (String(row['Status'] || '1').trim() === '0' || String(row['Status'] || '').trim().toUpperCase() === 'INACTIVE') ? 'Inactive' : 'Active',
+            loginIdVal: safeVal(row['Login ID'] || row['Login id'] || row['login id'] || row['Username'] || row['username'] || ''),
+            passwordVal: safeVal(row['Password'] || row['password'] || ''),
+            sendToWhatsappVal: safeVal(row['Send to WhatsApp'] || row['Send to whatsapp'] || row['send to whatsapp'] || 'NO').toUpperCase(),
+            addressStr
+          };
+
+          // Find match by ID or Code
+          let existingMatch = null;
+          if (row['ID (Do Not Modify)']) {
+            existingMatch = existingContractors.find(c => String(c.id).toLowerCase() === String(row['ID (Do Not Modify)']).toLowerCase());
+          }
+          if (!existingMatch && contractorObj.ccode) {
+            existingMatch = existingContractors.find(c => String(c.ccode).trim().toLowerCase() === String(contractorObj.ccode).trim().toLowerCase());
+          }
+
           if (existingMatch) {
-            employeeObj.id = existingMatch.id;
+            contractorObj.id = existingMatch.id;
             
-            // Calculate changed columns
+            // Calculate changed fields
             const changes = [];
             const safeStr = (val) => String(val || '').trim().toLowerCase();
-            if (safeStr(employeeObj.memberName) !== safeStr(existingMatch.memberName)) changes.push('Member Name');
-            if (safeStr(employeeObj.ipNumber) !== safeStr(existingMatch.ipNumber)) changes.push('IP Number');
-            if (safeStr(employeeObj.memberId) !== safeStr(existingMatch.memberId)) changes.push('Previous Member Id');
-            if (safeStr(employeeObj.contractor) !== safeStr(existingMatch.contractor)) changes.push('Contractor Name');
-            if (safeStr(employeeObj.employeeType) !== safeStr(existingMatch.employeeType)) changes.push('Type Of Employee');
-            if (safeStr(employeeObj.gender) !== safeStr(existingMatch.gender)) changes.push('Gender');
-            if (safeStr(employeeObj.dob) !== safeStr(existingMatch.dob)) changes.push('Date Of Birth');
-            if (safeStr(employeeObj.dateOfJoining) !== safeStr(existingMatch.dateOfJoining)) changes.push('Date Of Joining');
-            if (safeStr(employeeObj.fatherHusbandName) !== safeStr(existingMatch.fatherHusbandName)) changes.push('Father/Husband Name');
-            if (safeStr(employeeObj.relation) !== safeStr(existingMatch.relation)) changes.push('Relationship');
-            if (safeStr(employeeObj.maritalStatus) !== safeStr(existingMatch.maritalStatus)) changes.push('Marital Status');
-            if (safeStr(employeeObj.mobile) !== safeStr(existingMatch.mobile)) changes.push('Mobile Number');
-            if (safeStr(employeeObj.email) !== safeStr(existingMatch.email)) changes.push('Email Id');
-            if (safeStr(employeeObj.aadhaarCard) !== safeStr(existingMatch.aadhaarCard)) changes.push('Aadhaar Number');
-            if (safeStr(employeeObj.pmrpy) !== safeStr(existingMatch.pmrpy)) changes.push('PMRPY');
-            if (safeStr(employeeObj.address) !== safeStr(existingMatch.address)) changes.push('Address');
+            if (safeStr(contractorObj.ccode) !== safeStr(existingMatch.ccode)) changes.push('Code');
+            if (safeStr(contractorObj.name) !== safeStr(existingMatch.name)) changes.push('Name');
+            if (safeStr(contractorObj.addressStr) !== safeStr(existingMatch.address)) changes.push('Address');
+            if (safeStr(contractorObj.postOffice) !== safeStr(existingMatch.postOffice)) changes.push('Post Office');
+            if (safeStr(contractorObj.district) !== safeStr(existingMatch.district)) changes.push('District');
+            if (safeStr(contractorObj.pincode) !== safeStr(existingMatch.pincode)) changes.push('Pincode');
+            if (safeStr(contractorObj.pfCode) !== safeStr(existingMatch.pfCode)) changes.push('PF Code');
+            if (safeStr(contractorObj.dateOfJoining) !== safeStr(existingMatch.dateOfJoining)) changes.push('Date of Joining');
+            if (safeStr(contractorObj.pan) !== safeStr(existingMatch.pan)) changes.push('PAN');
+            if (safeStr(contractorObj.aadhaar) !== safeStr(existingMatch.aadhaar)) changes.push('Aadhaar');
+            if (safeStr(contractorObj.gstNo) !== safeStr(existingMatch.gstNo)) changes.push('GST No');
+            if (safeStr(contractorObj.bankAccount) !== safeStr(existingMatch.bankAccount)) changes.push('Bank Account');
+            if (safeStr(contractorObj.bankName) !== safeStr(existingMatch.bankName)) changes.push('Bank Name');
+            if (safeStr(contractorObj.ifsc) !== safeStr(existingMatch.ifsc)) changes.push('IFSC');
+            if (safeStr(contractorObj.whatsappNumber) !== safeStr(existingMatch.whatsappNumber)) changes.push('WhatsApp Number');
+            if (safeStr(contractorObj.status) !== safeStr(existingMatch.status)) changes.push('Status');
             
-            employeeObj.changedColumns = changes;
-            summary.updated.push(employeeObj);
+            contractorObj.changedColumns = changes;
+            summary.updated.push(contractorObj);
           } else {
-            summary.added.push(employeeObj);
+            summary.added.push(contractorObj);
           }
         }
 
-        setAnalysisSummary({ 
-          ...summary, 
-          missingContractors: Array.from(missingContractorsMap.entries()),
-          contractorsList, 
-          addressesList, 
-          companyId 
+        setAnalysisSummary({
+          ...summary,
+          missingAddresses: Array.from(missingAddressesMap.values()),
+          addressesList,
+          existingContractors,
+          companyId
         });
         setIsAnalyzing(false);
       } catch (error) {
@@ -313,7 +276,7 @@ const EmployeeDataImportPage = () => {
 
   const handleConfirmImport = async () => {
     if (!analysisSummary) return;
-    
+
     setIsImporting(true);
     setProgress(0);
 
@@ -324,80 +287,72 @@ const EmployeeDataImportPage = () => {
       return;
     }
 
-    const normalize = (value) =>
-      String(value ?? "")
-        .trim()
-        .replace(/\s+/g, " ")
-        .toLowerCase();
-
     let processed = 0;
     let failCount = 0;
     const failedReasons = [];
     const { companyId } = analysisSummary;
-    let addressesList = await getAddresses(companyId);
-    let contractorsList = analysisSummary.contractorsList;
+    let addressesList = analysisSummary.addressesList;
 
-    // Auto-create missing contractors linked to their corresponding address
-    if (analysisSummary.missingContractors && analysisSummary.missingContractors.length > 0) {
-      for (const [cName, addressStr] of analysisSummary.missingContractors) {
-        let contractorAddressId = null;
-        if (addressStr) {
-          const matchedAddr = addressesList.find(a => normalize(a.address || a.address_name) === normalize(addressStr));
-          contractorAddressId = matchedAddr?.id || matchedAddr?.address_id || null;
-        }
-        if (!contractorAddressId && addressesList.length > 0) {
-          contractorAddressId = addressesList[0].id || addressesList[0].address_id;
-        }
-
+    // 1. Auto-create missing addresses with real Excel details
+    if (analysisSummary.missingAddresses && analysisSummary.missingAddresses.length > 0) {
+      for (const addr of analysisSummary.missingAddresses) {
         try {
-          await saveContractor({
-            name: cName,
-            ccode: 'AUTO-' + Math.floor(100000 + Math.random() * 900000),
-            pfCode: 'N/A',
-            dateOfJoining: new Date().toISOString().split('T')[0],
-            status: 'Active',
-            address_id: contractorAddressId
-          }, companyId, addressesList);
+          await saveAddress({
+            address: addr.address,
+            postOffice: addr.postOffice,
+            district: addr.district,
+            pincode: addr.pincode,
+            status: 'Active'
+          }, companyId);
         } catch (e) {
-          console.error("Failed to auto-create contractor", cName, e);
+          console.error("Failed to auto-create address", addr.address, e);
         }
       }
-      contractorsList = await getContractors(companyId);
+      addressesList = await getAddresses(companyId);
     }
 
+    const defaultAddressId = addressesList.length > 0 ? addressesList[0].id : null;
     const processList = [...analysisSummary.added, ...analysisSummary.updated];
 
-    for (const emp of processList) {
-      const excelAddressName = String(emp.address || '').trim();
-      let matchedAddress = null;
-      let addressId = null;
-
-      if (excelAddressName) {
-        matchedAddress = addressesList.find(a => normalize(a.address || a.address_name) === normalize(excelAddressName));
-        if (!matchedAddress) {
-          console.error(`Row ${emp.rowNumber}: Address "${excelAddressName}" was not found for this company.`);
-          failCount++;
-          failedReasons.push(`Row ${emp.rowNumber} (${emp.memberName}): Address "${excelAddressName}" was not found for this company.`);
-          processed++;
-          setProgress(Math.round((processed / totalToProcess) * 100));
-          continue;
+    for (const c of processList) {
+      if (c.addressStr) {
+        const matchedAddress = addressesList.find(a => String(a.address).trim().toUpperCase() === c.addressStr.trim().toUpperCase());
+        if (matchedAddress) {
+          c.address_id = matchedAddress.id;
+        } else {
+          c.address_id = defaultAddressId;
         }
-        addressId = matchedAddress.id || matchedAddress.address_id;
+      } else {
+        c.address_id = defaultAddressId;
       }
-
-      console.log("Excel Address Name:", excelAddressName || "(Optional/Empty)");
-      console.log("Available Address Names:", addressesList.map(a => a.address || a.address_name));
-      emp.address = excelAddressName;
-      emp.address_id = addressId;
 
       try {
-        await saveEmployee(emp, companyId, addressesList, contractorsList);
+        const updatedList = await saveContractor(c, companyId, addressesList);
+        processed++;
+
+        if (c.loginIdVal) {
+          const savedContractor = updatedList.find(item => {
+            if (c.ccode && item.ccode) {
+              return String(item.ccode).trim().toLowerCase() === String(c.ccode).trim().toLowerCase();
+            }
+            return String(item.name).trim().toLowerCase() === String(c.name).trim().toLowerCase();
+          });
+
+          if (savedContractor) {
+            const hasExplicitPassword = !!c.passwordVal;
+            const shouldSendWhatsapp = (c.sendToWhatsappVal === 'YES' || c.sendToWhatsappVal === 'TRUE' || c.sendToWhatsappVal === '1') && hasExplicitPassword;
+            await createContractorLogin(savedContractor.id, {
+              username: c.loginIdVal,
+              password: c.passwordVal || 'Pass1234!',
+              sendWhatsapp: shouldSendWhatsapp
+            });
+          }
+        }
       } catch (err) {
-        console.error("Failed to save employee", emp, JSON.stringify(err?.response?.data || err?.message));
+        console.error("Failed to save contractor", c, err);
         failCount++;
-        failedReasons.push(`Row ${emp.rowNumber} (${emp.memberName}): ${err?.response?.data?.messageToShow || err?.response?.data?.message || err.message}`);
+        failedReasons.push(`${c.name}: ${err?.response?.data?.messageToShow || err?.response?.data?.message || err.message}`);
       }
-      processed++;
       setProgress(Math.round((processed / totalToProcess) * 100));
     }
 
@@ -407,17 +362,16 @@ const EmployeeDataImportPage = () => {
     setPreviewData({ columns: [], rows: [] });
     if (fileInputRef.current) fileInputRef.current.value = '';
 
-    const successCount = processed - failCount;
     if (failCount > 0) {
       addToast({
         type: 'error',
-        message: `Import finished. Successfully imported: ${successCount}. Failed: ${failCount}`
+        message: `Import finished with errors. Saved ${processed - failCount}. Failed ${failCount}.`
       });
       console.warn("Backend Import Failures:", failedReasons);
     } else {
       addToast({
         type: 'success',
-        message: `Import complete! Successfully imported: ${successCount} entries.`
+        message: `Import complete! Processed ${processed} contractors successfully.`
       });
     }
   };
@@ -425,27 +379,24 @@ const EmployeeDataImportPage = () => {
   const handleDownloadTemplate = () => {
     const ws_data = [
       [
-        'Universal Account Number', 'IP Number', 'Previous Member Id', 'Contractor Name', 
-        'Type Of Employee', 'Member Name', 'Gender', 'Date Of Birth', 'Date Of Joining', 
-        'Father/Husband Name', 'Relationship', 'Marital Status', 'Mobile Number', 
-        'Email Id', 'Aadhaar Number', 'PAN', 'Bank Account Number', 'Nationality', 
-        'PMRPY', 'Bank IFSC', 'Address', 'Post Office', 'District', 'Pincode', 'Status'
+        'ID (Do Not Modify)', 'Code', 'Name', 'Address', 'Post Office', 'District', 
+        'Pincode', 'PF Code', 'Date of Joining', 'PAN', 'Aadhaar', 'GST No', 
+        'Bank Account', 'Bank Name', 'IFSC', 'Status', 'WhatsApp Number', 
+        'Login ID', 'Password', 'Send to WhatsApp'
       ],
       [
-        '100984728192', '3128471928', '', 'Self', 'BIDI MAKER', 'Dinesh Bidi', 'MALE', 
-        '1988-08-15', '2018-04-01', 'Ramji Bidi', 'FATHER', 'MARRIED', '9876543210', 
-        'test@example.com', '123456789012', 'ABCDE1234F', '123456789', 'INDIAN', 'NO', 'SBIN0001234',
-        'Main Street', 'Central PO', 'City District', '123456', 1
+        '', 'CONT-001', 'John Doe Services', 'Green Villa', 'Central PO', 'District A', 
+        '123456', 'PF12345', '2020-01-01', 'ABCDE1234F', '123456789012', '22AAAAA0000A1Z5',
+        '9876543210', 'State Bank of India', 'SBIN0001234', 'Active', '9876543210', 
+        'john_doe_portal', 'Pass1234!', 'YES'
       ]
     ];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    
-    // Set some column widths
-    ws['!cols'] = Array(25).fill({ wch: 20 });
+    ws['!cols'] = Array(20).fill({ wch: 18 });
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Employees");
-    XLSX.writeFile(wb, "Employee_Import_Template.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Contractors");
+    XLSX.writeFile(wb, "Contractor_Import_Template.xlsx");
 
     addToast({
       type: 'success',
@@ -463,24 +414,21 @@ const EmployeeDataImportPage = () => {
 
   return (
     <div className={styles.container}>
-      {/* Header section */}
       <div className={styles.headerSection}>
         <div>
-          <h2 className={styles.title}>Employee Data Import</h2>
+          <h2 className={styles.title}>Contractor Data Import</h2>
           <p className={styles.subtitle}>
-            Upload, validate, and parse Excel sheets to import employee databases into the system.
+            Upload, validate, and parse Excel sheets to import contractor databases into the system.
           </p>
         </div>
       </div>
 
-      {/* Main card */}
       <div className={styles.card}>
         <label className={styles.label}>
-          Employee File Import
+          Contractor File Import
           <span className={styles.required}>*</span>
         </label>
 
-        {/* Upload Zone */}
         <div
           className={`${styles.uploadZone} ${dragActive ? styles.uploadZoneActive : ''}`}
           onDragEnter={handleDrag}
@@ -526,7 +474,6 @@ const EmployeeDataImportPage = () => {
           )}
         </div>
 
-        {/* Progress loader if importing */}
         {isImporting && (
           <div className={styles.progressContainer}>
             <div className={styles.progressHeader}>
@@ -542,7 +489,6 @@ const EmployeeDataImportPage = () => {
           </div>
         )}
 
-        {/* Preview of file content before import */}
         {file && !isImporting && previewData.columns.length > 0 && (
           <>
             <div className={styles.previewTitle}>
@@ -574,7 +520,6 @@ const EmployeeDataImportPage = () => {
           </>
         )}
 
-        {/* Analysis Summary */}
         {analysisSummary && !isImporting && (
           <div className={styles.summaryContainer} style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
             <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#0f172a' }}>Import Analysis Summary</h3>
@@ -583,20 +528,15 @@ const EmployeeDataImportPage = () => {
                 ✓ {analysisSummary.added.length} New Entries
               </div>
               <div style={{ padding: '10px 15px', backgroundColor: '#fef08a', color: '#854d0e', borderRadius: '6px', fontWeight: '500' }}>
-                ↻ {analysisSummary.updated.length} To Update (Existing UAN)
+                ↻ {analysisSummary.updated.length} To Update
               </div>
               <div style={{ padding: '10px 15px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '6px', fontWeight: '500' }}>
                 ✕ {analysisSummary.failed.length} Invalid Entries
               </div>
             </div>
             
-            {analysisSummary.missingContractors?.length > 0 && (
-              <div className={styles.notice}>
-                <strong>Notice:</strong> {analysisSummary.missingContractors.length} missing contractors found in the Excel sheet. They will be automatically created in the database during import.
-              </div>
-            )}
             {analysisSummary.missingAddresses?.length > 0 && (
-              <div className={styles.notice}>
+              <div className={styles.notice} style={{ backgroundColor: '#eff6ff', color: '#1e40af', padding: '10px', borderRadius: '6px', marginBottom: '10px', fontSize: '13px' }}>
                 <strong>Notice:</strong> {analysisSummary.missingAddresses.length} missing addresses found in the Excel sheet. They will be automatically created in the database during import.
               </div>
             )}
@@ -617,11 +557,11 @@ const EmployeeDataImportPage = () => {
 
             {analysisSummary.updated.length > 0 && (
               <div style={{ marginTop: '15px', fontSize: '13px', color: '#854d0e', backgroundColor: '#fef9c3', padding: '12px', borderRadius: '6px' }}>
-                <strong style={{ display: 'block', marginBottom: '8px' }}>Updates Details (Existing UANs):</strong>
+                <strong style={{ display: 'block', marginBottom: '8px' }}>Updates Details:</strong>
                 <ul style={{ margin: '0 0 0 20px', padding: 0, maxHeight: '120px', overflowY: 'auto' }}>
                   {analysisSummary.updated.map((u, i) => (
                     <li key={i} style={{ marginBottom: '4px' }}>
-                      Row {u.rowNumber} ({u.memberName}): {u.changedColumns.length > 0 
+                      Row {u.rowNumber} ({u.name}): {u.changedColumns.length > 0 
                         ? <span style={{ color: '#16a34a' }}>Updating {u.changedColumns.join(', ')}</span> 
                         : <span style={{ color: '#94a3b8' }}>No fields changed</span>}
                     </li>
@@ -636,7 +576,6 @@ const EmployeeDataImportPage = () => {
           </div>
         )}
 
-        {/* Action Button Group */}
         <div className={styles.buttonGroup}>
           {!analysisSummary ? (
             <button
@@ -703,4 +642,4 @@ const EmployeeDataImportPage = () => {
   );
 };
 
-export default EmployeeDataImportPage;
+export default ContractorDataImportPage;

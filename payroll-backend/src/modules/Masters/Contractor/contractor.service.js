@@ -89,7 +89,8 @@ const verifyCompanyAccess = async (companyId, user) => {
  * Helper to verify address exists and belongs to the company.
  */
 const verifyAddressAssociation = async (addressId, companyId) => {
-    const address = await Address.findOne({ where: { id: addressId, company_id: companyId, status: true } });
+    if (!addressId) return null;
+    const address = await Address.findOne({ where: { id: addressId, company_id: companyId } });
     if (!address) {
         const error = new Error("Address not found.");
         error.statusCode = 404;
@@ -223,7 +224,7 @@ class ContractorService {
                 {
                     model: User,
                     as: "user_account",
-                    attributes: ["id", "status"],
+                    attributes: ["id", "status", "user_id"],
                     required: false
                 }
             ],

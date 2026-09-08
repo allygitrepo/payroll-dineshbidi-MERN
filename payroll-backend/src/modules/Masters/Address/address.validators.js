@@ -7,10 +7,10 @@ const createAddressSchema = Joi.object({
         "string.guid": "Company ID must be a valid UUID.",
         "any.required": "Company ID is required.",
     }),
-    address: Joi.string().min(3).max(500).required().messages({
+    address: Joi.string().min(1).max(500).required().messages({
         "string.base": "Address must be a string.",
         "string.empty": "Address is required.",
-        "string.min": "Address must be at least 3 characters long.",
+        "string.min": "Address must be at least 1 character long.",
         "string.max": "Address cannot exceed 500 characters.",
         "any.required": "Address is required.",
     }),
@@ -35,8 +35,8 @@ const createAddressSchema = Joi.object({
 });
 
 const updateAddressSchema = Joi.object({
-    address: Joi.string().min(3).max(500).optional().messages({
-        "string.min": "Address must be at least 3 characters long.",
+    address: Joi.string().min(1).max(500).optional().messages({
+        "string.min": "Address must be at least 1 character long.",
         "string.max": "Address cannot exceed 500 characters.",
     }),
     post_office: Joi.string().max(100).optional().messages({

@@ -20,7 +20,8 @@ const mapToFrontend = (c) => ({
   mobile: c.whatsapp_number || '',
   status: c.status ? 'Active' : 'Inactive',
   address_id: c.address_id,
-  hasLogin: !!c.user_account
+  hasLogin: !!c.user_account,
+  loginId: c.user_account?.user_id || ''
 });
 
 const mapToBackend = (c, companyId, addresses = []) => {

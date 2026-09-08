@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Upload } from 'lucide-react';
+import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Upload, CheckCircle2, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import styles from '../components/BidiRollerWagesPage.module.css';
 import BidiRollerWagesForm from '../components/BidiRollerWagesForm';
 import BidiRollerWagesTable from '../components/BidiRollerWagesTable';
 import { getBidiRollerWages, saveBidiRollerWages, deleteBidiRollerWages } from '../services/bidiRollerWagesService';
-import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
+import { useToast, ConfirmModal, Modal } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import { parseExcelDate } from '../../../../shared/utils/dateUtils';
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
@@ -21,7 +21,7 @@ const formatDateForExport = (dateStr) => {
 
 const BidiRollerWagesPage = () => {
   const addToast = useToast();
-  
+
   const { canCreate, canEdit, canDelete } = usePermissions('bidi-roller-wages');
 
   const [wagesList, setWagesList] = useState([]);
@@ -30,11 +30,14 @@ const BidiRollerWagesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  
+
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
+
+  // Excel Import Analysis Modal state
+  const [importAnalysis, setImportAnalysis] = useState(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const dropdownRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -153,10 +156,10 @@ const BidiRollerWagesPage = () => {
   const filteredWages = useMemo(() => {
     return wagesList.filter(item => {
       const search = searchTerm.toLowerCase();
-      
+
       const formattedStart = formatDateForExport(item.startDate).toLowerCase();
       const formattedEnd = formatDateForExport(item.endDate).toLowerCase();
-      
+
       return (
         formattedStart.includes(search) ||
         formattedEnd.includes(search) ||
@@ -172,13 +175,13 @@ const BidiRollerWagesPage = () => {
   // Export handlers
   const handleExport = async (type) => {
     setIsDropdownOpen(false);
-    
+
     if (type === 'Excel' || type === 'Excel Template') {
       const isTemplate = type === 'Excel Template';
       const aoa = [
         ['ID (Do Not Modify)', 'Start Date (YYYY-MM-DD)', 'End Date (YYYY-MM-DD)', 'Rate 1', 'HRA 1', 'Bonus 1', 'Rate 2', 'HRA 2', 'Bonus 2']
       ];
-      
+
       if (!isTemplate) {
         filteredWages.forEach(w => {
           aoa.push([
@@ -186,7 +189,7 @@ const BidiRollerWagesPage = () => {
           ]);
         });
       }
-      
+
       const worksheet = XLSX.utils.aoa_to_sheet(aoa);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'BidiRoller_Wages');
@@ -196,14 +199,14 @@ const BidiRollerWagesPage = () => {
     }
 
     if (type === 'Copy') {
-      const text = filteredWages.map((w, index) => 
+      const text = filteredWages.map((w, index) =>
         `${index + 1}\t${formatDateForExport(w.startDate)}\t${formatDateForExport(w.endDate)}\t${w.rate1}\t${w.rate2}\t${w.rate3}\t${w.rate4}\t${w.bonus}`
       ).join('\n');
       navigator.clipboard.writeText(text);
       addToast({ type: 'success', message: 'Copied filtered records to clipboard!' });
       return;
     }
-    
+
     try {
       addToast({ type: 'info', message: `${type} export started...` });
       await exportModuleData('bidi-roller-wages', type.toLowerCase());
@@ -232,42 +235,110 @@ const BidiRollerWagesPage = () => {
         const worksheet = workbook.Sheets[sheetName];
         const importedData = XLSX.utils.sheet_to_json(worksheet);
 
-        let successCount = 0;
-        for (const row of importedData) {
-          const wId = row['ID (Do Not Modify)'];
-          
+        if (!importedData || importedData.length === 0) {
+          addToast({ type: 'warning', message: 'The uploaded Excel file contains no data rows.' });
+          return;
+        }
+
+        const added = [];
+        const updated = [];
+        const failed = [];
+
+        for (let i = 0; i < importedData.length; i++) {
+          const row = importedData[i];
+          const wId = row['ID (Do Not Modify)'] || row['ID'] || row['id'];
+          const startDate = parseExcelDate(row['Start Date (YYYY-MM-DD)'] || row['Start Date'] || row['StartDate']);
+          const endDate = parseExcelDate(row['End Date (YYYY-MM-DD)'] || row['End Date'] || row['EndDate']);
+
+          if (!startDate) {
+            failed.push({
+              rowNumber: i + 2,
+              name: 'Wages Record',
+              reason: 'Start Date (YYYY-MM-DD) is missing or invalid.'
+            });
+            continue;
+          }
+
           const wagesData = {
             id: wId || undefined,
-            startDate: parseExcelDate(row['Start Date (YYYY-MM-DD)']),
-            endDate: parseExcelDate(row['End Date (YYYY-MM-DD)']),
-            rate1: row['Rate 1'] || 0,
-            hra1: row['HRA 1'] || 0,
-            bonus1: row['Bonus 1'] || 0,
-            rate2: row['Rate 2'] || 0,
-            hra2: row['HRA 2'] || 0,
-            bonus2: row['Bonus 2'] || 0
+            startDate,
+            endDate: endDate || startDate,
+            rate1: row['Rate 1'] || row['Rate1'] || 0,
+            hra1: row['HRA 1'] || row['HRA1'] || 0,
+            bonus1: row['Bonus 1'] || row['Bonus1'] || 0,
+            rate2: row['Rate 2'] || row['Rate2'] || 0,
+            hra2: row['HRA 2'] || row['HRA2'] || 0,
+            bonus2: row['Bonus 2'] || row['Bonus2'] || 0,
+            rowNumber: i + 2
           };
-          if (!wagesData.startDate) continue; 
-          
-          await saveBidiRollerWages(wagesData, companyId);
-          successCount++;
+
+          const existingRecord = wagesList.find(w =>
+            (wId && String(w.id) === String(wId)) || (w.startDate === startDate)
+          );
+
+          if (existingRecord) {
+            wagesData.id = existingRecord.id;
+            updated.push(wagesData);
+          } else {
+            added.push(wagesData);
+          }
         }
-        
-        addToast({ type: 'success', message: `Successfully uploaded ${successCount} records.` });
-        fetchWages();
+
+        setImportAnalysis({
+          added,
+          updated,
+          failed,
+          totalRows: importedData.length
+        });
       } catch (error) {
-        console.error('Error importing Excel:', error);
-        addToast({ type: 'error', message: 'Failed to import Excel file.' });
+        console.error('Error analyzing Excel:', error);
+        addToast({ type: 'error', message: 'Failed to analyze Excel file: ' + error.message });
       }
     };
     reader.readAsBinaryString(file);
     e.target.value = null;
   };
 
+  const handleConfirmImport = async () => {
+    if (!importAnalysis) return;
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) return;
+
+    setIsImporting(true);
+    let successCount = 0;
+    let failCount = 0;
+    const recordsToProcess = [...importAnalysis.added, ...importAnalysis.updated];
+
+    for (const record of recordsToProcess) {
+      try {
+        await saveBidiRollerWages(record, companyId);
+        successCount++;
+      } catch (err) {
+        console.error(`Row ${record.rowNumber} failed to save:`, err);
+        failCount++;
+      }
+    }
+
+    setIsImporting(false);
+    setImportAnalysis(null);
+
+    if (failCount > 0) {
+      addToast({
+        type: successCount > 0 ? 'info' : 'error',
+        message: `Import finished: ${successCount} saved, ${failCount} failed.`
+      });
+    } else {
+      addToast({
+        type: 'success',
+        message: `Successfully imported ${successCount} record(s)!`
+      });
+    }
+    fetchWages();
+  };
+
   return (
     <div className={styles.container}>
-      {(loading || isSaving) && <Loader fullPage={true} />}
-      
+
       {/* Header section with page heading and action buttons */}
       <div className={styles.headerSection}>
         <h1 className={styles.title}>Bidi Roller Wages</h1>
@@ -277,12 +348,12 @@ const BidiRollerWagesPage = () => {
               <Plus size={18} /> Bidi Roller Wages
             </button>
           )}
-          <input 
-            type="file" 
-            accept=".xlsx, .xls" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
-            style={{ display: 'none' }} 
+          <input
+            type="file"
+            accept=".xlsx, .xls"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
           />
           {canCreate && (
             <button
@@ -294,8 +365,8 @@ const BidiRollerWagesPage = () => {
             </button>
           )}
           <div className={styles.dropdownContainer} ref={dropdownRef}>
-            <button 
-              className={styles.downloadBtn} 
+            <button
+              className={styles.downloadBtn}
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             >
               <Download size={18} /> Download
@@ -352,6 +423,132 @@ const BidiRollerWagesPage = () => {
         title="Delete Bidi Roller Wages Setup"
         message="Are you sure you want to delete this bidi roller wages entry? This action cannot be undone."
       />
+
+      {/* Excel Import Analysis Modal */}
+      {importAnalysis && (
+        <Modal
+          isOpen={true}
+          onClose={() => !isImporting && setImportAnalysis(null)}
+          title="Excel Import Preview & Analysis"
+          size="lg"
+          footer={
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', width: '100%' }}>
+              <button
+                type="button"
+                onClick={() => setImportAnalysis(null)}
+                disabled={isImporting}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: '#475569',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmImport}
+                disabled={isImporting || (importAnalysis.added.length === 0 && importAnalysis.updated.length === 0)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  cursor: isImporting ? 'not-allowed' : 'pointer',
+                  fontWeight: '500',
+                  opacity: (importAnalysis.added.length === 0 && importAnalysis.updated.length === 0) ? 0.6 : 1
+                }}
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} />
+                    Confirm & Save ({importAnalysis.added.length + importAnalysis.updated.length} Records)
+                  </>
+                )}
+              </button>
+            </div>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Summary Badges */}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '120px', padding: '12px', borderRadius: '8px', backgroundColor: '#dcfce7', color: '#166534', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle2 size={18} />
+                <span>{importAnalysis.added.length} New Entries</span>
+              </div>
+              <div style={{ flex: 1, minWidth: '120px', padding: '12px', borderRadius: '8px', backgroundColor: '#fef08a', color: '#854d0e', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <RefreshCw size={18} />
+                <span>{importAnalysis.updated.length} To Update</span>
+              </div>
+              <div style={{ flex: 1, minWidth: '120px', padding: '12px', borderRadius: '8px', backgroundColor: '#fee2e2', color: '#991b1b', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertCircle size={18} />
+                <span>{importAnalysis.failed.length} Errors / Invalid</span>
+              </div>
+            </div>
+
+            {/* Error details */}
+            {importAnalysis.failed.length > 0 && (
+              <div style={{ border: '1px solid #fca5a5', borderRadius: '8px', padding: '12px', backgroundColor: '#fef2f2' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#991b1b', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <AlertCircle size={16} /> Invalid / Skipped Rows ({importAnalysis.failed.length})
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '20px', color: '#7f1d1d', fontSize: '13px', maxHeight: '120px', overflowY: 'auto' }}>
+                  {importAnalysis.failed.map((f, i) => (
+                    <li key={i} style={{ marginBottom: '4px' }}>
+                      <strong>Row {f.rowNumber}</strong> ({f.name}): {f.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Updates details */}
+            {importAnalysis.updated.length > 0 && (
+              <div style={{ border: '1px solid #fde047', borderRadius: '8px', padding: '12px', backgroundColor: '#fefce8' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#854d0e', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <RefreshCw size={16} /> Entries To Be Updated ({importAnalysis.updated.length})
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '20px', color: '#713f12', fontSize: '13px', maxHeight: '120px', overflowY: 'auto' }}>
+                  {importAnalysis.updated.map((u, i) => (
+                    <li key={i} style={{ marginBottom: '4px' }}>
+                      <strong>Row {u.rowNumber}</strong>: Start Date: {u.startDate}, Rate 1: {u.rate1}, HRA 1: {u.hra1}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* New entries details */}
+            {importAnalysis.added.length > 0 && (
+              <div style={{ border: '1px solid #86efac', borderRadius: '8px', padding: '12px', backgroundColor: '#f0fdf4' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#166534', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={16} /> New Entries To Be Added ({importAnalysis.added.length})
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '20px', color: '#14532d', fontSize: '13px', maxHeight: '120px', overflowY: 'auto' }}>
+                  {importAnalysis.added.map((a, i) => (
+                    <li key={i} style={{ marginBottom: '4px' }}>
+                      <strong>Row {a.rowNumber}</strong>: Start Date: {a.startDate}, Rate 1: {a.rate1}, HRA 1: {a.hra1}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
 
     </div>
   );
