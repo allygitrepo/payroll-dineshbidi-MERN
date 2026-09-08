@@ -4,9 +4,9 @@ const Company = require("../../Masters/Company/company.model");
 const Employee = require("../../Masters/Employee/employee.model");
 
 /**
- * Helper to verify company exists and belongs to user.
+ * Helper to verify company exists and user has access to it.
  */
-const verifyCompanyOwnership = async (companyId, userId) => {
+const verifyCompanyAccess = async (companyId, user) => {
     const company = await Company.findOne({ where: { id: companyId, cstatus: true } });
     if (!company) {
         const error = new Error("Company not found.");
@@ -16,7 +16,15 @@ const verifyCompanyOwnership = async (companyId, userId) => {
         throw error;
     }
 
-    if (company.user_id !== userId) {
+    const userId = typeof user === 'object' ? user?.id : user;
+    const parentId = typeof user === 'object' ? user?.parent_id : null;
+    const roleName = typeof user === 'object' ? user?.role_name : null;
+
+    const isOwner = company.user_id === userId;
+    const isParentOwner = parentId && company.user_id === parentId;
+    const isSuperAdmin = roleName === 'SUPER ADMIN' || roleName === 'SUPER_ADMIN';
+
+    if (!isOwner && !isParentOwner && !isSuperAdmin) {
         const error = new Error("Access denied.");
         error.statusCode = 403;
         error.errorCode = "ACCESS_DENIED";
@@ -31,7 +39,7 @@ const verifyCompanyOwnership = async (companyId, userId) => {
  * Helper to verify employee exists and belongs to the company.
  */
 const verifyEmployeeAssociation = async (employeeId, companyId) => {
-    const employee = await Employee.findOne({ where: { id: employeeId, company_id: companyId, status: true } });
+    const employee = await Employee.findOne({ where: { id: employeeId, company_id: companyId } });
     if (!employee) {
         const error = new Error("Employee not found.");
         error.statusCode = 404;
@@ -83,11 +91,11 @@ class OfficeStaffSalaryService {
     /**
      * Creates a new Office Staff Salary Setup.
      */
-    static async createOfficeStaffSalary(salaryData, userId) {
+    static async createOfficeStaffSalary(salaryData, user) {
         const { company_id, employee_id, start_date, end_date } = salaryData;
 
-        // 1. Verify Company Ownership
-        await verifyCompanyOwnership(company_id, userId);
+        // 1. Verify Company Access
+        await verifyCompanyAccess(company_id, user);
 
         // 2. Verify Employee belongs to that Company
         await verifyEmployeeAssociation(employee_id, company_id);
@@ -107,9 +115,9 @@ class OfficeStaffSalaryService {
     /**
      * Retrieves all active Office Staff Salaries Setups for a specific company.
      */
-    static async getAllOfficeStaffSalaries(companyId, userId) {
-        // Verify Company Ownership
-        await verifyCompanyOwnership(companyId, userId);
+    static async getAllOfficeStaffSalaries(companyId, user) {
+        // Verify Company Access
+        await verifyCompanyAccess(companyId, user);
 
         return await OfficeStaffSalary.findAll({
             where: { company_id: companyId, status: true },
@@ -127,7 +135,7 @@ class OfficeStaffSalaryService {
     /**
      * Retrieves a single Office Staff Salary Setup by ID.
      */
-    static async getOfficeStaffSalaryById(id, userId) {
+    static async getOfficeStaffSalaryById(id, user) {
         const wage = await OfficeStaffSalary.findOne({
             where: { id, status: true },
             include: [
@@ -152,13 +160,7 @@ class OfficeStaffSalaryService {
             throw error;
         }
 
-        if (!wage.company || wage.company.user_id !== userId) {
-            const error = new Error("Access denied.");
-            error.statusCode = 403;
-            error.errorCode = "ACCESS_DENIED";
-            error.messageToShow = "Access denied.";
-            throw error;
-        }
+        await verifyCompanyAccess(wage.company_id, user);
 
         return wage;
     }
@@ -166,7 +168,7 @@ class OfficeStaffSalaryService {
     /**
      * Updates an existing Office Staff Salary Setup.
      */
-    static async updateOfficeStaffSalary(id, userId, updateData) {
+    static async updateOfficeStaffSalary(id, user, updateData) {
         const wage = await OfficeStaffSalary.findOne({
             where: { id, status: true },
             include: [
@@ -186,13 +188,7 @@ class OfficeStaffSalaryService {
             throw error;
         }
 
-        if (!wage.company || wage.company.user_id !== userId) {
-            const error = new Error("Access denied.");
-            error.statusCode = 403;
-            error.errorCode = "ACCESS_DENIED";
-            error.messageToShow = "Access denied.";
-            throw error;
-        }
+        await verifyCompanyAccess(wage.company_id, user);
 
         // Validate employee association if employee_id changes
         if (updateData.employee_id && updateData.employee_id !== wage.employee_id) {
@@ -219,7 +215,7 @@ class OfficeStaffSalaryService {
     /**
      * Soft-deletes an Office Staff Salary Setup.
      */
-    static async deleteOfficeStaffSalary(id, userId) {
+    static async deleteOfficeStaffSalary(id, user) {
         const wage = await OfficeStaffSalary.findOne({
             where: { id, status: true },
             include: [
@@ -239,13 +235,7 @@ class OfficeStaffSalaryService {
             throw error;
         }
 
-        if (!wage.company || wage.company.user_id !== userId) {
-            const error = new Error("Access denied.");
-            error.statusCode = 403;
-            error.errorCode = "ACCESS_DENIED";
-            error.messageToShow = "Access denied.";
-            throw error;
-        }
+        await verifyCompanyAccess(wage.company_id, user);
 
         await wage.update({ status: false });
         return true;

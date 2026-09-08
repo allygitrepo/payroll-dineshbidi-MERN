@@ -48,7 +48,7 @@ class OfficeStaffSalaryController {
         }
 
         try {
-            const newSetup = await OfficeStaffSalaryService.createOfficeStaffSalary(value, req.user.id);
+            const newSetup = await OfficeStaffSalaryService.createOfficeStaffSalary(value, req.user);
 
             return res.status(201).json(
                 successResponse(
@@ -87,7 +87,7 @@ class OfficeStaffSalaryController {
         }
 
         try {
-            const setups = await OfficeStaffSalaryService.getAllOfficeStaffSalaries(companyId, req.user.id);
+            const setups = await OfficeStaffSalaryService.getAllOfficeStaffSalaries(companyId, req.user);
 
             return res.status(200).json(
                 successResponse(
@@ -117,7 +117,7 @@ class OfficeStaffSalaryController {
         const { id } = req.params;
 
         try {
-            const setup = await OfficeStaffSalaryService.getOfficeStaffSalaryById(id, req.user.id);
+            const setup = await OfficeStaffSalaryService.getOfficeStaffSalaryById(id, req.user);
 
             return res.status(200).json(
                 successResponse(
@@ -160,7 +160,7 @@ class OfficeStaffSalaryController {
         }
 
         try {
-            const updatedSetup = await OfficeStaffSalaryService.updateOfficeStaffSalary(id, req.user.id, value);
+            const updatedSetup = await OfficeStaffSalaryService.updateOfficeStaffSalary(id, req.user, value);
 
             return res.status(200).json(
                 successResponse(
@@ -190,7 +190,7 @@ class OfficeStaffSalaryController {
         const { id } = req.params;
 
         try {
-            await OfficeStaffSalaryService.deleteOfficeStaffSalary(id, req.user.id);
+            await OfficeStaffSalaryService.deleteOfficeStaffSalary(id, req.user);
 
             return res.status(200).json(
                 successResponse(
