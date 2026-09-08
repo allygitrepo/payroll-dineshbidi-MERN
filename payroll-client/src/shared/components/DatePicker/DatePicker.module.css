@@ -250,18 +250,41 @@
   color: var(--text-primary, #1e293b);
 }
 
+.yearDisplayBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary, #1e293b);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.yearDisplayBtn:hover {
+  background-color: var(--bg-main, #f1f5f9);
+  border-color: var(--primary, #27d68a);
+  color: var(--primary, #27d68a);
+}
+
 .overlayNav {
   display: flex;
   gap: 4px;
 }
 
-.monthsGrid {
+.monthsGrid,
+.yearsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
-.monthSelectBtn {
+.monthSelectBtn,
+.yearSelectBtn {
   border: 1px solid var(--border, #e2e8f0);
   background: transparent;
   padding: 8px;
@@ -274,16 +297,48 @@
   text-align: center;
 }
 
-.monthSelectBtn:hover {
+.monthSelectBtn:hover,
+.yearSelectBtn:hover {
   border-color: var(--primary, #27d68a);
   color: var(--primary, #27d68a);
   background-color: var(--bg-main, #f1f5f9);
 }
 
-.monthSelectSelected {
+.monthSelectSelected,
+.yearSelectSelected {
   background-color: var(--primary, #27d68a) !important;
   color: #ffffff !important;
   border-color: var(--primary, #27d68a) !important;
+}
+
+.quickYearRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.quickYearLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+}
+
+.quickYearSelect {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--border, #e2e8f0);
+  background-color: var(--card-bg, #ffffff);
+  color: var(--text-primary, #1e293b);
+  outline: none;
+  cursor: pointer;
+}
+
+.quickYearSelect:focus {
+  border-color: var(--primary, #27d68a);
 }
 
 .backToCalBtn {
