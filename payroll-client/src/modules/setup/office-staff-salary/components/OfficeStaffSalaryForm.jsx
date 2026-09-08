@@ -25,7 +25,8 @@ const OfficeStaffSalaryForm = ({ wages, onSave, onCancel }) => {
       const companyId = localStorage.getItem('selectedCompany');
       if (companyId) {
         try {
-          const data = await getEmployees(companyId);
+          const dataRaw = await getEmployees(companyId);
+          const data = Array.isArray(dataRaw) ? dataRaw : (dataRaw?.data || []);
           // Only show Office Staff employees in this dropdown
           const officeStaff = data.filter(emp => emp.employeeType === 'OFFICE STAFF');
           setEmployees(officeStaff);

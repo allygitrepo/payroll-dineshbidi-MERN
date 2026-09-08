@@ -149,13 +149,14 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
 
   const handleAddressChange = (e) => {
     const val = e.target.value;
-    const template = addresses.find((t) => t.address === val);
+    const template = addresses.find((t) => t.address === val || t.address_name === val);
     
     let updatedFormData;
     if (template) {
       updatedFormData = {
         ...formData,
         address: val,
+        address_id: template.id || template.address_id || null,
         postOffice: template.postOffice || template.post_office || '',
         district: template.district || template.dist || '',
         pincode: template.pincode || template.pin || ''
@@ -163,7 +164,8 @@ const EmployeeForm = ({ employee, addresses = [], contractors = [], onSave, onCa
     } else {
       updatedFormData = {
         ...formData,
-        address: val
+        address: val,
+        address_id: null
       };
     }
     setFormData(updatedFormData);

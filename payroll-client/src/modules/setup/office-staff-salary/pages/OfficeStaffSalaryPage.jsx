@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Upload } from 'lucide-react';
+import { Plus, Download, FileSpreadsheet, Copy, FileText, File, Printer, Upload, CheckCircle2, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import styles from '../components/OfficeStaffSalaryPage.module.css';
 import OfficeStaffSalaryForm from '../components/OfficeStaffSalaryForm';
 import OfficeStaffSalaryTable from '../components/OfficeStaffSalaryTable';
 import { getOfficeStaffSalaries, saveOfficeStaffSalary, deleteOfficeStaffSalary } from '../services/officeStaffSalaryService';
-import { useToast, ConfirmModal } from '../../../../shared/components';
+import { getEmployees } from '../../../master/employee/services/employeeService';
+import { useToast, ConfirmModal, Modal } from '../../../../shared/components';
 import { exportModuleData } from '../../../../shared/services/exportService';
 import { parseExcelDate } from '../../../../shared/utils/dateUtils';
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
@@ -34,6 +35,10 @@ const OfficeStaffSalaryPage = () => {
   // Confirmation Modal state
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
+
+  // Excel Import Analysis Modal state
+  const [importAnalysis, setImportAnalysis] = useState(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const dropdownRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -224,35 +229,147 @@ const OfficeStaffSalaryPage = () => {
         const worksheet = workbook.Sheets[sheetName];
         const importedData = XLSX.utils.sheet_to_json(worksheet);
 
-        let successCount = 0;
-        for (const row of importedData) {
-          const wId = row['ID (Do Not Modify)'];
-          const eId = row['Employee ID (Do Not Modify)'];
-          
+        if (!importedData || importedData.length === 0) {
+          addToast({ type: 'warning', message: 'The uploaded Excel file contains no data rows.' });
+          return;
+        }
+
+        const employeesRaw = await getEmployees(companyId);
+        const employeesList = Array.isArray(employeesRaw) ? employeesRaw : (employeesRaw?.data || []);
+        const normalize = (value) =>
+          String(value ?? "")
+            .trim()
+            .replace(/\s+/g, " ")
+            .toLowerCase();
+
+        const added = [];
+        const updated = [];
+        const failed = [];
+
+        for (let i = 0; i < importedData.length; i++) {
+          const row = importedData[i];
+          const wId = row['ID (Do Not Modify)'] || row['ID'] || row['id'];
+          const rawEid = row['Employee ID (Do Not Modify)'] || row['Employee ID'] || row['employee_id'];
+          const empName = String(row['Employee Name'] || row['Member Name'] || row['Employee'] || row['Name'] || '').trim();
+          const uan = String(row['UAN'] || row['Universal Account Number'] || '').replace(/\D/g, '');
+
+          let resolvedEmployeeId = rawEid;
+          let matchedEmpName = empName;
+
+          if (!resolvedEmployeeId && empName) {
+            const matchedEmp = employeesList.find(emp => normalize(emp.memberName || emp.name) === normalize(empName));
+            if (matchedEmp) {
+              resolvedEmployeeId = matchedEmp.id;
+              matchedEmpName = matchedEmp.memberName || matchedEmp.name;
+            }
+          }
+          if (!resolvedEmployeeId && uan) {
+            const matchedEmp = employeesList.find(emp => emp.uan === uan);
+            if (matchedEmp) {
+              resolvedEmployeeId = matchedEmp.id;
+              matchedEmpName = matchedEmp.memberName || matchedEmp.name;
+            }
+          }
+
+          const startDate = parseExcelDate(row['Start Date (YYYY-MM-DD)'] || row['Start Date'] || row['StartDate']);
+          const endDate = parseExcelDate(row['End Date (YYYY-MM-DD)'] || row['End Date'] || row['EndDate']);
+
+          if (!resolvedEmployeeId) {
+            failed.push({
+              rowNumber: i + 2,
+              name: empName || uan || 'Unknown',
+              reason: `Employee "${empName || uan || 'Unknown'}" not found in company records.`
+            });
+            continue;
+          }
+
+          if (!startDate) {
+            failed.push({
+              rowNumber: i + 2,
+              name: matchedEmpName || 'Unknown',
+              reason: 'Start Date (YYYY-MM-DD) is missing or invalid.'
+            });
+            continue;
+          }
+
           const wagesData = {
             id: wId || undefined,
-            employeeId: eId || undefined,
-            startDate: parseExcelDate(row['Start Date (YYYY-MM-DD)']),
-            endDate: parseExcelDate(row['End Date (YYYY-MM-DD)']),
+            employeeId: resolvedEmployeeId,
+            employeeName: matchedEmpName,
+            startDate,
+            endDate: endDate || startDate,
             salary: row['Salary'] || 0,
-            standardBonus: row['Standard Bonus'] || 0,
-            additionalBonus: row['Additional Bonus'] || 0
+            standardBonus: row['Standard Bonus'] || row['StandardBonus'] || 0,
+            additionalBonus: row['Additional Bonus'] || row['AdditionalBonus'] || 0,
+            rowNumber: i + 2
           };
-          if (!wagesData.startDate || !wagesData.employeeId) continue; 
-          
-          await saveOfficeStaffSalary(wagesData, companyId);
-          successCount++;
+
+          const existingRecord = wagesList.find(w => 
+            (wId && String(w.id) === String(wId)) ||
+            (String(w.employeeId) === String(resolvedEmployeeId) && w.startDate === startDate)
+          );
+
+          if (existingRecord) {
+            wagesData.id = existingRecord.id;
+            updated.push({
+              ...wagesData,
+              existingRecord
+            });
+          } else {
+            added.push(wagesData);
+          }
         }
-        
-        addToast({ type: 'success', message: `Successfully uploaded ${successCount} records.` });
-        fetchSalaries();
+
+        setImportAnalysis({
+          added,
+          updated,
+          failed,
+          totalRows: importedData.length
+        });
       } catch (error) {
-        console.error('Error importing Excel:', error);
-        addToast({ type: 'error', message: 'Failed to import Excel file.' });
+        console.error('Error analyzing Excel:', error);
+        addToast({ type: 'error', message: 'Failed to analyze Excel file: ' + error.message });
       }
     };
     reader.readAsBinaryString(file);
     e.target.value = null;
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importAnalysis) return;
+    const companyId = localStorage.getItem('selectedCompany');
+    if (!companyId) return;
+
+    setIsImporting(true);
+    let successCount = 0;
+    let failCount = 0;
+    const recordsToProcess = [...importAnalysis.added, ...importAnalysis.updated];
+
+    for (const record of recordsToProcess) {
+      try {
+        await saveOfficeStaffSalary(record, companyId);
+        successCount++;
+      } catch (err) {
+        console.error(`Row ${record.rowNumber} failed to save:`, err);
+        failCount++;
+      }
+    }
+
+    setIsImporting(false);
+    setImportAnalysis(null);
+
+    if (failCount > 0) {
+      addToast({
+        type: successCount > 0 ? 'info' : 'error',
+        message: `Import finished: ${successCount} saved, ${failCount} failed.`
+      });
+    } else {
+      addToast({
+        type: 'success',
+        message: `Successfully imported ${successCount} record(s)!`
+      });
+    }
+    fetchSalaries();
   };
 
   return (
@@ -342,6 +459,132 @@ const OfficeStaffSalaryPage = () => {
         title="Delete Office Staff Salary Setup"
         message="Are you sure you want to delete this office staff salary entry? This action cannot be undone."
       />
+
+      {/* Excel Import Analysis Modal */}
+      {importAnalysis && (
+        <Modal
+          isOpen={true}
+          onClose={() => !isImporting && setImportAnalysis(null)}
+          title="Excel Import Preview & Analysis"
+          size="lg"
+          footer={
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', width: '100%' }}>
+              <button
+                type="button"
+                onClick={() => setImportAnalysis(null)}
+                disabled={isImporting}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: '#475569',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmImport}
+                disabled={isImporting || (importAnalysis.added.length === 0 && importAnalysis.updated.length === 0)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  cursor: isImporting ? 'not-allowed' : 'pointer',
+                  fontWeight: '500',
+                  opacity: (importAnalysis.added.length === 0 && importAnalysis.updated.length === 0) ? 0.6 : 1
+                }}
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} />
+                    Confirm & Save ({importAnalysis.added.length + importAnalysis.updated.length} Records)
+                  </>
+                )}
+              </button>
+            </div>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Summary Badges */}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '120px', padding: '12px', borderRadius: '8px', backgroundColor: '#dcfce7', color: '#166534', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle2 size={18} />
+                <span>{importAnalysis.added.length} New Entries</span>
+              </div>
+              <div style={{ flex: 1, minWidth: '120px', padding: '12px', borderRadius: '8px', backgroundColor: '#fef08a', color: '#854d0e', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <RefreshCw size={18} />
+                <span>{importAnalysis.updated.length} To Update</span>
+              </div>
+              <div style={{ flex: 1, minWidth: '120px', padding: '12px', borderRadius: '8px', backgroundColor: '#fee2e2', color: '#991b1b', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertCircle size={18} />
+                <span>{importAnalysis.failed.length} Errors / Invalid</span>
+              </div>
+            </div>
+
+            {/* Error details */}
+            {importAnalysis.failed.length > 0 && (
+              <div style={{ border: '1px solid #fca5a5', borderRadius: '8px', padding: '12px', backgroundColor: '#fef2f2' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#991b1b', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <AlertCircle size={16} /> Invalid / Skipped Rows ({importAnalysis.failed.length})
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '20px', color: '#7f1d1d', fontSize: '13px', maxHeight: '120px', overflowY: 'auto' }}>
+                  {importAnalysis.failed.map((f, i) => (
+                    <li key={i} style={{ marginBottom: '4px' }}>
+                      <strong>Row {f.rowNumber}</strong> ({f.name}): {f.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Updates details */}
+            {importAnalysis.updated.length > 0 && (
+              <div style={{ border: '1px solid #fde047', borderRadius: '8px', padding: '12px', backgroundColor: '#fefce8' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#854d0e', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <RefreshCw size={16} /> Entries To Be Updated ({importAnalysis.updated.length})
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '20px', color: '#713f12', fontSize: '13px', maxHeight: '120px', overflowY: 'auto' }}>
+                  {importAnalysis.updated.map((u, i) => (
+                    <li key={i} style={{ marginBottom: '4px' }}>
+                      <strong>Row {u.rowNumber}</strong>: {u.employeeName || 'Employee'} (Start: {u.startDate}, Salary: {u.salary})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* New entries details */}
+            {importAnalysis.added.length > 0 && (
+              <div style={{ border: '1px solid #86efac', borderRadius: '8px', padding: '12px', backgroundColor: '#f0fdf4' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#166534', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={16} /> New Entries To Be Added ({importAnalysis.added.length})
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '20px', color: '#14532d', fontSize: '13px', maxHeight: '120px', overflowY: 'auto' }}>
+                  {importAnalysis.added.map((a, i) => (
+                    <li key={i} style={{ marginBottom: '4px' }}>
+                      <strong>Row {a.rowNumber}</strong>: {a.employeeName || 'Employee'} (Start: {a.startDate}, Salary: {a.salary})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
 
     </div>
   );

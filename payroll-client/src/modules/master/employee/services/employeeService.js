@@ -123,7 +123,8 @@ const mapToBackend = (e, companyId, addresses = [], contractors = []) => {
     matchingAddress = addresses.find(a => a.id === e.address_id || a.address_id === e.address_id);
   }
 
-  const addressId = matchingAddress?.id || matchingAddress?.address_id || (uuidRegex.test(e.address_id) ? e.address_id : null);
+  // Only use addressId if it belongs to an address in this company's list
+  const addressId = matchingAddress?.id || matchingAddress?.address_id || null;
 
   console.log("Excel Address Name:", e.address);
   console.log("Available Address Names:", addresses.map(a => a.address || a.address_name));
@@ -287,6 +288,15 @@ export const getMissingDetails = async (companyId, fields) => {
 };
 
 export const saveEmployee = async (employee, companyId, addresses = [], contractors = []) => {
+  if (!addresses || addresses.length === 0) {
+    const { getAddresses } = await import('../../address/services/addressService');
+    addresses = await getAddresses(companyId);
+  }
+  if (!contractors || contractors.length === 0) {
+    const { getContractors } = await import('../../contractor/services/contractorService');
+    contractors = await getContractors(companyId);
+  }
+
   const normalize = (value) =>
     String(value ?? "")
       .trim()
