@@ -86,8 +86,11 @@ const LoginPage = () => {
     try {
       const response = await authService.login(username, password);
       if ((response.status || response.success) && response.data) {
-        const { user, accessToken } = response.data;
+        const { user, accessToken, refreshToken } = response.data;
         localStorage.setItem('accessToken', accessToken);
+        if (refreshToken) {
+          localStorage.setItem('refreshToken', refreshToken);
+        }
         localStorage.setItem('user', JSON.stringify(user));
         
         try {
@@ -96,8 +99,9 @@ const LoginPage = () => {
             const firstCompanyId = companies[0].id;
             localStorage.setItem('selectedCompany', firstCompanyId);
             const selectRes = await authService.selectCompany(firstCompanyId);
-            if (selectRes && selectRes.data && selectRes.data.accessToken) {
-              localStorage.setItem('accessToken', selectRes.data.accessToken);
+            if (selectRes && selectRes.data) {
+              if (selectRes.data.accessToken) localStorage.setItem('accessToken', selectRes.data.accessToken);
+              if (selectRes.data.refreshToken) localStorage.setItem('refreshToken', selectRes.data.refreshToken);
             }
           } else {
             localStorage.removeItem('selectedCompany');

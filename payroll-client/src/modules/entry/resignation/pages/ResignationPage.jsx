@@ -9,6 +9,7 @@ import {
   deleteResignation
 } from '../services/resignationService';
 import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
@@ -151,7 +152,8 @@ const ResignationPage = () => {
     });
   }, [resignations, selectedMonth, searchTerm]);
 
-  const handleExport = (type) => {
+  const handleExport = async (type) => {
+    setIsDropdownOpen(false);
     if (type === 'Copy') {
       const header = 'UAN\tAccount No.\tName Of Member\tName Of Parents\tDate of Leaving\tReason Of Leaving';
       const body = filteredResignations.map(r =>
@@ -160,9 +162,33 @@ const ResignationPage = () => {
       navigator.clipboard.writeText(`${header}\n${body}`);
       addToast({ type: 'success', message: 'Copied filtered resignation records to clipboard!' });
     } else {
-      addToast({ type: 'info', message: `${type} export started for ${filteredResignations.length} records!` });
+      try {
+        addToast({ type: 'info', message: `${type} export started...` });
+
+        const headers = [
+          'Sr. No.', 'UAN', 'Account No.', 'Name Of Member', 'Name Of Parents', 'Date of Leaving', 'Reason Of Leaving'
+        ];
+        const rows = filteredResignations.map((r, idx) => [
+          idx + 1,
+          r.uan || '-',
+          r.accountNo || '-',
+          r.nameOfMember || '-',
+          r.nameOfParents || '-',
+          formatDate(r.dateOfLeaving) || '-',
+          r.reasonOfLeaving || '-'
+        ]);
+
+        await exportModuleData('resignation', type.toLowerCase(), {
+          title: "Resignation Report",
+          headers,
+          rows
+        });
+        addToast({ type: 'success', message: `${type} export completed successfully!` });
+      } catch (err) {
+        console.error(err);
+        addToast({ type: 'error', message: `Failed to export ${type} file.` });
+      }
     }
-    setIsDropdownOpen(false);
   };
 
   return (

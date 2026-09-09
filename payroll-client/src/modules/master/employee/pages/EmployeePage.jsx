@@ -276,7 +276,50 @@ const EmployeePage = () => {
     setIsDropdownOpen(false);
     try {
       addToast({ type: 'info', message: `${type} export started...` });
-      await exportModuleData('employees', type.toLowerCase());
+
+      const companyId = localStorage.getItem('selectedCompany');
+      let allRecords = employees;
+
+      if (companyId) {
+        try {
+          const params = {
+            search: searchTerm,
+            status: statusFilter === 'ACTIVE' ? '1' : statusFilter === 'INACTIVE' ? '0' : '',
+            employeeType: employeeTypeFilter
+            // Omitting page and limit parameters so backend returns ALL records
+          };
+          const res = await getEmployees(companyId, params);
+          const list = Array.isArray(res) ? res : (res.data || []);
+          if (list && list.length > 0) {
+            allRecords = list;
+          }
+        } catch (e) {
+          console.warn('Could not fetch all employee records for export, using current page:', e);
+        }
+      }
+
+      const headers = [
+        "Sr. No.", "ABRY Applicable", "UAN", "IP Number", "Member ID", 
+        "Member Name", "Date Of Birth", "Date of Joining", "Gender", "Father/Husband Name"
+      ];
+      const rows = allRecords.map((e, idx) => [
+        idx + 1,
+        e.abryApplicable ? "Yes" : "No",
+        e.uan || "-",
+        e.ipNumber || "-",
+        e.memberId || "-",
+        e.memberName || "-",
+        e.dob || "-",
+        e.dateOfJoining || "-",
+        e.gender || "-",
+        e.fatherHusbandName || "-"
+      ]);
+
+      await exportModuleData('employees', type.toLowerCase(), {
+        title: "Employee Master Report",
+        headers,
+        rows
+      });
       addToast({ type: 'success', message: `${type} export completed successfully!` });
     } catch (err) {
       console.error(err);
@@ -284,16 +327,34 @@ const EmployeePage = () => {
     }
   };
 
-  const handleCopyClick = () => {
-    const text = filteredEmployees
+  const handleCopyClick = async () => {
+    setIsDropdownOpen(false);
+    let allRecords = employees;
+    const companyId = localStorage.getItem('selectedCompany');
+    if (companyId) {
+      try {
+        const params = {
+          search: searchTerm,
+          status: statusFilter === 'ACTIVE' ? '1' : statusFilter === 'INACTIVE' ? '0' : '',
+          employeeType: employeeTypeFilter
+        };
+        const res = await getEmployees(companyId, params);
+        const list = Array.isArray(res) ? res : (res.data || []);
+        if (list && list.length > 0) {
+          allRecords = list;
+        }
+      } catch (e) {
+        console.warn('Could not fetch all records for copy:', e);
+      }
+    }
+    const text = allRecords
       .map(
         (e) =>
-          `${e.uan}\t${e.ipNumber}\t${e.memberId}\t${e.memberName}\t${e.dob}\t${e.dateOfJoining}\t${e.gender}\t${e.fatherHusbandName}\t${e.address}\t${e.pincode}`
+          `${e.uan || ''}\t${e.ipNumber || ''}\t${e.memberId || ''}\t${e.memberName || ''}\t${e.dob || ''}\t${e.dateOfJoining || ''}\t${e.gender || ''}\t${e.fatherHusbandName || ''}\t${e.address || ''}\t${e.pincode || ''}`
       )
       .join('\n');
     navigator.clipboard.writeText(text);
-    addToast({ type: 'success', message: 'Copied filtered employees list to clipboard!' });
-    setIsDropdownOpen(false);
+    addToast({ type: 'success', message: 'Copied all employee records to clipboard!' });
   };
 
   return (

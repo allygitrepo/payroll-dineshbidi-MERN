@@ -1,3 +1,5 @@
+const db = require("../../database/models/index");
+const { ChallanDateEntry, Resignation, Employee } = db;
 const PackingWageService = require("../Setup/PackingWage/packingWage.service");
 const BidiRollerWageService = require("../Setup/BidiRollerWage/bidiRollerWage.service");
 const ChallanSetupService = require("../Setup/ChallanSetup/challanSetup.service");
@@ -259,7 +261,20 @@ const moduleMappings = {
             "Sr. No.", "ABRY Applicable", "UAN", "IP Number", "Member ID", 
             "Member Name", "Date Of Birth", "Date of Joining", "Gender", "Father/Husband Name"
         ],
-        fetch: (companyId, userId) => EmployeeService.getAllEmployees(companyId, userId),
+        fetch: async (companyId, user) => {
+            const targetCompanyId = companyId || user?.company_id;
+            try {
+                const res = await EmployeeService.getAllEmployees(targetCompanyId, user);
+                const list = Array.isArray(res) ? res : (res.rows || []);
+                if (list && list.length > 0) return list;
+            } catch (err) {
+                console.warn("getAllEmployees service failed, using direct model fallback:", err.message);
+            }
+            return await Employee.findAll({
+                where: { company_id: targetCompanyId },
+                raw: true
+            });
+        },
         map: (row, idx) => [
             idx + 1,
             row.abry_applicable ? "Yes" : "No",
@@ -271,6 +286,144 @@ const moduleMappings = {
             formatDate(row.date_of_joining),
             row.gender || "-",
             row.father_or_husband_name || "-"
+        ]
+    },
+    "epf-challan-date": {
+        title: "EPF Challan Date Entry Report",
+        headers: [
+            "Sr. No.", "TRRN", "CRN No", "Wage Month", "Due Date", "Challan Date", 
+            "A/C 1 (EE)", "A/C 1 (ER)", "A/C 2", "A/C 10", "A/C 21", "A/C 22", "Total Amount", "Return Date"
+        ],
+        fetch: async (companyId, user) => {
+            return await ChallanDateEntry.findAll({
+                where: { company_id: companyId },
+                order: [["wage_month", "DESC"]],
+                raw: true
+            });
+        },
+        map: (row, idx) => [
+            idx + 1,
+            row.ttrn || "-",
+            row.crn_no || "-",
+            row.wage_month || "-",
+            formatDate(row.due_date),
+            formatDate(row.challan_date),
+            row.ac1ee || "0.00",
+            row.ac1er || "0.00",
+            row.ac2 || "0.00",
+            row.ac10 || "0.00",
+            row.ac21 || "0.00",
+            row.ac22 || "0.00",
+            row.total_amount || "0.00",
+            formatDate(row.return_date)
+        ]
+    },
+    "epf-challans": {
+        title: "EPF Challan Date Entry Report",
+        headers: [
+            "Sr. No.", "TRRN", "CRN No", "Wage Month", "Due Date", "Challan Date", 
+            "A/C 1 (EE)", "A/C 1 (ER)", "A/C 2", "A/C 10", "A/C 21", "A/C 22", "Total Amount", "Return Date"
+        ],
+        fetch: async (companyId, user) => {
+            return await ChallanDateEntry.findAll({
+                where: { company_id: companyId },
+                order: [["wage_month", "DESC"]],
+                raw: true
+            });
+        },
+        map: (row, idx) => [
+            idx + 1,
+            row.ttrn || "-",
+            row.crn_no || "-",
+            row.wage_month || "-",
+            formatDate(row.due_date),
+            formatDate(row.challan_date),
+            row.ac1ee || "0.00",
+            row.ac1er || "0.00",
+            row.ac2 || "0.00",
+            row.ac10 || "0.00",
+            row.ac21 || "0.00",
+            row.ac22 || "0.00",
+            row.total_amount || "0.00",
+            formatDate(row.return_date)
+        ]
+    },
+    "resignation": {
+        title: "Resignation Report",
+        headers: [
+            "Sr. No.", "UAN", "Account No.", "Name Of Member", "Name Of Parents", "Date of Leaving", "Reason Of Leaving"
+        ],
+        fetch: async (companyId, user) => {
+            const entries = await Resignation.findAll({
+                where: { company_id: companyId },
+                order: [["created_at", "DESC"]],
+                raw: true
+            });
+            const employees = await Employee.findAll({
+                where: { company_id: companyId },
+                attributes: ['member_id', 'uan', 'name', 'father_or_husband_name'],
+                raw: true
+            });
+            const empMap = {};
+            employees.forEach(emp => {
+                if (emp.member_id) {
+                    empMap[emp.member_id] = emp;
+                }
+            });
+            return entries.map(entry => ({
+                ...entry,
+                uan: entry.account_no ? (empMap[entry.account_no]?.uan || '') : '',
+                name_of_member: entry.account_no ? (empMap[entry.account_no]?.name || '') : '',
+                name_of_parents: entry.account_no ? (empMap[entry.account_no]?.father_or_husband_name || '') : ''
+            }));
+        },
+        map: (row, idx) => [
+            idx + 1,
+            row.uan || "-",
+            row.account_no || "-",
+            row.name_of_member || "-",
+            row.name_of_parents || "-",
+            formatDate(row.date_of_leaving),
+            row.reason_of_leaving || "-"
+        ]
+    },
+    "resignations": {
+        title: "Resignation Report",
+        headers: [
+            "Sr. No.", "UAN", "Account No.", "Name Of Member", "Name Of Parents", "Date of Leaving", "Reason Of Leaving"
+        ],
+        fetch: async (companyId, user) => {
+            const entries = await Resignation.findAll({
+                where: { company_id: companyId },
+                order: [["created_at", "DESC"]],
+                raw: true
+            });
+            const employees = await Employee.findAll({
+                where: { company_id: companyId },
+                attributes: ['member_id', 'uan', 'name', 'father_or_husband_name'],
+                raw: true
+            });
+            const empMap = {};
+            employees.forEach(emp => {
+                if (emp.member_id) {
+                    empMap[emp.member_id] = emp;
+                }
+            });
+            return entries.map(entry => ({
+                ...entry,
+                uan: entry.account_no ? (empMap[entry.account_no]?.uan || '') : '',
+                name_of_member: entry.account_no ? (empMap[entry.account_no]?.name || '') : '',
+                name_of_parents: entry.account_no ? (empMap[entry.account_no]?.father_or_husband_name || '') : ''
+            }));
+        },
+        map: (row, idx) => [
+            idx + 1,
+            row.uan || "-",
+            row.account_no || "-",
+            row.name_of_member || "-",
+            row.name_of_parents || "-",
+            formatDate(row.date_of_leaving),
+            row.reason_of_leaving || "-"
         ]
     },
     "contractors": {
@@ -341,7 +494,7 @@ const moduleMappings = {
 class ExportController {
     static async exportData(req, res) {
         const { module: moduleName, format } = req.params;
-        const companyId = req.companyId; // Bound by auth.middleware.js
+        const companyId = req.companyId || req.user?.company_id || req.headers['x-company-id'];
 
         const config = moduleMappings[moduleName];
         if (!config) {
@@ -354,8 +507,9 @@ class ExportController {
 
         try {
             // Fetch records from database
-            const data = await config.fetch(companyId, req.user.id);
-            const mappedRows = data.map((row, idx) => config.map(row, idx));
+            const data = await config.fetch(companyId, req.user);
+            const rows = Array.isArray(data) ? data : (data?.rows || []);
+            const mappedRows = rows.map((row, idx) => config.map(row, idx));
 
             if (format === "csv") {
                 // Generate CSV
@@ -368,7 +522,7 @@ class ExportController {
                 });
 
                 res.setHeader("Content-Type", "text/csv; charset=utf-8");
-                res.setHeader("Content-Disposition", `attachment; filename="${moduleName}_export_${Date.now()}.csv"`);
+                res.setHeader("Content-Disposition", `attachment; filename="${moduleName}_export.csv"`);
                 return res.status(200).send(csvContent);
 
             } else if (format === "excel" || format === "xls") {
@@ -376,7 +530,7 @@ class ExportController {
                 const excelContent = generateExcelHtml(config.title, config.headers, mappedRows);
 
                 res.setHeader("Content-Type", "application/vnd.ms-excel");
-                res.setHeader("Content-Disposition", `attachment; filename="${moduleName}_export_${Date.now()}.xls"`);
+                res.setHeader("Content-Disposition", `attachment; filename="${moduleName}_export.xls"`);
                 return res.status(200).send(excelContent);
 
             } else if (format === "pdf" || format === "print") {

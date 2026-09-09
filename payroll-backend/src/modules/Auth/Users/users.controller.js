@@ -79,10 +79,11 @@ class UsersController {
             });
 
             // Set refresh token in HTTP-only cookie
+            const isProd = process.env.NODE_ENV === "production";
             res.cookie("refreshToken", refreshToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
+                secure: isProd,
+                sameSite: isProd ? "none" : "lax",
                 maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
             });
 
@@ -94,6 +95,7 @@ class UsersController {
                     {
                         user,
                         accessToken,
+                        refreshToken,
                     }
                 )
             );
@@ -120,10 +122,11 @@ class UsersController {
         try {
             const { accessToken, refreshToken } = await UsersService.selectCompany(userId, company_id);
 
+            const isProd = process.env.NODE_ENV === "production";
             res.cookie("refreshToken", refreshToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
+                secure: isProd,
+                sameSite: isProd ? "none" : "lax",
                 maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
             });
 
@@ -132,7 +135,7 @@ class UsersController {
                     "COMPANY_SELECTED",
                     "Company selected and tokens refreshed.",
                     "Company selected successfully.",
-                    { accessToken }
+                    { accessToken, refreshToken }
                 )
             );
         } catch (err) {
@@ -152,17 +155,18 @@ class UsersController {
      * Refresh access and refresh tokens.
      */
     static async refresh(req, res) {
-        // Extract token from HTTP-only cookie or request body
-        const token = req.cookies.refreshToken || req.body.refreshToken;
+        // Extract token from HTTP-only cookie, request body, or custom header
+        const token = req.cookies?.refreshToken || req.body?.refreshToken || req.headers['x-refresh-token'];
 
         try {
             const { accessToken, refreshToken: newRefreshToken } = await UsersService.refreshSession(token);
 
             // Set new refresh token in HTTP-only cookie
+            const isProd = process.env.NODE_ENV === "production";
             res.cookie("refreshToken", newRefreshToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
+                secure: isProd,
+                sameSite: isProd ? "none" : "lax",
                 maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
             });
 
@@ -173,6 +177,7 @@ class UsersController {
                     "Session refreshed.",
                     {
                         accessToken,
+                        refreshToken: newRefreshToken,
                     }
                 )
             );

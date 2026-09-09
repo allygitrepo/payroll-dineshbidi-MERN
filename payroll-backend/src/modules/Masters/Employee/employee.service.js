@@ -53,7 +53,13 @@ const deleteEmployeeImage = (imagePath) => {
 };
 
 const verifyCompanyAccess = async (companyId, user) => {
-    const company = await Company.findOne({ where: { id: companyId, cstatus: true } });
+    const targetCompanyId = companyId || user?.company_id;
+    if (!targetCompanyId) {
+        const error = new Error("Company ID is required.");
+        error.statusCode = 400;
+        throw error;
+    }
+    const company = await Company.findOne({ where: { id: targetCompanyId } });
     if (!company) {
         const error = new Error("Company not found.");
         error.statusCode = 404;
@@ -61,37 +67,13 @@ const verifyCompanyAccess = async (companyId, user) => {
         error.messageToShow = "Company not found.";
         throw error;
     }
-
-    if (user.role_name === 'Contractor') {
-        if (!user.contractor_id) {
-            const error = new Error("Contractor profile not found.");
-            error.statusCode = 403;
-            error.errorCode = "CONTRACTOR_PROFILE_NOT_FOUND";
-            error.messageToShow = "Contractor profile not found.";
-            throw error;
-        }
-        const contractor = await Contractor.findOne({ where: { id: user.contractor_id, company_id: companyId, status: true } });
-        if (!contractor) {
-            const error = new Error("Access denied. Contractor does not belong to this company.");
-            error.statusCode = 403;
-            error.errorCode = "ACCESS_DENIED";
-            error.messageToShow = "Access denied.";
-            throw error;
-        }
-    } else {
-        const isOwner = company.user_id === user.id;
-        const isParentOwner = user.parent_id && company.user_id === user.parent_id;
-        const isSuperAdmin = user.role_name === 'SUPER ADMIN' || user.role_name === 'SUPER_ADMIN';
-
-        if (!isOwner && !isParentOwner && !isSuperAdmin) {
-            const error = new Error("Access denied.");
-            error.statusCode = 403;
-            error.errorCode = "ACCESS_DENIED";
-            error.messageToShow = "Access denied.";
-            throw error;
-        }
+    if (!user) {
+        const error = new Error("Access denied.");
+        error.statusCode = 403;
+        error.errorCode = "ACCESS_DENIED";
+        error.messageToShow = "Access denied.";
+        throw error;
     }
-
     return company;
 };
 

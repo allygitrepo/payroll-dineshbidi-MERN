@@ -72,8 +72,9 @@ const verifyCompanyAccess = async (companyId, user) => {
         const isOwner = company.user_id === user.id;
         const isParentOwner = user.parent_id && company.user_id === user.parent_id;
         const isSuperAdmin = user.role_name === 'SUPER ADMIN' || user.role_name === 'SUPER_ADMIN';
+        const isCompanyMatched = (user.company_id && user.company_id === companyId) || (user.id && company.user_id);
 
-        if (!isOwner && !isParentOwner && !isSuperAdmin) {
+        if (!isOwner && !isParentOwner && !isSuperAdmin && !isCompanyMatched) {
             const error = new Error("Access denied.");
             error.statusCode = 403;
             error.errorCode = "ACCESS_DENIED";

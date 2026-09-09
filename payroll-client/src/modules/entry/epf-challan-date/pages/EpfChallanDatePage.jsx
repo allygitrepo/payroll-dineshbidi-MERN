@@ -12,6 +12,7 @@ import {
   saveBulkEpfChallans
 } from '../services/epfChallanDateService';
 import { useToast, ConfirmModal, Loader } from '../../../../shared/components';
+import { exportModuleData } from '../../../../shared/services/exportService';
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
 const formatDate = (dateStr) => {
@@ -386,7 +387,8 @@ const EpfChallanDatePage = () => {
     });
   }, [challans, searchTerm]);
 
-  const handleExport = (type) => {
+  const handleExport = async (type) => {
+    setIsDropdownOpen(false);
     if (type === 'Copy') {
       const header = 'TRRN\tCRN No\tWage Month\tDue Date\tChallan Date\tA/C 1 (EE)\tA/C 1 (ER)\tA/C 2\tA/C 10\tA/C 21\tA/C 22\tTotal Amount\tReturn Date';
       const body = filteredChallans.map(c =>
@@ -395,9 +397,41 @@ const EpfChallanDatePage = () => {
       navigator.clipboard.writeText(`${header}\n${body}`);
       addToast({ type: 'success', message: 'Copied filtered records to clipboard!' });
     } else {
-      addToast({ type: 'info', message: `${type} export started for ${filteredChallans.length} records!` });
+      try {
+        addToast({ type: 'info', message: `${type} export started...` });
+
+        const headers = [
+          'Sr. No.', 'TRRN', 'CRN No', 'Wage Month', 'Due Date', 'Challan Date',
+          'A/C 1 (EE)', 'A/C 1 (ER)', 'A/C 2', 'A/C 10', 'A/C 21', 'A/C 22', 'Total Amount', 'Return Date'
+        ];
+        const rows = filteredChallans.map((c, idx) => [
+          idx + 1,
+          c.trrn || '-',
+          c.crnNo || '-',
+          c.wageMonth || '-',
+          formatDate(c.dueDate) || '-',
+          formatDate(c.challanDate) || '-',
+          c.ac1EE || 0,
+          c.ac1ER || 0,
+          c.ac2 || 0,
+          c.ac10 || 0,
+          c.ac21 || 0,
+          c.ac22 || 0,
+          c.totalAmount || 0,
+          formatDate(c.returnDate) || '-'
+        ]);
+
+        await exportModuleData('epf-challan-date', type.toLowerCase(), {
+          title: "EPF Challan Date Entry Report",
+          headers,
+          rows
+        });
+        addToast({ type: 'success', message: `${type} export completed successfully!` });
+      } catch (err) {
+        console.error(err);
+        addToast({ type: 'error', message: `Failed to export ${type} file.` });
+      }
     }
-    setIsDropdownOpen(false);
   };
 
   return (

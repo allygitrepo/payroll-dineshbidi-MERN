@@ -70,15 +70,24 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Attempt to call refresh token endpoint
+        // Attempt to call refresh token endpoint with cookie + localStorage fallback
+        const storedRefreshToken = localStorage.getItem('refreshToken');
         const response = await axios.post(
           `${apiClient.defaults.baseURL}${API_ENDPOINTS.USERS.REFRESH}`,
-          {},
-          { withCredentials: true }
+          { refreshToken: storedRefreshToken },
+          { 
+            withCredentials: true,
+            headers: {
+              'x-refresh-token': storedRefreshToken || ''
+            }
+          }
         );
 
-        const { accessToken } = response.data.data;
+        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
         localStorage.setItem('accessToken', accessToken);
+        if (newRefreshToken) {
+          localStorage.setItem('refreshToken', newRefreshToken);
+        }
 
         processQueue(null, accessToken);
 
@@ -88,6 +97,7 @@ apiClient.interceptors.response.use(
         processQueue(refreshError, null);
         // If refresh fails, clear token and logout
         localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         window.location.href = '/';
         return Promise.reject(refreshError);
