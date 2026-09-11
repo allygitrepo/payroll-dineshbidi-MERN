@@ -4,6 +4,18 @@ import * as XLSX from 'xlsx';
 const exportClientExcel = (title, headers, rows, filename) => {
   const wsData = headers ? [headers, ...rows] : rows;
   const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  if (headers && headers.length > 0) {
+    ws['!cols'] = headers.map((h, colIdx) => {
+      let maxLen = String(h || '').length;
+      rows.forEach(r => {
+        const valStr = String(r[colIdx] ?? '');
+        if (valStr.length > maxLen) maxLen = valStr.length;
+      });
+      return { wch: Math.min(Math.max(maxLen + 3, 10), 50) };
+    });
+  }
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, title || "Sheet1");
   XLSX.writeFile(wb, `${filename}.xlsx`);
@@ -110,9 +122,28 @@ const exportClientPrint = (title, headers, rows) => {
 
 export const exportModuleData = async (moduleName, format, fallbackData = null) => {
   try {
-    if (format === 'pdf' || format === 'print') {
+    const fmt = (format || '').toLowerCase();
+    const filename = `${moduleName}_export`;
+
+    // When client-side fallback data (headers and rows) is provided, use client generators
+    if (fallbackData && fallbackData.rows && Array.isArray(fallbackData.rows)) {
+      if (fmt === 'excel' || fmt === 'xls' || fmt === 'xlsx') {
+        exportClientExcel(fallbackData.title || moduleName, fallbackData.headers, fallbackData.rows, filename);
+        return;
+      }
+      if (fmt === 'csv') {
+        exportClientCsv(fallbackData.headers, fallbackData.rows, filename);
+        return;
+      }
+      if (fmt === 'pdf' || fmt === 'print') {
+        exportClientPrint(fallbackData.title || moduleName, fallbackData.headers, fallbackData.rows);
+        return;
+      }
+    }
+
+    if (fmt === 'pdf' || fmt === 'print') {
       try {
-        const response = await apiClient.get(`export/${moduleName}/${format}`);
+        const response = await apiClient.get(`export/${moduleName}/${fmt}`);
         const htmlContent = response.data;
         
         const printWindow = window.open('', '_blank');
@@ -131,9 +162,9 @@ export const exportModuleData = async (moduleName, format, fallbackData = null) 
       }
     }
 
-    // For CSV and Excel
+    // For CSV and Excel via server
     try {
-      const response = await apiClient.get(`export/${moduleName}/${format}`, {
+      const response = await apiClient.get(`export/${moduleName}/${fmt}`, {
         responseType: 'blob'
       });
       
@@ -145,17 +176,17 @@ export const exportModuleData = async (moduleName, format, fallbackData = null) 
       const link = document.createElement('a');
       link.href = url;
       
-      let filename = `${moduleName}_export.${format === 'excel' || format === 'xls' ? 'xlsx' : 'csv'}`;
+      let downloadFileName = `${filename}.${fmt === 'excel' || fmt === 'xls' ? 'xls' : 'csv'}`;
       const disposition = response.headers['content-disposition'];
       if (disposition && disposition.indexOf('attachment') !== -1) {
         const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
         const matches = filenameRegex.exec(disposition);
         if (matches != null && matches[1]) { 
-          filename = matches[1].replace(/['"]/g, '');
+          downloadFileName = matches[1].replace(/['"]/g, '');
         }
       }
       
-      link.setAttribute('download', filename);
+      link.setAttribute('download', downloadFileName);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -163,8 +194,7 @@ export const exportModuleData = async (moduleName, format, fallbackData = null) 
     } catch (err) {
       if (fallbackData && fallbackData.rows) {
         console.warn('Server export failed, using client-side export fallback:', err.message);
-        const filename = `${moduleName}_export`;
-        if (format === 'excel' || format === 'xls') {
+        if (fmt === 'excel' || fmt === 'xls' || fmt === 'xlsx') {
           exportClientExcel(fallbackData.title || moduleName, fallbackData.headers, fallbackData.rows, filename);
         } else {
           exportClientCsv(fallbackData.headers, fallbackData.rows, filename);

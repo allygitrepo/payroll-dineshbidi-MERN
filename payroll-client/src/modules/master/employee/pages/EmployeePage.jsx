@@ -13,6 +13,15 @@ import WhatsAppBulkSendModal from '../../../utility/whatsapp/components/WhatsApp
 import { getWhatsAppStatus } from '../../../utility/whatsapp/services/whatsappService';
 import { usePermissions } from '../../../../shared/hooks/usePermissions';
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+};
+
 const EmployeePage = () => {
   const addToast = useToast();
   const navigate = useNavigate();
@@ -300,7 +309,12 @@ const EmployeePage = () => {
 
       const headers = [
         "Sr. No.", "ABRY Applicable", "UAN", "IP Number", "Member ID", 
-        "Member Name", "Date Of Birth", "Date of Joining", "Gender", "Father/Husband Name"
+        "Member Name", "Date Of Birth", "Date of Joining", "Aadhaar Card", "Gender", 
+        "Father/Husband Name", "Relation", "Marital Status", "Mobile", "Qualification", 
+        "Employee Type", "Contractor", "Address", "Post Office", "District", 
+        "Pincode", "Nationality", "Email", "Int. Worker", "Physical Handicap", 
+        "PMRPY", "PAN Card", "Bank Account No", "Bank Name", "IFSC Code", 
+        "Status", "Face Status"
       ];
       const rows = allRecords.map((e, idx) => [
         idx + 1,
@@ -308,11 +322,33 @@ const EmployeePage = () => {
         e.uan || "-",
         e.ipNumber || "-",
         e.memberId || "-",
-        e.memberName || "-",
-        e.dob || "-",
-        e.dateOfJoining || "-",
+        e.memberName || e.name || "-",
+        formatDate(e.dob),
+        formatDate(e.dateOfJoining || e.date_of_joining),
+        e.aadhaarCard || e.aadhar || "-",
         e.gender || "-",
-        e.fatherHusbandName || "-"
+        e.fatherHusbandName || e.father_or_husband_name || "-",
+        e.relation || "-",
+        e.maritalStatus || e.marital_status || "-",
+        e.mobile || "-",
+        e.qualification || "-",
+        e.employeeType || e.employee_type || "-",
+        (typeof e.contractor === 'object' ? e.contractor?.name : e.contractor) || "SELF",
+        (typeof e.address === 'object' ? e.address?.address : e.address) || "-",
+        (typeof e.address === 'object' ? e.address?.post_office : e.postOffice) || "-",
+        (typeof e.address === 'object' ? e.address?.district : e.district) || "-",
+        (typeof e.address === 'object' ? e.address?.pincode : e.pincode) || "-",
+        e.nationality || "INDIAN",
+        e.email || "-",
+        (e.isInternationalWorker === 'YES' || e.is_international_worker) ? "Yes" : "No",
+        (e.physicalHandicap === 'YES' || e.physical_handicap) ? "Yes" : "No",
+        (e.pmrpy === 'YES' || e.pmrpy) ? "Yes" : "No",
+        e.kycDetails?.find(k => k.documentType === 'PAN')?.documentNumber || e.kycDetail?.pan || "-",
+        e.kycDetails?.find(k => k.documentType === 'BANK PASSBOOK')?.documentNumber || e.kycDetail?.bank_ac || "-",
+        e.kycDetails?.find(k => k.documentType === 'BANK PASSBOOK')?.bankName || e.kycDetail?.bank_name || "-",
+        e.kycDetails?.find(k => k.documentType === 'BANK PASSBOOK')?.ifsc || e.kycDetail?.ifsc || "-",
+        (e.status === true || e.status === 'Active' || e.status === 1) ? "Active" : "Inactive",
+        (e.faceDescriptorPath || e.face_descriptor_path) ? "Enrolled" : "Not Enrolled"
       ]);
 
       await exportModuleData('employees', type.toLowerCase(), {
@@ -347,12 +383,52 @@ const EmployeePage = () => {
         console.warn('Could not fetch all records for copy:', e);
       }
     }
-    const text = allRecords
-      .map(
-        (e) =>
-          `${e.uan || ''}\t${e.ipNumber || ''}\t${e.memberId || ''}\t${e.memberName || ''}\t${e.dob || ''}\t${e.dateOfJoining || ''}\t${e.gender || ''}\t${e.fatherHusbandName || ''}\t${e.address || ''}\t${e.pincode || ''}`
-      )
-      .join('\n');
+    const headers = [
+      "Sr. No.", "ABRY Applicable", "UAN", "IP Number", "Member ID", 
+      "Member Name", "Date Of Birth", "Date of Joining", "Aadhaar Card", "Gender", 
+      "Father/Husband Name", "Relation", "Marital Status", "Mobile", "Qualification", 
+      "Employee Type", "Contractor", "Address", "Post Office", "District", 
+      "Pincode", "Nationality", "Email", "Int. Worker", "Physical Handicap", 
+      "PMRPY", "PAN Card", "Bank Account No", "Bank Name", "IFSC Code", 
+      "Status", "Face Status"
+    ];
+    const headerRow = headers.join('\t');
+    const dataRows = allRecords.map((e, idx) => [
+      idx + 1,
+      e.abryApplicable ? "Yes" : "No",
+      e.uan || "-",
+      e.ipNumber || "-",
+      e.memberId || "-",
+      e.memberName || e.name || "-",
+      formatDate(e.dob),
+      formatDate(e.dateOfJoining || e.date_of_joining),
+      e.aadhaarCard || e.aadhar || "-",
+      e.gender || "-",
+      e.fatherHusbandName || e.father_or_husband_name || "-",
+      e.relation || "-",
+      e.maritalStatus || e.marital_status || "-",
+      e.mobile || "-",
+      e.qualification || "-",
+      e.employeeType || e.employee_type || "-",
+      (typeof e.contractor === 'object' ? e.contractor?.name : e.contractor) || "SELF",
+      (typeof e.address === 'object' ? e.address?.address : e.address) || "-",
+      (typeof e.address === 'object' ? e.address?.post_office : e.postOffice) || "-",
+      (typeof e.address === 'object' ? e.address?.district : e.district) || "-",
+      (typeof e.address === 'object' ? e.address?.pincode : e.pincode) || "-",
+      e.nationality || "INDIAN",
+      e.email || "-",
+      (e.isInternationalWorker === 'YES' || e.is_international_worker) ? "Yes" : "No",
+      (e.physicalHandicap === 'YES' || e.physical_handicap) ? "Yes" : "No",
+      (e.pmrpy === 'YES' || e.pmrpy) ? "Yes" : "No",
+      e.kycDetails?.find(k => k.documentType === 'PAN')?.documentNumber || e.kycDetail?.pan || "-",
+      e.kycDetails?.find(k => k.documentType === 'BANK PASSBOOK')?.documentNumber || e.kycDetail?.bank_ac || "-",
+      e.kycDetails?.find(k => k.documentType === 'BANK PASSBOOK')?.bankName || e.kycDetail?.bank_name || "-",
+      e.kycDetails?.find(k => k.documentType === 'BANK PASSBOOK')?.ifsc || e.kycDetail?.ifsc || "-",
+      (e.status === true || e.status === 'Active' || e.status === 1) ? "Active" : "Inactive",
+      (e.faceDescriptorPath || e.face_descriptor_path) ? "Enrolled" : "Not Enrolled"
+    ].join('\t')).join('\n');
+
+    const text = `${headerRow}\n${dataRows}`;
     navigator.clipboard.writeText(text);
     addToast({ type: 'success', message: 'Copied all employee records to clipboard!' });
   };

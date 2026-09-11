@@ -12,7 +12,7 @@ const READ_ONLY_SLUGS = [
   'employee-data-export', 'kyc-export', 'attendance-printing', 
   'missing-information', 'delete-month-entry', 'backup', 'restore', 
   '3-month-absent-list', '58-years-of-age', 'excel-to-text', 'whatsapp-gateway',
-  'uan-to-ip-mapping'
+  'uan-to-ip-mapping', 'uan-member-id'
 ];
 
 const SLUG_OVERRIDES = {

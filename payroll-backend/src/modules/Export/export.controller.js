@@ -259,7 +259,12 @@ const moduleMappings = {
         title: "Employee Master Report",
         headers: [
             "Sr. No.", "ABRY Applicable", "UAN", "IP Number", "Member ID", 
-            "Member Name", "Date Of Birth", "Date of Joining", "Gender", "Father/Husband Name"
+            "Member Name", "Date Of Birth", "Date of Joining", "Aadhaar Card", "Gender", 
+            "Father/Husband Name", "Relation", "Marital Status", "Mobile", "Qualification", 
+            "Employee Type", "Contractor", "Address", "Post Office", "District", 
+            "Pincode", "Nationality", "Email", "Int. Worker", "Physical Handicap", 
+            "PMRPY", "PAN Card", "Bank Account No", "Bank Name", "IFSC Code", 
+            "Status", "Face Status"
         ],
         fetch: async (companyId, user) => {
             const targetCompanyId = companyId || user?.company_id;
@@ -272,21 +277,50 @@ const moduleMappings = {
             }
             return await Employee.findAll({
                 where: { company_id: targetCompanyId },
-                raw: true
+                include: [
+                    { model: db.EmployeeKycDetail, as: "kycDetail" },
+                    { model: db.Address, as: "address" },
+                    { model: db.Contractor, as: "contractor" }
+                ]
             });
         },
-        map: (row, idx) => [
-            idx + 1,
-            row.abry_applicable ? "Yes" : "No",
-            row.uan || "-",
-            row.ip_number || "-",
-            row.member_id || "-",
-            row.name || "-",
-            formatDate(row.dob),
-            formatDate(row.date_of_joining),
-            row.gender || "-",
-            row.father_or_husband_name || "-"
-        ]
+        map: (row, idx) => {
+            const e = row.toJSON ? row.toJSON() : row;
+            return [
+                idx + 1,
+                (e.abry_applicable || e.abryApplicable) ? "Yes" : "No",
+                e.uan || "-",
+                e.ip_number || e.ipNumber || "-",
+                e.member_id || e.memberId || "-",
+                e.name || e.memberName || "-",
+                formatDate(e.dob),
+                formatDate(e.date_of_joining || e.dateOfJoining),
+                e.aadhar || e.aadhaarCard || "-",
+                e.gender || "-",
+                e.father_or_husband_name || e.fatherHusbandName || "-",
+                e.relation || "-",
+                e.marital_status || e.maritalStatus || "-",
+                e.mobile || "-",
+                e.qualification || "-",
+                e.employee_type || e.employeeType || "-",
+                (typeof e.contractor === 'object' ? e.contractor?.name : e.contractor) || (e.contractor_id ? e.contractor_id : "SELF"),
+                (typeof e.address === 'object' ? e.address?.address : e.address) || "-",
+                (typeof e.address === 'object' ? e.address?.post_office : e.postOffice) || "-",
+                (typeof e.address === 'object' ? e.address?.district : e.district) || "-",
+                (typeof e.address === 'object' ? e.address?.pincode : e.pincode) || "-",
+                e.nationality || "INDIAN",
+                e.email || "-",
+                (e.is_international_worker || e.isInternationalWorker === 'YES') ? "Yes" : "No",
+                (e.physical_handicap || e.physicalHandicap === 'YES') ? "Yes" : "No",
+                (e.pmrpy || e.pmrpy === 'YES') ? "Yes" : "No",
+                e.kycDetail?.pan || e.kycDetails?.find(k => k.documentType === 'PAN')?.documentNumber || "-",
+                e.kycDetail?.bank_ac || e.kycDetails?.find(k => k.documentType === 'BANK PASSBOOK')?.documentNumber || "-",
+                e.kycDetail?.bank_name || e.kycDetails?.find(k => k.documentType === 'BANK PASSBOOK')?.bankName || "-",
+                e.kycDetail?.ifsc || e.kycDetails?.find(k => k.documentType === 'BANK PASSBOOK')?.ifsc || "-",
+                (e.status === true || e.status === 'Active' || e.status === 1) ? "Active" : "Inactive",
+                (e.face_descriptor_path || e.faceDescriptorPath) ? "Enrolled" : "Not Enrolled"
+            ];
+        }
     },
     "epf-challan-date": {
         title: "EPF Challan Date Entry Report",

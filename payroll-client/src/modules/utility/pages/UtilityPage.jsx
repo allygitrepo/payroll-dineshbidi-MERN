@@ -12,6 +12,7 @@ import DeleteMonthEntryPage from '../delete-month-entry/pages/DeleteMonthEntryPa
 import BackupPage from '../backup/pages/BackupPage';
 import RestorePage from '../restore/pages/RestorePage';
 import UanToIpMappingPage from '../uan-to-ip-mapping/pages/UanToIpMappingPage';
+import UanMemberIdPage from '../uan-member-id/pages/UanMemberIdPage';
 
 const UtilityPage = ({ activeSubMenu }) => {
   switch (activeSubMenu) {
@@ -41,6 +42,8 @@ const UtilityPage = ({ activeSubMenu }) => {
       return <RestorePage />;
     case 'UAN to IP Mapping':
       return <UanToIpMappingPage />;
+    case 'UAN Member ID':
+      return <UanMemberIdPage />;
     default:
       return (
         <div style={{ padding: '30px', backgroundColor: 'var(--card-bg)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>

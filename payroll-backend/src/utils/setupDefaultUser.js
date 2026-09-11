@@ -16,7 +16,7 @@ const ALL_PERMISSION_SLUGS = [
     'forms', 'form-2', 'form-3a', 'form-5', 'form-10', 'form-11', 'pf-claim-form',
     'ecr-report', 'esic-report', 'pmrpy-report', 'pf-challan-yearly', 'esic-challan-yearly', 'epf-challan', 'pf-summary', 'payment-advice', 'bonus-sheet', 'gratuity-calculation', 'report-pt',
     // Utility
-    'calender', 'user-management', 'whatsapp-gateway', 'employee-data-import', 'employee-data-export', 'kyc-export', 'attendance-printing', 'missing-information', 'delete-month-entry', 'backup', 'restore', 'uan-to-ip-mapping',
+    'calender', 'user-management', 'whatsapp-gateway', 'employee-data-import', 'employee-data-export', 'kyc-export', 'attendance-printing', 'missing-information', 'delete-month-entry', 'backup', 'restore', 'uan-to-ip-mapping', 'uan-member-id',
     // Todo List
     '3-month-absent-list', '58-years-of-age', 'notes',
     // Convert Excel To Text

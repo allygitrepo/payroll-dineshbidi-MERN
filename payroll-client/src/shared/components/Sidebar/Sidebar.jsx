@@ -146,7 +146,8 @@ export const menuItems = [
       { name: 'Delete Month Entry', icon: Trash2 },
       { name: 'Backup', icon: Save },
       { name: 'Restore', icon: RefreshCw },
-      { name: 'UAN to IP Mapping', icon: Link }
+      { name: 'UAN to IP Mapping', icon: Link },
+      { name: 'UAN Member ID', icon: Fingerprint }
     ]
   },
   {

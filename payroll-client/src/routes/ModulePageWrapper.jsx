@@ -68,6 +68,7 @@ const slugToSubmenuMap = {
   backup: 'Backup',
   restore: 'Restore',
   'uan-to-ip-mapping': 'UAN to IP Mapping',
+  'uan-member-id': 'UAN Member ID',
   
   '3-month-absent-list': '3 Month Absent List',
   '58-years-of-age': '58 Years of age',

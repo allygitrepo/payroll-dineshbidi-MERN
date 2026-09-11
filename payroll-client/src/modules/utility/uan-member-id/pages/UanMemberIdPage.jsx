@@ -2,11 +2,11 @@ import React, { useState, useRef } from 'react';
 import { Download, Eye, Save } from 'lucide-react';
 import { useToast, Loader } from '../../../../shared/components';
 import { getEmployees } from '../../../master/employee/services/employeeService';
-import { bulkUpdateIpMapping } from '../services/uanToIpService';
+import { bulkUpdateMemberIdMapping } from '../services/uanMemberIdService';
 import * as XLSX from 'xlsx';
-import styles from '../components/UanToIpMappingPage.module.css';
+import styles from '../components/UanMemberIdPage.module.css';
 
-const UanToIpMappingPage = () => {
+const UanMemberIdPage = () => {
   const addToast = useToast();
   const fileInputRef = useRef(null);
 
@@ -58,14 +58,13 @@ const UanToIpMappingPage = () => {
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Ensure standard object format mapping columns
-        // Expecting Column A -> UAN, Column B -> IP Number (or header names)
+        // Expecting Column A -> UAN, Column B -> Member ID (or header names)
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
         // Remove empty rows
         const rows = jsonData.filter(row => row.length >= 2 && row[0] && row[1]);
         
-        // Skip header row if it contains text like "UAN"
+        // Skip header row if it contains text like "UAN" or "Universal"
         let dataRows = rows;
         if (rows.length > 0 && String(rows[0][0]).toLowerCase().includes('uan')) {
             dataRows = rows.slice(1);
@@ -88,7 +87,7 @@ const UanToIpMappingPage = () => {
 
         const mappedPreview = dataRows.map((row, idx) => {
           const rowUan = String(row[0]).trim().replace('.0', '');
-          const rowIp = String(row[1]).trim().replace('.0', '');
+          const rowMemberId = String(row[1]).trim().replace('.0', '');
 
           const employee = dbMap.get(rowUan);
           
@@ -98,7 +97,7 @@ const UanToIpMappingPage = () => {
 
           if (employee) {
             employeeName = employee.memberName;
-            if (employee.ipNumber === rowIp) {
+            if (employee.memberId === rowMemberId) {
               status = 'CURRENT MATCH';
               badgeStyle = styles.badgeInfo;
             } else {
@@ -111,7 +110,7 @@ const UanToIpMappingPage = () => {
             id: `row_${idx}`,
             employeeId: employee ? employee.id : null,
             uan: rowUan,
-            ipNumber: rowIp,
+            memberId: rowMemberId,
             employeeName,
             status,
             badgeStyle
@@ -122,7 +121,7 @@ const UanToIpMappingPage = () => {
         setShowPreview(true);
         addToast({
           type: 'success',
-          message: 'Excel spreadsheet parsed successfully. Review mappings below.'
+          message: 'Excel spreadsheet parsed successfully. Review Member ID mappings below.'
         });
 
       } catch (err) {
@@ -136,18 +135,18 @@ const UanToIpMappingPage = () => {
 
   const handleDownloadTemplate = () => {
     try {
-      const csvContent = "Universal Account Number (UAN),Insurance Number (IP)\n100188684022,7431081699\n102008788327,7431095833";
+      const csvContent = "Universal Account Number (UAN),Member ID\n100188684022,17291\n100247084817,0005870";
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'uan_ip_mapping_template.csv');
+      link.setAttribute('download', 'uan_member_id_mapping_template.csv');
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      addToast({ type: 'success', message: 'UAN to IP mapping template downloaded successfully.' });
+      addToast({ type: 'success', message: 'UAN Member ID mapping template downloaded successfully.' });
     } catch (err) {
       addToast({ type: 'error', message: 'Failed to download template file.' });
     }
@@ -164,7 +163,7 @@ const UanToIpMappingPage = () => {
         .map(row => ({
             employeeId: row.employeeId,
             uan: row.uan,
-            ipNumber: row.ipNumber
+            memberId: row.memberId
         }));
 
     if (payload.length === 0) {
@@ -174,11 +173,11 @@ const UanToIpMappingPage = () => {
 
     try {
         setIsProcessing(true);
-        const res = await bulkUpdateIpMapping(companyId, payload);
+        const res = await bulkUpdateMemberIdMapping(companyId, payload);
         
         addToast({
             type: 'success',
-            message: res.message || 'Successfully bulk-updated IP details in database.'
+            message: res.message || 'Successfully bulk-updated Member ID details in database.'
         });
 
         // Reset controls
@@ -199,18 +198,19 @@ const UanToIpMappingPage = () => {
 
   return (
     <div className={styles.container}>
+      {isProcessing && <Loader fullPage={true} />}
       <div className={styles.headerSection}>
         <div>
-          <h2 className={styles.title}>UAN to IP Mapping</h2>
+          <h2 className={styles.title}>UAN Member ID</h2>
           <p className={styles.subtitle}>
-            Bulk map and update employee Insurance Numbers (IP) from universal registers.
+            Bulk map and update employee Member IDs from universal registers.
           </p>
         </div>
       </div>
 
       <div className={styles.card}>
         <div className={styles.cardHeader}>
-          Upload Excel Sheet (UAN and IP columns)
+          Upload Excel Sheet (UAN and Member ID columns)
         </div>
 
         <div className={styles.selectorRow}>
@@ -279,7 +279,7 @@ const UanToIpMappingPage = () => {
                   <th style={{ width: '80px', textAlign: 'center' }}>Sr. No.</th>
                   <th>Employee Name</th>
                   <th>Universal Account Number (UAN)</th>
-                  <th>Insurance Number (IP)</th>
+                  <th>Member ID</th>
                   <th style={{ width: '150px', textAlign: 'center' }}>Status</th>
                 </tr>
               </thead>
@@ -298,7 +298,7 @@ const UanToIpMappingPage = () => {
                         {row.employeeName}
                       </td>
                       <td style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{row.uan}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{row.ipNumber}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{row.memberId}</td>
                       <td style={{ textAlign: 'center' }}>
                         <span className={`${styles.badge} ${row.badgeStyle}`}>
                           {row.status}
@@ -334,8 +334,8 @@ const UanToIpMappingPage = () => {
                       <span className={styles.mobileCardValue}>{row.uan}</span>
                     </div>
                     <div className={styles.mobileCardRow}>
-                      <span className={styles.mobileCardLabel}>IP Number:</span>
-                      <span className={styles.mobileCardValue}>{row.ipNumber}</span>
+                      <span className={styles.mobileCardLabel}>Member ID:</span>
+                      <span className={styles.mobileCardValue}>{row.memberId}</span>
                     </div>
                   </div>
                 </div>
@@ -352,4 +352,4 @@ const UanToIpMappingPage = () => {
   );
 };
 
-export default UanToIpMappingPage;
+export default UanMemberIdPage;
